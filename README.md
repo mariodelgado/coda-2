@@ -65,12 +65,12 @@ make run-ui-dev            # Next.js on :3000
 
 Open http://localhost:3000.
 
-**New iMovie-style layout (this PR):**  
-Top bar = goal field + primary Run/Stop (⌘K still works for power users).  
-Center stage = one hero viewer (fidelity climb or Bell outcome).  
-Bottom timeline = filmstrip of real orchestrator steps + backend jobs (clips are selectable).  
-Right inspector (collapsed by default) = device state, honest metrics, 3D drift surface, clip details.  
-Sonner toasts for quiet feedback.
+**Current UI (ChatGPT-inspired, this PR):**  
+Vast empty center is the conversation thread.  
+Soft suggested chips (Calibrate Q0, Bell pair, Bring device ready) are the primary path; typing is secondary via a bottom composer.  
+Each run appears as a turn in the thread (goal → agent steps → result).  
+Device state, WebGPU drift surface, metrics, and per-run details are opt-in (side panel or “Details” on a turn) — never on first paint.  
+Minimal top chrome (product name + LIVE + discreet actions). ⌘K still available for power users. Sonner for quiet status.
 
 ### Walk (do this in order)
 
