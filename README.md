@@ -65,6 +65,13 @@ make run-ui-dev            # Next.js on :3000
 
 Open http://localhost:3000.
 
+**New iMovie-style layout (this PR):**  
+Top bar = goal field + primary Run/Stop (⌘K still works for power users).  
+Center stage = one hero viewer (fidelity climb or Bell outcome).  
+Bottom timeline = filmstrip of real orchestrator steps + backend jobs (clips are selectable).  
+Right inspector (collapsed by default) = device state, honest metrics, 3D drift surface, clip details.  
+Sonner toasts for quiet feedback.
+
 ### Walk (do this in order)
 
 1. **Observe the lab problem (drift).**  
