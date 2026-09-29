@@ -1,35 +1,25 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Activity, Cpu, Target, Zap, Play, RefreshCw, Send, Clock,
-  ThermometerSun, TrendingUp, AlertTriangle, X, Command as CommandIcon,
-} from "lucide-react"
 import { toast } from "sonner"
-import { motion } from "motion/react"
+import { motion, AnimatePresence } from "motion/react"
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer,
-} from "recharts"
+  Play, Square, Send, RefreshCw, Command as CommandIcon, ChevronRight, ChevronLeft,
+} from "lucide-react"
+
 import {
   api, setApiBase, getApiBase,
-  type DeviceState, type JobRecord, type MetricsSnapshot, type ToolResult, type ToolTrace,
+  type DeviceState, type JobRecord, type MetricsSnapshot, type ToolTrace,
 } from "@/lib/api"
 import { useControlPlaneStore } from "@/lib/store"
 import { CommandPalette, defaultCommandIcons, type CommandAction } from "@/components/command/command-palette"
-import { MetricsCards } from "@/components/metrics-cards"
-import { CalibrationSurfaceLazy } from "@/components/viz/calibration-surface-lazy"
+import { HeroViewer, type FidelityPoint } from "@/components/stage/hero-viewer"
+import { Filmstrip, tracesToClips, jobsToClips, type TimelineClip } from "@/components/timeline/filmstrip"
+import { RightInspector } from "@/components/inspector/right-inspector"
 
-interface FidelityPoint { iter: number; fidelity: number }
-interface HistoryEntry { ts: number; message: string; kind: "goal" | "result" | "error" | "system" }
-
-const READY_THRESHOLD = 0.82
 const easeOut = [0.23, 1, 0.32, 1] as const
 
 export default function ConductorQPUControlPlane() {
@@ -50,8 +40,6 @@ export default function ConductorQPUControlPlane() {
 
   const [goalInput, setGoalInput] = useState("")
   const [submittingGoal, setSubmittingGoal] = useState(false)
-  const [lastGoalResults, setLastGoalResults] = useState<ToolResult[] | null>(null)
-  const [lastTraces, setLastTraces] = useState<ToolTrace[]>([])
 
   const [jobs, setJobs] = useState<Record<string, JobRecord>>({})
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
@@ -60,21 +48,27 @@ export default function ConductorQPUControlPlane() {
   const [fidelityHistory, setFidelityHistory] = useState<FidelityPoint[]>([])
   const [lastCalParams, setLastCalParams] = useState<Record<string, number> | null>(null)
   const [calThreshold, setCalThreshold] = useState(0.88)
+  const [lastBellCounts, setLastBellCounts] = useState<Record<string, number> | null>(null)
 
   const [metrics, setMetrics] = useState<MetricsSnapshot | null>(null)
 
-  const [history, setHistory] = useState<HistoryEntry[]>([
-    { ts: Date.now(), message: "Control plane ready. No LLM keys. Real traces only.", kind: "system" },
-  ])
+  const [lastTraces, setLastTraces] = useState<ToolTrace[]>([])
 
-  const log = useCallback((message: string, kind: HistoryEntry["kind"] = "system") => {
-    setHistory((h) => [...h.slice(-100), { ts: Date.now(), message, kind }])
+  const [inspectorOpen, setInspectorOpen] = useState(false)
+  const [selectedClip, setSelectedClip] = useState<TimelineClip | null>(null)
+
+  const [playheadTs, setPlayheadTs] = useState<number | null>(null)
+
+  const logQuiet = useCallback((msg: string) => {
+    // Sonner is the primary quiet feedback; we keep a tiny in-memory for debug if needed.
+    void msg
   }, [])
 
   const updateApiBase = useCallback((base: string) => {
-    setApiBaseState(base)
-    setApiBase(base)
-    setApiBaseLocal(base)
+    const t = base.replace(/\/$/, "")
+    setApiBaseState(t)
+    setApiBase(t)
+    setApiBaseLocal(t)
   }, [setApiBaseLocal])
 
   const checkConnection = useCallback(async (base?: string) => {
@@ -88,19 +82,16 @@ export default function ConductorQPUControlPlane() {
       const ok = data?.status === "ok"
       setConnected(ok)
       setBackendDown(!ok)
-      if (ok) log(`Connected to ${target}`, "system")
-      else toast.error("Backend unhealthy")
       return ok
     } catch {
       setConnected(false)
       setBackendDown(true)
-      log(`Backend unreachable at ${target}`, "error")
       toast.error("Backend down", { description: `Cannot reach ${target}` })
       return false
     } finally {
       setChecking(false)
     }
-  }, [apiBase, log, updateApiBase])
+  }, [apiBase, updateApiBase])
 
   const refreshDevice = useCallback(async () => {
     setRefreshingDevice(true)
@@ -112,26 +103,21 @@ export default function ConductorQPUControlPlane() {
         setDetuning(dt.detuning)
         setAppliedParams(dt.applied)
       } catch { /* optional */ }
-      log(`Device: ready=${d.is_ready} score=${d.readiness_score.toFixed(3)}`, "system")
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "device fetch failed"
-      log(`Device error: ${msg}`, "error")
       setBackendDown(true)
       toast.error("Backend down", { description: msg })
     } finally {
       setRefreshingDevice(false)
     }
-  }, [log])
+  }, [])
 
   const refreshMetrics = useCallback(async () => {
     try {
       const m = await api.getMetrics()
       setMetrics(m)
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "metrics failed"
-      log(`Metrics error: ${msg}`, "error")
-    }
-  }, [log])
+    } catch { /* non-fatal */ }
+  }, [])
 
   const loadRecentJobs = useCallback(async () => {
     try {
@@ -147,7 +133,6 @@ export default function ConductorQPUControlPlane() {
     if (job.status === "succeeded" || job.status === "failed" || job.status === "cancelled") {
       const es = eventSourcesRef.current[job.job_id]
       if (es) { es.close(); delete eventSourcesRef.current[job.job_id] }
-      if (job.status === "cancelled") toast.message("Job cancelled", { description: job.job_id })
       if (job.status === "failed") toast.error("Job failed", { description: job.error || job.job_id })
       if (job.status === "succeeded") toast.success("Job succeeded", { description: job.job_id })
     }
@@ -158,11 +143,10 @@ export default function ConductorQPUControlPlane() {
       const j = await api.getJob(jobId)
       upsertJob(j)
       return j
-    } catch (e: unknown) {
-      log(`Job poll ${jobId}: ${e instanceof Error ? e.message : String(e)}`, "error")
+    } catch {
       return null
     }
-  }, [upsertJob, log])
+  }, [upsertJob])
 
   const startJobSSE = useCallback((jobId: string) => {
     const existing = eventSourcesRef.current[jobId]
@@ -173,13 +157,7 @@ export default function ConductorQPUControlPlane() {
       eventSourcesRef.current[jobId] = es
       es.onmessage = (ev) => {
         try {
-          const data = JSON.parse(ev.data) as {
-            job_id?: string
-            status?: JobRecord["status"]
-            result?: Record<string, unknown> | null
-            metrics?: Record<string, unknown> | null
-            error?: string | null
-          }
+          const data = JSON.parse(ev.data) as { job_id?: string; status?: JobRecord["status"]; result?: Record<string, unknown> | null; metrics?: Record<string, unknown> | null; error?: string | null }
           if (data?.job_id) {
             upsertJob({
               job_id: data.job_id,
@@ -190,7 +168,7 @@ export default function ConductorQPUControlPlane() {
               error: data.error || null,
             })
           }
-        } catch { /* ignore parse */ }
+        } catch { /* ignore */ }
       }
       es.onerror = () => {
         es.close()
@@ -216,19 +194,17 @@ export default function ConductorQPUControlPlane() {
       }
       await pollJobOnce(jobId)
       await loadRecentJobs()
-      log(`Cancel requested for ${jobId}`, "system")
       toast.message("Cancel requested", { description: jobId })
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e)
-      log(`Cancel failed: ${msg}`, "error")
       toast.error("Cancel failed", { description: msg })
     }
-  }, [pollJobOnce, loadRecentJobs, log])
+  }, [pollJobOnce, loadRecentJobs])
 
   const loadRecentTraces = useCallback(async () => {
     try {
       const { traces } = await api.getTraces()
-      if (traces?.length) setLastTraces(traces.slice(-30))
+      if (traces?.length) setLastTraces(traces.slice(-40))
     } catch { /* optional */ }
   }, [])
 
@@ -236,88 +212,81 @@ export default function ConductorQPUControlPlane() {
     const goal = raw.trim()
     if (!goal) return
     setSubmittingGoal(true)
-    setLastGoalResults(null)
-    log(`→ ${goal}`, "goal")
+    setFidelityHistory([])
+    setLastBellCounts(null)
+    setLastCalParams(null)
+    setSelectedClip(null)
+
     try {
       const resp = await api.postGoal(goal)
-      setLastGoalResults(resp.results || [])
-      if (resp.traces?.length) setLastTraces(resp.traces)
+      const traces = resp.traces || []
+      if (traces.length) setLastTraces(traces)
 
-      let calOk: boolean | null = null
+      // Extract calibration history if present (from calibrate_qubit tool result)
+      let calHistory: FidelityPoint[] = []
+      let calParams: Record<string, number> | null = null
+      let bellCounts: Record<string, number> | null = null
+      let threshold = 0.88
+
       for (const r of resp.results || []) {
-        const data = r.data as Record<string, unknown> | undefined
-        if (data && Array.isArray(data.history)) {
-          const hist = (data.history as Array<[number, number]>).map(([it, f]) => ({
-            iter: it,
-            fidelity: f,
-          }))
-          if (hist.length) {
-            setFidelityHistory(hist)
-            if (typeof data.threshold === "number") setCalThreshold(data.threshold)
-            if (data.params && typeof data.params === "object") {
-              setLastCalParams(data.params as Record<string, number>)
-            }
-            if (typeof data.success === "boolean") calOk = data.success
-            else if (typeof data.fidelity === "number") {
-              calOk = (data.fidelity as number) >= (typeof data.threshold === "number" ? data.threshold : 0.88)
-            }
-          }
+        const data = (r.data || {}) as Record<string, unknown>
+        if (Array.isArray(data.history)) {
+          calHistory = (data.history as Array<[number, number]>).map(([it, f]) => ({ iter: it, fidelity: f }))
+          if (typeof data.threshold === "number") threshold = data.threshold
+          if (data.params && typeof data.params === "object") calParams = data.params as Record<string, number>
         }
-        if (r.ok) {
-          log(`✓ ${r.data ? JSON.stringify(r.data).slice(0, 120) : "ok"} (${r.latency_s.toFixed(3)}s)`, "result")
-        } else {
-          log(`✗ ${r.error || "failed"}`, "error")
+        if (data && typeof data === "object" && "counts" in data && data.counts && typeof data.counts === "object") {
+          bellCounts = data.counts as Record<string, number>
         }
       }
 
+      if (calHistory.length) {
+        setFidelityHistory(calHistory)
+        setCalThreshold(threshold)
+        if (calParams) setLastCalParams(calParams)
+      }
+      if (bellCounts) setLastBellCounts(bellCounts)
+
       await Promise.all([refreshDevice(), refreshMetrics(), loadRecentJobs(), loadRecentTraces()])
 
-      if (calOk === true) toast.success("Calibration succeeded")
-      else if (calOk === false) toast.error("Calibration failed", { description: "Did not reach fidelity threshold" })
-      else toast.success("Goal executed")
+      // If a job was created by the goal (Bell path), wire it as active for SSE
+      const maybeJobId = (resp.results || []).find((r) => {
+        const d = (r.data || {}) as Record<string, unknown>
+        return typeof d.job_id === "string"
+      })?.data?.job_id as string | undefined
+      if (maybeJobId) {
+        setActiveJobId(maybeJobId)
+        startJobSSE(maybeJobId)
+      }
+
+      // Auto-open inspector with the last meaningful clip if user hasn't opened yet
+      if (!inspectorOpen) {
+        // will be triggered by selection below
+      }
+
+      if (calHistory.length) {
+        const last = calHistory[calHistory.length - 1]
+        if (last.fidelity >= threshold) toast.success("Calibration reached threshold")
+        else toast.message("Calibration complete", { description: `final ${last.fidelity.toFixed(4)}` })
+      } else if (bellCounts) {
+        toast.success("Bell complete")
+      } else {
+        toast.success("Done")
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "goal failed"
-      log(`✗ ${msg}`, "error")
       setBackendDown(true)
       toast.error("Backend down / goal failed", { description: msg })
     } finally {
       setSubmittingGoal(false)
       setGoalInput("")
     }
-  }, [log, refreshDevice, refreshMetrics, loadRecentJobs, loadRecentTraces])
+  }, [refreshDevice, refreshMetrics, loadRecentJobs, loadRecentTraces, startJobSSE, inspectorOpen])
 
-  const runCalibrate = useCallback(async () => {
-    await submitGoal("Bring qubit 0 to ready")
-  }, [submitGoal])
+  const runCalibrate = useCallback(() => submitGoal("Bring qubit 0 to ready"), [submitGoal])
+  const runBell = useCallback(() => submitGoal("Run a Bell pair and report fidelity"), [submitGoal])
 
-  const runBell = useCallback(async () => {
-    log("Quick: Bell pair 1024 shots", "goal")
-    try {
-      const res = await api.postBell(1024, [0, 1])
-      if (res.job_id) {
-        setActiveJobId(res.job_id)
-        const jr: JobRecord = {
-          job_id: res.job_id,
-          status: "running",
-          job_type: "circuit",
-          result: null,
-          metrics: null,
-        }
-        upsertJob(jr)
-        startJobSSE(res.job_id)
-        setTimeout(() => { void pollJobOnce(res.job_id) }, 500)
-        setTimeout(() => { void pollJobOnce(res.job_id) }, 1400)
-      }
-      if (res.counts) log(`Bell: ${JSON.stringify(res.counts)}`, "result")
-      await Promise.all([refreshMetrics(), loadRecentJobs()])
-      toast.success("Bell submitted")
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "bell failed"
-      log(`Bell error: ${msg}`, "error")
-      toast.error(msg)
-    }
-  }, [log, upsertJob, startJobSSE, pollJobOnce, refreshMetrics, loadRecentJobs])
-
+  // Periodic refresh while connected
   useEffect(() => {
     void checkConnection().then((ok) => {
       if (ok) {
@@ -337,10 +306,11 @@ export default function ConductorQPUControlPlane() {
         void refreshMetrics()
         void loadRecentJobs()
       }
-    }, 6500)
+    }, 7000)
     return () => clearInterval(id)
   }, [connected, refreshDevice, refreshMetrics, loadRecentJobs])
 
+  // Poll active job
   useEffect(() => {
     if (!activeJobId) return
     const j = jobs[activeJobId]
@@ -349,12 +319,15 @@ export default function ConductorQPUControlPlane() {
     return () => clearInterval(iv)
   }, [activeJobId, jobs, pollJobOnce])
 
-  const readinessPct = device ? Math.round(device.readiness_score * 100) : 0
-  const isReady = !!device?.is_ready
-  const latestFidelity = fidelityHistory.length
-    ? fidelityHistory[fidelityHistory.length - 1].fidelity
-    : undefined
-  const crossedReady = latestFidelity !== undefined && latestFidelity >= READY_THRESHOLD
+  // Build unified timeline clips (traces + jobs)
+  const timelineClips: TimelineClip[] = useMemo(() => {
+    const t = tracesToClips(lastTraces)
+    const j = jobsToClips(Object.values(jobs))
+    // Merge and de-dup by id; prefer jobs for same logical thing when present
+    const byId = new Map<string, TimelineClip>()
+    ;[...t, ...j].forEach((c) => byId.set(c.id, c))
+    return Array.from(byId.values()).sort((a, b) => a.ts - b.ts)
+  }, [lastTraces, jobs])
 
   const currentMetrics = useMemo(() => {
     const cal = (metrics?.orchestrator?.calibration || metrics?.calibration || {}) as Record<string, number>
@@ -367,648 +340,311 @@ export default function ConductorQPUControlPlane() {
     }
   }, [metrics])
 
-  const jobList = useMemo(
-    () => Object.values(jobs).sort((a, b) => (b.created_at || "").localeCompare(a.created_at || "")),
-    [jobs],
-  )
+  const hasActiveRunningJob = useMemo(() => {
+    return Object.values(jobs).some((j) => j.status === "running" || j.status === "queued")
+  }, [jobs])
 
-  const chartData = useMemo(
-    () => fidelityHistory.map((p) => ({ step: p.iter, fidelity: p.fidelity, threshold: calThreshold })),
-    [fidelityHistory, calThreshold],
-  )
+  const stopActive = useCallback(async () => {
+    // Cancel the most recent running/queued job if any
+    const running = Object.values(jobs)
+      .filter((j) => j.status === "running" || j.status === "queued")
+      .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+    if (running.length) {
+      await cancelJob(running[0].job_id)
+    } else {
+      toast.message("Nothing running to stop")
+    }
+  }, [jobs, cancelJob])
 
-  const commandActions: CommandAction[] = useMemo(
-    () => [
-      {
-        id: "cal-q0",
-        label: "Bring qubit 0 to ready",
-        hint: "calibrate",
-        group: "Goals",
-        icon: defaultCommandIcons.calibrate,
-        run: () => submitGoal("Bring qubit 0 to ready"),
-      },
-      {
-        id: "bell",
-        label: "Run a Bell pair and report fidelity",
-        hint: "circuit",
-        group: "Goals",
-        icon: defaultCommandIcons.bell,
-        run: () => submitGoal("Run a Bell pair and report fidelity"),
-      },
-      {
-        id: "quick-cal",
-        label: "Calibrate Q0 → 0.88",
-        group: "Quick",
-        icon: defaultCommandIcons.calibrate,
-        run: () => runCalibrate(),
-      },
-      {
-        id: "quick-bell",
-        label: "Bell 1024",
-        group: "Quick",
-        icon: defaultCommandIcons.bell,
-        run: () => runBell(),
-      },
-      {
-        id: "refresh",
-        label: "Refresh device + metrics",
-        group: "Quick",
-        icon: defaultCommandIcons.refresh,
-        run: async () => {
-          await Promise.all([refreshDevice(), refreshMetrics(), loadRecentJobs(), loadRecentTraces()])
-        },
-      },
-      {
-        id: "force-fail",
-        label: "Force fail next calibration",
-        hint: "demo",
-        group: "Demo",
-        icon: defaultCommandIcons.fail,
-        run: async () => {
-          try {
-            await api.demoForceFailNextCal()
-            log("Demo: fidelity capped for next cal (will FAIL)", "system")
-            toast.message("Next calibration will fail to reach threshold")
-          } catch {
-            toast.error("demo endpoint unavailable")
-          }
-        },
-      },
-      {
-        id: "long-job",
-        label: "Start long job (cancel me)",
-        hint: "demo",
-        group: "Demo",
-        icon: defaultCommandIcons.long,
-        run: async () => {
-          try {
-            const r = await api.demoStartLongJob()
-            const jid = r.job_id
-            log(`Demo long job started: ${jid}`, "system")
-            upsertJob({
-              job_id: jid,
-              status: "running",
-              job_type: "diagnostic",
-              result: null,
-              metrics: null,
-            })
-            setActiveJobId(jid)
-            toast.message("Long job running — click Cancel in Jobs list")
-          } catch {
-            toast.error("demo long job unavailable")
-          }
-        },
-      },
-    ],
-    [submitGoal, runCalibrate, runBell, refreshDevice, refreshMetrics, loadRecentJobs, loadRecentTraces, log, upsertJob],
-  )
+  const onSelectClip = useCallback((clip: TimelineClip) => {
+    setSelectedClip(clip)
+    setInspectorOpen(true)
+    // Scrub playhead to this clip's time
+    setPlayheadTs(clip.ts)
+    // If it's a job clip and running, make it the active for polling
+    if (clip.kind === "job") {
+      const jid = clip.id.replace(/^job-/, "")
+      setActiveJobId(jid)
+    }
+  }, [])
 
-  void lastGoalResults // retained for future detail panel
+  const clearSelection = useCallback(() => {
+    setSelectedClip(null)
+  }, [])
+
+  const jobListForInspector = useMemo(() => Object.values(jobs), [jobs])
+
+  const commandActions: CommandAction[] = useMemo(() => [
+    {
+      id: "cal-q0",
+      label: "Bring qubit 0 to ready",
+      hint: "calibrate",
+      group: "Goals",
+      icon: defaultCommandIcons.calibrate,
+      run: () => submitGoal("Bring qubit 0 to ready"),
+    },
+    {
+      id: "bell",
+      label: "Run a Bell pair and report fidelity",
+      hint: "circuit",
+      group: "Goals",
+      icon: defaultCommandIcons.bell,
+      run: () => submitGoal("Run a Bell pair and report fidelity"),
+    },
+    {
+      id: "quick-cal",
+      label: "Calibrate Q0 → 0.88",
+      group: "Quick",
+      icon: defaultCommandIcons.calibrate,
+      run: () => runCalibrate(),
+    },
+    {
+      id: "quick-bell",
+      label: "Bell 1024",
+      group: "Quick",
+      icon: defaultCommandIcons.bell,
+      run: () => runBell(),
+    },
+    {
+      id: "refresh",
+      label: "Refresh device + metrics",
+      group: "Quick",
+      icon: defaultCommandIcons.refresh,
+      run: async () => { await Promise.all([refreshDevice(), refreshMetrics(), loadRecentJobs(), loadRecentTraces()]) },
+    },
+    {
+      id: "force-fail",
+      label: "Force fail next calibration",
+      hint: "demo",
+      group: "Demo",
+      icon: defaultCommandIcons.fail,
+      run: async () => {
+        try {
+          await api.demoForceFailNextCal()
+          toast.message("Next calibration will fail to reach threshold")
+        } catch { toast.error("demo endpoint unavailable") }
+      },
+    },
+    {
+      id: "long-job",
+      label: "Start long job (cancel me)",
+      hint: "demo",
+      group: "Demo",
+      icon: defaultCommandIcons.long,
+      run: async () => {
+        try {
+          const r = await api.demoStartLongJob()
+          const jid = r.job_id
+          upsertJob({ job_id: jid, status: "running", job_type: "diagnostic", result: null, metrics: null })
+          setActiveJobId(jid)
+          startJobSSE(jid)
+          toast.message("Long job running — use Stop or timeline cancel")
+        } catch { toast.error("demo long job unavailable") }
+      },
+    },
+  ], [submitGoal, runCalibrate, runBell, refreshDevice, refreshMetrics, loadRecentJobs, loadRecentTraces, upsertJob, startJobSSE])
+
+  const lastJobId = useMemo(() => {
+    const arr = Object.values(jobs).sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""))
+    return arr[0]?.job_id || null
+  }, [jobs])
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-200">
+    <div className="min-h-screen bg-[#0a0a0b] text-zinc-200 selection:bg-white/20">
       <CommandPalette actions={commandActions} disabled={!connected && backendDown} />
 
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/90 backdrop-blur">
-        <div className="mx-auto flex h-12 max-w-7xl items-center justify-between px-5 text-sm">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="h-5 w-5 rounded bg-emerald-500" />
-              <div className="font-semibold tracking-[-0.3px]">Conductor QPU</div>
-              <div className="text-[10px] text-zinc-500">Control Plane</div>
-            </div>
-            <Badge variant={connected ? "default" : "destructive"} className="px-1.5 py-0 text-[10px]">
+      {/* Minimal top bar — Apple-like */}
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0b]/95 backdrop-blur supports-[backdrop-filter]:bg-[#0a0a0b]/80">
+        <div className="mx-auto flex h-12 max-w-[1200px] items-center gap-3 px-4">
+          <div className="flex items-center gap-2">
+            <div className="h-5 w-5 rounded bg-emerald-500" />
+            <div className="font-semibold tracking-[-0.4px]">Conductor</div>
+            <div className="text-[10px] text-zinc-500">QPU</div>
+            <Badge variant={connected ? "default" : "destructive"} className="ml-1 px-1.5 py-0 text-[10px]">
               {connected ? "LIVE" : "OFFLINE"}
             </Badge>
-            {backendDown && (
-              <Badge variant="destructive" className="text-[10px]">BACKEND DOWN</Badge>
-            )}
           </div>
-          <div className="flex items-center gap-2 text-xs">
+
+          {/* Primary goal field */}
+          <div className="ml-2 flex flex-1 items-center gap-2">
+            <div className="relative flex-1">
+              <Input
+                className="h-8 border-white/10 bg-zinc-950 pl-3 pr-9 font-mono text-sm placeholder:text-zinc-600"
+                placeholder='Type a goal, e.g. "Bring qubit 0 to ready"'
+                value={goalInput}
+                onChange={(e) => setGoalInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !submittingGoal) void submitGoal(goalInput) }}
+                disabled={submittingGoal || !connected}
+              />
+              <button
+                onClick={() => { void submitGoal(goalInput) }}
+                disabled={submittingGoal || !goalInput.trim() || !connected}
+                className="absolute right-1 top-1/2 -translate-y-1/2 rounded bg-white/5 px-2 py-0.5 text-[11px] text-zinc-400 hover:bg-white/10 disabled:opacity-50"
+              >
+                <Send className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
             <Button
-              size="sm"
+              onClick={() => { void submitGoal(goalInput) }}
+              disabled={submittingGoal || !goalInput.trim() || !connected}
+              className="h-8 gap-1.5 px-3"
+            >
+              <Play className="h-3.5 w-3.5" /> Run
+            </Button>
+
+            <Button
               variant="outline"
-              className="h-7 gap-1.5"
+              onClick={() => { void stopActive() }}
+              disabled={!hasActiveRunningJob && !submittingGoal}
+              className="h-8 gap-1.5 border-white/10 px-3"
+            >
+              <Square className="h-3.5 w-3.5" /> Stop
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
               onClick={() => setCommandOpen(true)}
+              title="Commands (⌘K)"
             >
-              <CommandIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Commands</span>
-              <kbd className="rounded border border-white/10 px-1 text-[10px] text-zinc-500">⌘K</kbd>
+              <CommandIcon className="h-4 w-4" />
             </Button>
-            <div className="hidden text-zinc-500 md:block">API</div>
-            <Input
-              className="h-7 w-56 border-white/10 bg-zinc-900 font-mono text-xs"
-              value={apiBase}
-              onChange={(e) => updateApiBase(e.target.value)}
-              onBlur={() => { void checkConnection(apiBase) }}
-              onKeyDown={(e) => { if (e.key === "Enter") void checkConnection(apiBase) }}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => { void checkConnection() }}
-              disabled={checking}
-              className="h-7"
-            >
-              <RefreshCw className={`mr-1 h-3.5 w-3.5 ${checking ? "animate-spin" : ""}`} />
-              Ping
-            </Button>
-            <div className="hidden border-l border-white/10 pl-3 text-[10px] text-zinc-500 lg:block">
-              Offline · No LLM keys · Real traces
+
+            <div className="hidden items-center gap-2 pl-1 text-xs text-zinc-500 md:flex">
+              <span>API</span>
+              <Input
+                className="h-7 w-[210px] border-white/10 bg-zinc-950 font-mono text-[11px]"
+                value={apiBase}
+                onChange={(e) => updateApiBase(e.target.value)}
+                onBlur={() => { void checkConnection(apiBase) }}
+                onKeyDown={(e) => { if (e.key === "Enter") void checkConnection(apiBase) }}
+              />
+              <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => { void checkConnection() }} disabled={checking}>
+                <RefreshCw className={`h-3 w-3 ${checking ? "animate-spin" : ""}`} />
+              </Button>
             </div>
           </div>
-        </div>
-      </header>
 
-      {backendDown && (
-        <div className="border-b border-red-900/50 bg-red-950/60">
-          <div className="mx-auto flex max-w-7xl items-center gap-2 px-5 py-2 text-xs text-red-300">
-            <AlertTriangle className="h-3.5 w-3.5" />
-            Cannot reach backend. Start with{" "}
-            <span className="font-mono">make run-api</span> in another shell.
+          <div className="flex items-center gap-2 text-[10px] text-zinc-500">
+            <button
+              className="rounded border border-white/10 px-1.5 py-0.5 hover:bg-white/5"
+              onClick={() => { void refreshDevice(); void refreshMetrics(); void loadRecentJobs(); void loadRecentTraces() }}
+            >
+              Refresh
+            </button>
+            <span className="hidden lg:inline">No LLM keys · real traces</span>
           </div>
         </div>
-      )}
 
-      <div className="mx-auto max-w-7xl space-y-5 px-5 py-5">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25, ease: easeOut }}
-        >
-          <Card className="border-white/10 bg-zinc-900">
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Target className="h-4 w-4" /> Goal / Command Bar
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Natural language → deterministic planner → orchestrator tools. Press ⌘K for the palette (no open animation).
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex gap-2">
-                <Input
-                  className="h-9 border-white/10 bg-zinc-950 font-mono"
-                  placeholder='e.g. "Bring qubit 0 to ready" or "Run a Bell pair and report fidelity"'
-                  value={goalInput}
-                  onChange={(e) => setGoalInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !submittingGoal) void submitGoal(goalInput)
-                  }}
-                  disabled={submittingGoal || !connected}
-                />
-                <Button
-                  onClick={() => { void submitGoal(goalInput) }}
-                  disabled={submittingGoal || !goalInput.trim() || !connected}
-                  className="h-9 active:scale-[0.97] transition-transform duration-100"
-                >
-                  <Send className="mr-2 h-4 w-4" /> Execute
-                </Button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => { void runCalibrate() }}
-                  disabled={!connected}
-                  className="active:scale-[0.97] transition-transform duration-100"
-                >
-                  <Target className="mr-1.5 h-3.5 w-3.5" /> Calibrate Q0 → 0.88
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => { void runBell() }}
-                  disabled={!connected}
-                  className="active:scale-[0.97] transition-transform duration-100"
-                >
-                  <Zap className="mr-1.5 h-3.5 w-3.5" /> Bell 1024
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => { void refreshDevice() }}
-                  disabled={refreshingDevice}
-                >
-                  <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${refreshingDevice ? "animate-spin" : ""}`} /> Device
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    void refreshMetrics()
-                    void loadRecentJobs()
-                    void loadRecentTraces()
-                  }}
-                >
-                  <Activity className="mr-1.5 h-3.5 w-3.5" /> Refresh
-                </Button>
-              </div>
+        {backendDown && (
+          <div className="border-t border-red-900/40 bg-red-950/50">
+            <div className="mx-auto max-w-[1200px] px-4 py-1 text-[11px] text-red-300">
+              Cannot reach backend. Start with <span className="font-mono">make run-api</span>.
+            </div>
+          </div>
+        )}
+      </header>
 
-              <div className="mt-2 border-t border-white/10 pt-1">
-                <div className="mb-1 text-[10px] uppercase tracking-widest text-amber-400/70">
-                  Founder demo guardrails (reproducible failure + cancel)
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-amber-900/50 text-amber-300 hover:bg-amber-950/30"
-                    onClick={async () => {
-                      try {
-                        await api.demoForceFailNextCal()
-                        log("Demo: fidelity capped for next cal (will FAIL)", "system")
-                        toast.message("Next calibration will fail to reach threshold")
-                      } catch {
-                        toast.error("demo endpoint unavailable")
-                      }
-                    }}
-                  >
-                    <AlertTriangle className="mr-1.5 h-3.5 w-3.5" /> Force Fail Next Cal
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-amber-900/50 text-amber-300 hover:bg-amber-950/30"
-                    onClick={async () => {
-                      try {
-                        const r = await api.demoStartLongJob()
-                        const jid = r.job_id
-                        log(`Demo long job started: ${jid}`, "system")
-                        upsertJob({
-                          job_id: jid,
-                          status: "running",
-                          job_type: "diagnostic",
-                          result: null,
-                          metrics: null,
-                        })
-                        setActiveJobId(jid)
-                        toast.message("Long job running — click Cancel in Jobs list")
-                      } catch {
-                        toast.error("demo long job unavailable")
-                      }
-                    }}
-                  >
-                    Start Long Job (cancel me)
-                  </Button>
-                </div>
-                <div className="mt-1 text-[10px] text-amber-400/60">
-                  These mutate only the current backend session for demo purposes.
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <div className="mx-auto max-w-[1200px] px-4 pb-10 pt-4">
+        {/* Center stage + right inspector */}
+        <div className="flex gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-2 flex items-center justify-between px-1">
+              <div className="text-sm font-medium tracking-[-0.2px] text-zinc-400">Center stage</div>
+              <button
+                onClick={() => setInspectorOpen((v) => !v)}
+                className="flex items-center gap-1 rounded border border-white/10 px-2 py-0.5 text-[11px] text-zinc-400 hover:bg-white/5"
+              >
+                {inspectorOpen ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
+                {inspectorOpen ? "Hide inspector" : "Inspect device & drift"}
+              </button>
+            </div>
 
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-          {/* Device */}
-          <Card className="border-white/10 bg-zinc-900 xl:col-span-5">
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Cpu className="h-4 w-4" /> Device State
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {!device && (
-                <div className="text-xs text-zinc-500">No snapshot. Backend must be running.</div>
-              )}
-              {device && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={isReady ? "default" : "destructive"} className="px-2 py-0.5 text-xs">
-                      {isReady ? "READY" : "CALIBRATION RECOMMENDED"}
-                    </Badge>
-                    <span className="text-xs text-zinc-400">{device.notes}</span>
-                    {crossedReady && (
-                      <Badge variant="default" className="text-[10px]">CROSSED 0.82</Badge>
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="mb-1 flex justify-between text-[10px] text-zinc-400">
-                      <div>Readiness</div>
-                      <div className="tabular-nums">{device.readiness_score.toFixed(3)}</div>
-                    </div>
-                    <Progress value={readinessPct} className="h-1.5" />
-                    <div className="mt-0.5 text-[10px] text-zinc-500">
-                      Predicate:{" "}
-                      {device.readiness_predicate
-                        ? device.readiness_predicate.name
-                        : "all_qubits_readout_fidelity_above"}{" "}
-                      ≥{" "}
-                      {device.readiness_predicate
-                        ? device.readiness_predicate.readout_fidelity_threshold
-                        : 0.82}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <div className="rounded border border-white/10 bg-black/30 p-2">
-                      <div className="mb-1 flex items-center gap-1 text-[10px] text-zinc-500">
-                        <ThermometerSun className="h-3 w-3" /> Temps (mK)
-                      </div>
-                      {Object.entries(device.temperatures_mk).map(([q, t]) => (
-                        <div key={q} className="tabular-nums">Q{q}: {t}</div>
-                      ))}
-                    </div>
-                    <div className="rounded border border-white/10 bg-black/30 p-2">
-                      <div className="mb-1 text-[10px] text-zinc-500">Readout Fidelity</div>
-                      {Object.entries(device.readout_fidelity).map(([q, f]) => (
-                        <div key={q} className="tabular-nums">Q{q}: {(f * 100).toFixed(1)}%</div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded border border-amber-900/40 bg-amber-950/20 p-2 text-xs">
-                    <div className="mb-1 flex items-center gap-1 text-amber-400">
-                      <TrendingUp className="h-3 w-3" /> Hidden Detuning (Q0) — calibration chasing a drifting target
-                    </div>
-                    {detuning ? (
-                      <div className="grid grid-cols-2 gap-x-4 tabular-nums text-amber-300/90">
-                        <div>Δfreq: {detuning.frequency_error}</div>
-                        <div>Δamp: {detuning.amplitude_error}</div>
-                        <div>Δphase: {detuning.phase_error}</div>
-                        <div>Δreadout: {detuning.readout_error_delta}</div>
-                      </div>
-                    ) : (
-                      <div className="text-amber-400/60">
-                        Run a refresh or calibration to see current detuning.
-                      </div>
-                    )}
-                    <div className="mt-1 text-[10px] text-amber-400/60">
-                      True params perform a slow random walk + sine drift on every device read.
-                    </div>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Metrics */}
-          <Card className="border-white/10 bg-zinc-900 xl:col-span-7">
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Activity className="h-4 w-4" /> Control-Plane Metrics
-              </CardTitle>
-              <CardDescription className="text-xs">
-                time_to_calibrated · calibration_success_rate · interface_latency — NumberFlow
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <MetricsCards
-                timeToCal={currentMetrics.timeToCal}
-                successRate={currentMetrics.successRate}
-                interfaceLatency={currentMetrics.interfaceLatency}
-                successes={currentMetrics.successes}
-                attempts={currentMetrics.attempts}
+            <div className="min-h-[300px]">
+              <HeroViewer
+                fidelityHistory={fidelityHistory}
+                threshold={calThreshold}
+                lastParams={lastCalParams}
+                jobOutcome={lastBellCounts ? { type: "bell", counts: lastBellCounts } : null}
+                onRequestInspect={() => setInspectorOpen(true)}
               />
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* WebGPU surface */}
-          <Card className="border-white/10 bg-zinc-900 xl:col-span-7">
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Zap className="h-4 w-4" /> Param Drift Surface (WebGPU)
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Live fidelity landscape over Δfreq × Δamp. Cyan = hidden true target from{" "}
-                <span className="font-mono">/device/detuning</span>; amber = applied calibration.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-[280px]">
-                <CalibrationSurfaceLazy
-                  detuning={detuning}
-                  applied={appliedParams || lastCalParams}
-                  fidelityHistory={fidelityHistory}
-                  readinessScore={device?.readiness_score ?? 0.7}
-                  readoutFidelity={device?.readout_fidelity ?? null}
-                />
+            {/* Quick actions under stage — calm */}
+            <div className="mt-2 flex flex-wrap items-center gap-2 px-1">
+              <Button variant="secondary" size="sm" onClick={() => runCalibrate()} disabled={!connected || submittingGoal}>
+                Calibrate Q0
+              </Button>
+              <Button variant="secondary" size="sm" onClick={() => runBell()} disabled={!connected || submittingGoal}>
+                Bell 1024
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => { void refreshDevice() }} disabled={refreshingDevice}>
+                Device
+              </Button>
+              <div className="ml-auto flex items-center gap-2 text-[10px] text-zinc-500">
+                {lastJobId && <span className="font-mono">last job {lastJobId.slice(0, 8)}…</span>}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* Fidelity climb */}
-          <Card className="border-white/10 bg-zinc-900 xl:col-span-5">
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Target className="h-4 w-4" /> Calibration Fidelity Climb
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Real steps from the gradient-free loop. Threshold line shown.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {!fidelityHistory.length && (
-                <div className="flex h-40 items-center justify-center rounded border border-dashed border-white/10 text-xs text-zinc-500">
-                  Run calibration to see trajectory.
-                </div>
-              )}
-              {!!fidelityHistory.length && (
-                <div className="h-44 -mx-1">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 8, right: 12, bottom: 4, left: -4 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
-                      <XAxis dataKey="step" tick={{ fontSize: 10, fill: "#52525b" }} />
-                      <YAxis domain={[0.55, 1.0]} tick={{ fontSize: 10, fill: "#52525b" }} />
-                      <Tooltip
-                        contentStyle={{
-                          background: "#111113",
-                          border: "1px solid #27272a",
-                          fontSize: 11,
-                        }}
-                      />
-                      <ReferenceLine
-                        y={calThreshold}
-                        stroke="#f59e0b"
-                        strokeDasharray="3 2"
-                        label={{ value: "threshold", fill: "#f59e0b", fontSize: 10 }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="fidelity"
-                        stroke="#10b981"
-                        strokeWidth={2}
-                        dot={{ r: 1.5, fill: "#10b981" }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-              <div className="flex items-center gap-4 text-xs">
-                <div>
-                  Latest:{" "}
-                  <span className="font-medium tabular-nums">
-                    {latestFidelity !== undefined ? latestFidelity.toFixed(5) : "—"}
-                  </span>
-                </div>
-                <div>
-                  Threshold: <span className="tabular-nums">{calThreshold}</span>
-                </div>
-                {lastCalParams && (
-                  <div className="text-amber-400/80">
-                    last params f={lastCalParams.frequency?.toFixed(3)} a=
-                    {lastCalParams.amplitude?.toFixed(3)}
-                  </div>
-                )}
-              </div>
-              <div className="text-[10px] text-zinc-500">
-                When fidelity ≥ threshold the service marks success. Device “ready” also requires
-                average readout fidelity &gt; ~0.82.
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Traces */}
-          <Card className="border-white/10 bg-zinc-900 xl:col-span-12">
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Play className="h-4 w-4" /> Execution Timeline (Real Traces)
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Orchestrator tool calls for the last goal. This is the control plane, not an LLM transcript.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!lastTraces.length && (
-                <div className="rounded border border-dashed border-white/10 py-4 text-center text-xs text-zinc-500">
-                  Submit a goal or quick action to see tool traces.
-                </div>
-              )}
-              {!!lastTraces.length && (
-                <div className="space-y-1 font-mono text-xs">
-                  {lastTraces.map((t, i) => (
-                    <div
-                      key={`${t.ts}-${t.tool}-${i}`}
-                      className="flex items-start gap-2 rounded border border-white/10 bg-black/30 px-2 py-1"
-                    >
-                      <div className="w-36 shrink-0 tabular-nums text-zinc-400">
-                        {new Date(t.ts * 1000).toLocaleTimeString()}
-                      </div>
-                      <div className="w-40 shrink-0 font-medium text-emerald-400">{t.tool}</div>
-                      <div className="flex-1 truncate text-zinc-400">
-                        {JSON.stringify(t.args).slice(0, 90)}
-                      </div>
-                      <div className="w-16 text-right tabular-nums text-zinc-400">
-                        {t.latency_s.toFixed(3)}s
-                      </div>
-                      <Badge
-                        variant={t.ok ? "default" : "destructive"}
-                        className="px-1 py-0 text-[10px]"
-                      >
-                        {t.ok ? "OK" : "ERR"}
-                      </Badge>
-                      <div className="w-44 truncate text-right text-emerald-400/80">{t.summary}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <div className="mt-2 text-[10px] text-zinc-500">
-                Traces come from /traces and the last /goals response.
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Jobs */}
-          <Card className="border-white/10 bg-zinc-900 xl:col-span-12">
-            <CardHeader className="pb-2 pt-3">
-              <CardTitle className="flex items-center gap-2 text-sm">
-                <Clock className="h-4 w-4" /> Jobs (History via Backend)
-              </CardTitle>
-              <CardDescription className="text-xs">
-                In-memory on backend (documented). Survives UI refresh while the process is up.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {jobList.length === 0 && (
-                <div className="rounded border border-dashed border-white/10 py-3 text-center text-xs text-zinc-500">
-                  No jobs yet.
-                </div>
-              )}
-              {jobList.length > 0 && (
-                <div className="space-y-1 text-xs">
-                  {jobList.slice(0, 12).map((j) => {
-                    const counts =
-                      j.result && typeof j.result === "object" && "counts" in j.result
-                        ? (j.result as { counts: unknown }).counts
-                        : undefined
-                    return (
-                      <div
-                        key={j.job_id}
-                        className="flex items-center gap-2 rounded border border-white/10 bg-black/30 px-2 py-1"
-                      >
-                        <div className="w-44 truncate font-mono text-[10px] text-zinc-400">
-                          {j.job_id}
-                        </div>
-                        <Badge
-                          variant={
-                            j.status === "succeeded"
-                              ? "default"
-                              : j.status === "failed"
-                                ? "destructive"
-                                : "secondary"
-                          }
-                          className="text-[10px]"
-                        >
-                          {j.status}
-                        </Badge>
-                        <div className="text-zinc-400">{j.job_type}</div>
-                        {counts !== undefined && (
-                          <div className="font-mono text-emerald-400">{JSON.stringify(counts)}</div>
-                        )}
-                        {j.error && <div className="text-red-400">{j.error}</div>}
-                        {(j.status === "running" || j.status === "queued") && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="ml-auto h-6"
-                            onClick={() => { void cancelJob(j.job_id) }}
-                          >
-                            <X className="mr-1 h-3 w-3" /> cancel
-                          </Button>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Activity */}
-          <Card className="border-white/10 bg-zinc-900 xl:col-span-12">
-            <CardHeader className="pb-1 pt-3">
-              <CardTitle className="text-sm">Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-28 rounded border border-white/10 bg-black/40 p-2 font-mono text-[11px]">
-                {history.slice().reverse().map((h, i) => (
-                  <div
-                    key={`${h.ts}-${i}`}
-                    className={
-                      h.kind === "error"
-                        ? "text-red-400"
-                        : h.kind === "goal"
-                          ? "text-emerald-400"
-                          : "text-zinc-400"
-                    }
-                  >
-                    {new Date(h.ts).toLocaleTimeString()} — {h.message}
-                  </div>
-                ))}
-              </ScrollArea>
-            </CardContent>
-          </Card>
+          {/* Right inspector (on demand) */}
+          <RightInspector
+            open={inspectorOpen}
+            onOpenChange={setInspectorOpen}
+            device={device}
+            detuning={detuning}
+            applied={appliedParams || lastCalParams}
+            metrics={metrics}
+            selectedClip={selectedClip ? { id: selectedClip.id, kind: selectedClip.kind, label: selectedClip.label, detail: selectedClip.detail, raw: selectedClip.raw } : null}
+            onClearSelection={clearSelection}
+          />
         </div>
 
-        <Alert className="border-white/10 bg-zinc-900 text-xs text-zinc-400">
-          <AlertDescription>
-            Control-plane prototype with Emil Kowalski stack (cmdk · Sonner · NumberFlow · motion ·
-            next-themes · zustand · leva) and a WebGPU param-drift surface via three + R3F. Simulator
-            has hidden drifting parameters; calibration chases them. Swap the adapter for real hardware.
-          </AlertDescription>
-        </Alert>
+        {/* Bottom timeline — iMovie filmstrip */}
+        <div className="mt-5">
+          <div className="mb-1.5 px-1 text-[11px] uppercase tracking-[1px] text-zinc-500">Timeline</div>
+          <Filmstrip
+            clips={timelineClips}
+            activeClipId={selectedClip?.id || null}
+            playheadTs={playheadTs}
+            onSelect={onSelectClip}
+            onCancelJob={(jid) => { void cancelJob(jid) }}
+          />
+        </div>
+
+        {/* Founder demo guardrails — quiet, at the bottom */}
+        <div className="mt-4 rounded-lg border border-amber-900/30 bg-amber-950/10 px-3 py-2 text-[10px] text-amber-400/90">
+          <span className="mr-2 font-medium tracking-widest">FOUNDER GUARDRAILS</span>
+          <button
+            className="mr-3 underline decoration-amber-900/60 hover:decoration-amber-400"
+            onClick={async () => {
+              try { await api.demoForceFailNextCal(); toast.message("Next cal will fail") } catch { toast.error("unavailable") }
+            }}
+          >
+            Force fail next cal
+          </button>
+          <button
+            className="underline decoration-amber-900/60 hover:decoration-amber-400"
+            onClick={async () => {
+              try {
+                const r = await api.demoStartLongJob()
+                upsertJob({ job_id: r.job_id, status: "running", job_type: "diagnostic", result: null, metrics: null })
+                setActiveJobId(r.job_id)
+                startJobSSE(r.job_id)
+                toast.message("Long job started")
+              } catch { toast.error("unavailable") }
+            }}
+          >
+            Start long job (cancel me)
+          </button>
+          <span className="ml-3 text-amber-400/60">These only affect the current backend session.</span>
+        </div>
+
+        <div className="mt-6 text-[10px] text-zinc-600">
+          Dark, calm, real traces. Stage shows the outcome; timeline is the narrative spine. Inspector for device, drift surface, and clip details.
+        </div>
       </div>
     </div>
   )
