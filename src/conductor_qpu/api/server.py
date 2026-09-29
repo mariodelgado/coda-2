@@ -23,13 +23,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from conductor_qpu.adapter.noisy_sim import NoisySimulatorBackend
+from conductor_qpu.adapter.factory import create_backend
 from conductor_qpu.calibration.service import CalibrationService
 from conductor_qpu.jobs.store import InMemoryJobStore
+from conductor_qpu.models import types as model_types
 from conductor_qpu.models.types import JobType, QPUJob
 from conductor_qpu.observability.metrics import MetricsAggregator
 from conductor_qpu.orchestrator.orchestrator import Orchestrator
 from conductor_qpu.orchestrator.planner import plan
+
+# Optional import for demo long-job helper on sim
+try:
+    from conductor_qpu.adapter.noisy_sim import NoisySimulatorBackend  # type: ignore
+except Exception:  # noqa: BLE001
+    NoisySimulatorBackend = None  # type: ignore
 
 
 app = FastAPI(title="Conductor QPU", version="0.1.0", docs_url="/docs")
@@ -48,8 +55,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Singletons for the spike (stateless across restarts; fine for demo)
-_backend = NoisySimulatorBackend(num_qubits=2, seed=42)
+# Backend selection via env (CONDUCTOR_QPU_BACKEND=stub|sim)
+# This is the single seam a real hardware driver plugs into.
+_backend = create_backend()
 _calibration = CalibrationService(adapter=_backend, fidelity_threshold=0.88, max_iterations=60)
 _job_store = InMemoryJobStore()
 _orchestrator = Orchestrator(adapter=_backend, calibration=_calibration, job_store=_job_store)
@@ -85,6 +93,12 @@ def health() -> dict[str, str]:
 @app.get("/device/state")
 def device_state() -> dict[str, Any]:
     state = _backend.get_device_state()
+    # Surface the exact readiness predicate so UI can show numbers, not vibes.
+    predicate = {
+        "name": model_types.READINESS_PREDICATE_NAME,
+        "readout_fidelity_threshold": model_types.READINESS_READOUT_FIDELITY_THRESHOLD,
+        "description": "All qubits must have readout_fidelity >= threshold.",
+    }
     return {
         "is_ready": state.is_ready,
         "readiness_score": round(state.readiness_score(), 4),
@@ -94,6 +108,7 @@ def device_state() -> dict[str, Any]:
         "readout_fidelity": {q: round(v, 4) for q, v in state.readout_fidelity.items()},
         "notes": state.notes,
         "timestamp": state.timestamp.isoformat(),
+        "readiness_predicate": predicate,
     }
 
 
@@ -265,6 +280,45 @@ async def sse_job(job_id: str) -> StreamingResponse:
         yield f"event: timeout\ndata: {json.dumps({'job_id': str(jid)})}\n\n"
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")
+
+
+# ---------------- Demo / Guardrail endpoints (founder demo) ----------------
+
+@app.get("/readiness_predicate")
+def readiness_predicate() -> dict[str, Any]:
+    """Exact predicate used to declare a device 'ready'.
+    Founders can point at the numbers.
+    """
+    return {
+        "name": model_types.READINESS_PREDICATE_NAME,
+        "readout_fidelity_threshold": model_types.READINESS_READOUT_FIDELITY_THRESHOLD,
+        "description": "Device is_ready iff every qubit has readout_fidelity >= threshold.",
+    }
+
+
+@app.post("/demo/fail_next_cal")
+def demo_fail_next_cal() -> dict[str, Any]:
+    """Force the next calibration on the sim backend to be unable to reach threshold.
+    Creates a reproducible 'failure despite trying' path for the founder demo.
+    """
+    cap = 0.69
+    if hasattr(_backend, "set_demo_fid_cap"):
+        _backend.set_demo_fid_cap(cap)
+    return {"ok": True, "fid_cap": cap, "note": "next calibration attempts will be capped below readiness"}
+
+
+@app.post("/demo/start_long_job")
+def demo_start_long_job() -> dict[str, Any]:
+    """Start a long-running diagnostic job that stays RUNNING until cancelled.
+    Used to demo cancel guardrail in timeline + jobs list.
+    """
+    if hasattr(_backend, "start_demo_long_running_job"):
+        jid = _backend.start_demo_long_running_job()
+        return {"job_id": str(jid)}
+    # fallback generic job
+    job = QPUJob(job_type=JobType.DIAGNOSTIC, payload={"demo": "long_running"})
+    jid = _backend.submit_job(job)
+    return {"job_id": str(jid)}
 
 
 def run(host: str = "0.0.0.0", port: int = 8000) -> None:  # noqa: S104

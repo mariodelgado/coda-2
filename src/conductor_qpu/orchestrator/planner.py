@@ -52,6 +52,15 @@ def plan_from_goal(goal: str) -> list[ToolCall]:
     if any(k in g for k in ["state", "health", "status", "ready?", "temperature"]):
         return [ToolCall(tool="get_device_state", args={})]
 
+    # Cancel a specific job (founder demo / guardrail)
+    if g.startswith("cancel ") or "cancel job" in g:
+        # extract last token that looks like uuid or job id
+        tokens = g.split()
+        for tok in reversed(tokens):
+            if len(tok) >= 8:  # crude uuid fragment
+                return [ToolCall(tool="cancel_job", args={"job_id": tok})]
+        return [ToolCall(tool="cancel_job", args={"job_id": "last"})]
+
     # Default: surface state, then attempt a light calibration
     return [
         ToolCall(tool="get_device_state", args={}),

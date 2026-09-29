@@ -430,6 +430,33 @@ export default function ConductorQPUControlPlane() {
                 <Activity className="h-3.5 w-3.5 mr-1.5" /> Refresh
               </Button>
             </div>
+
+            {/* Founder demo guardrails (clickable, reproducible) */}
+            <div className="pt-1 border-t border-white/10 mt-2">
+              <div className="text-[10px] uppercase tracking-widest text-amber-400/70 mb-1">Founder demo guardrails (reproducible failure + cancel)</div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" className="border-amber-900/50 text-amber-300 hover:bg-amber-950/30" onClick={async () => {
+                  try { await api.demoForceFailNextCal(); log("Demo: fidelity capped for next cal (will FAIL)", "system"); toast("Next calibration will fail to reach threshold"); } catch { toast.error("demo endpoint unavailable") }
+                }}>
+                  <AlertTriangle className="h-3.5 w-3.5 mr-1.5" /> Force Fail Next Cal
+                </Button>
+                <Button variant="outline" size="sm" className="border-amber-900/50 text-amber-300 hover:bg-amber-950/30" onClick={async () => {
+                  try {
+                    const r = await api.demoStartLongJob();
+                    const jid = r.job_id;
+                    log(`Demo long job started: ${jid}`, "system");
+                    const jr: JobRecord = { job_id: jid, status: "running", job_type: "diagnostic", result: null, metrics: null };
+                    upsertJob(jr);
+                    setActiveJobId(jid);
+                    // immediately allow cancel in UI
+                    toast("Long job running — click Cancel in Jobs list");
+                  } catch { toast.error("demo long job unavailable") }
+                }}>
+                  Start Long Job (cancel me)
+                </Button>
+              </div>
+              <div className="text-[10px] text-amber-400/60 mt-1">These mutate only the current backend session for demo purposes.</div>
+            </div>
           </CardContent>
         </Card>
 
@@ -456,7 +483,9 @@ export default function ConductorQPUControlPlane() {
                       <div>Readiness</div><div className="tabular-nums">{device.readiness_score.toFixed(3)}</div>
                     </div>
                     <Progress value={readinessPct} className="h-1.5" />
-                    <div className="text-[10px] text-zinc-500 mt-0.5">Threshold for “ready” in this sim ≈ 0.82 readout fidelity average.</div>
+                    <div className="text-[10px] text-zinc-500 mt-0.5">
+                      Predicate: {device.readiness_predicate ? device.readiness_predicate.name : "all_qubits_readout_fidelity_above"} ≥ {device.readiness_predicate ? device.readiness_predicate.readout_fidelity_threshold : 0.82}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 text-xs">

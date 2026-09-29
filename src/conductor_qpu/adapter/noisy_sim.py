@@ -24,6 +24,7 @@ from uuid import UUID, uuid4
 import numpy as np
 
 from conductor_qpu.adapter.base import QPUAdapter
+from conductor_qpu.models import types as model_types
 from conductor_qpu.models.types import (
     CalibrationParams,
     CalibrationResult,
@@ -100,6 +101,10 @@ class NoisySimulatorBackend(QPUAdapter):
         self._total_shots = 0
         self._total_jobs = 0
 
+        # Demo guardrails / failure injection (for founder demos)
+        self._demo_fid_cap: float | None = None  # if set, fidelity cannot exceed this
+        self._demo_cancel_requested = False
+
     # ---------------- Internal drift ----------------
 
     def _apply_drift(self) -> None:
@@ -155,7 +160,13 @@ class NoisySimulatorBackend(QPUAdapter):
         )
         # Map error to fidelity in a wide, forgiving range
         fid = 0.94 * math.exp(-1.8 * err) + 0.05
-        return _clamp(fid, 0.60, 0.999)
+
+        # Demo guardrail: cap fidelity for failure path demos
+        cap = getattr(self, "_demo_fid_cap", None)
+        if cap is not None:
+            fid = min(fid, float(cap))
+
+        return _clamp(fid, 0.55, 0.999)
 
     def _simulate_bell_readout(
         self, p0: CalibrationParams, p1: CalibrationParams, shots: int
@@ -215,6 +226,32 @@ class NoisySimulatorBackend(QPUAdapter):
                 "readout_error_delta": round(abs(ap.readout_error - tp.readout_error), 5),
             }
 
+    # ---------------- Demo / Guardrail controls (founder demo only) ----------------
+
+    def set_demo_fid_cap(self, cap: float | None) -> None:
+        """Cap the maximum fidelity the sim will ever report for this session.
+        Used to create reproducible 'cannot converge' failure paths.
+        """
+        with self._lock:
+            self._demo_fid_cap = cap
+
+    def start_demo_long_running_job(self) -> UUID:
+        """Create a job that stays in RUNNING until cancelled or polled after timeout.
+        Purely for demonstrating cancel guardrail in the UI.
+        """
+        with self._lock:
+            job = QPUJob(job_type=JobType.DIAGNOSTIC, payload={"demo_long_running": True})
+            jid = job.id
+            self._job_store[jid] = job
+            job.mark_running()
+            self._total_jobs += 1
+            return jid
+
+    def _maybe_complete_long_running(self, job: QPUJob) -> None:
+        # For the spike, we leave it running until explicit cancel or external timeout.
+        # The UI will poll and allow cancel.
+        pass
+
     # ---------------- QPUAdapter impl ----------------
 
     def submit_job(self, job: QPUJob) -> UUID:
@@ -233,32 +270,58 @@ class NoisySimulatorBackend(QPUAdapter):
                     cand = job.payload["candidate_params"]
                     if isinstance(cand, dict):
                         params = params.with_updates(**cand)
-                res = self.apply_calibration_update(params)
+                # Use the real calibration service if the adapter is driven by one in the API layer,
+                # but for direct job submission we drive the loop here using the service-like behavior
+                # by repeatedly calling apply until we would stop. For demo we just take one step
+                # and let the orchestrator tool do the full loop (which records traces).
+                # To support "fail to converge" demo we re-apply the service loop here when needed.
+                # Simpler: run a tiny local loop honoring the demo cap.
+                best_f = self.measure_fidelity(q)
+                iters = 0
+                maxit = 25
+                thresh = 0.88
+                while best_f < thresh and iters < maxit:
+                    cand_p = params.with_updates(
+                        frequency=params.frequency + self._rng.gauss(0, 0.02),
+                        amplitude=_clamp(params.amplitude + self._rng.gauss(0, 0.03), 0.25, 0.75),
+                        readout_error=_clamp(params.readout_error + self._rng.gauss(0, 0.01), 0.002, 0.16),
+                    )
+                    r = self.apply_calibration_update(cand_p)
+                    params = r.params
+                    best_f = r.fidelity
+                    iters += 1
+                final_res = CalibrationResult(
+                    success=best_f >= thresh,
+                    params=params,
+                    fidelity=round(best_f, 5),
+                    iterations=iters or 1,
+                    duration_s=0.001,
+                    history=[(iters or 1, round(best_f, 5))],
+                    message="Converged" if best_f >= thresh else "Max iters / capped (demo failure)",
+                )
                 jr = JobResult(
                     job_id=job_id,
-                    status=JobStatus.SUCCEEDED,
+                    status=JobStatus.SUCCEEDED if final_res.success else JobStatus.FAILED,
                     data={
                         "calibration": {
                             "qubit_id": q,
-                            "fidelity": res.fidelity,
-                            "iterations": res.iterations,
+                            "fidelity": final_res.fidelity,
+                            "iterations": final_res.iterations,
                             "params": {
-                                "frequency": res.params.frequency,
-                                "amplitude": res.params.amplitude,
-                                "phase": res.params.phase,
-                                "t1": res.params.t1,
-                                "t2": res.params.t2,
-                                "readout_error": res.params.readout_error,
+                                "frequency": final_res.params.frequency,
+                                "amplitude": final_res.params.amplitude,
+                                "readout_error": final_res.params.readout_error,
                             },
+                            "message": final_res.message,
                         }
                     },
-                    metrics={
-                        "fidelity": res.fidelity,
-                        "iterations": float(res.iterations),
-                        "duration_s": res.duration_s,
-                    },
+                    metrics={"fidelity": final_res.fidelity, "iterations": float(final_res.iterations)},
+                    error=None if final_res.success else "Calibration did not reach threshold (demo guardrail or drift)",
                 )
-                job.mark_succeeded(jr)
+                if final_res.success:
+                    job.mark_succeeded(jr)
+                else:
+                    job.mark_failed(jr.error or "failed to converge")
 
             elif job.job_type == JobType.CIRCUIT:
                 circuit = str(job.payload.get("circuit", "bell"))

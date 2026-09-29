@@ -27,6 +27,12 @@ class JobType(str, Enum):
     DIAGNOSTIC = "diagnostic"
 
 
+# Exact readiness predicate constants (surfaced to UI/API for founder clarity).
+# A device is "ready" only if ALL qubits meet the readout fidelity floor.
+READINESS_READOUT_FIDELITY_THRESHOLD: float = 0.82
+READINESS_PREDICATE_NAME = "all_qubits_readout_fidelity_above"
+
+
 @dataclass(frozen=True)
 class CalibrationParams:
     """Tunable parameters for a qubit or device.

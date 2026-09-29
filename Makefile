@@ -74,3 +74,11 @@ run-ui:
 run-ui-dev:
 	@echo "Starting Next.js dev server on :3000 (point NEXT_PUBLIC_API_BASE if needed)"
 	cd ui && npm run dev
+
+founder-demo:
+	@echo "=== Running Founder Demo (scriptable, no UI) ==="
+	$(PYTHON) -m demo_scripts.founder_demo
+
+founder-demo-stub:
+	@echo "=== Running Founder Demo against ConductorShapedAdapter (stub) ==="
+	CONDUCTOR_QPU_BACKEND=stub $(PYTHON) -m demo_scripts.founder_demo
