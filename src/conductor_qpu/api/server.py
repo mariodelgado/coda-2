@@ -19,6 +19,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -32,6 +33,20 @@ from conductor_qpu.orchestrator.planner import plan
 
 
 app = FastAPI(title="Conductor QPU", version="0.1.0", docs_url="/docs")
+
+# CORS for the Next.js UI (dev on :3000, prod builds may be same-origin or behind proxy)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Singletons for the spike (stateless across restarts; fine for demo)
 _backend = NoisySimulatorBackend(num_qubits=2, seed=42)

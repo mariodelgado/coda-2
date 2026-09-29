@@ -1,4 +1,4 @@
-.PHONY: setup install demo demo-calibration demo-circuit test lint format clean run-api run-ui help
+.PHONY: setup install demo demo-calibration demo-circuit test lint format clean run-api run-ui run-ui-dev help
 
 PYTHON := python3
 PIP := pip3
@@ -8,30 +8,37 @@ help:
 	@echo "Conductor QPU - AI-to-QPU Integration Layer"
 	@echo ""
 	@echo "Targets:"
-	@echo "  setup         - Create venv and install dependencies"
-	@echo "  install       - Install package in editable mode"
-	@echo "  demo          - Run both demos (calibration + circuit)"
-	@echo "  demo-calibration - Run calibration demo"
-	@echo "  demo-circuit  - Run Bell pair circuit demo"
+	@echo "  setup         - Create venv and install Python deps; also installs UI deps"
+	@echo "  install       - Install Python package in editable mode"
+	@echo "  demo          - Run both Python demos (calibration + circuit)"
+	@echo "  demo-calibration - Run calibration demo (Python)"
+	@echo "  demo-circuit  - Run Bell pair circuit demo (Python)"
 	@echo "  test          - Run pytest suite"
 	@echo "  lint          - Run ruff linting"
 	@echo "  format        - Format code with ruff"
-	@echo "  run-api       - Start FastAPI server"
-	@echo "  run-ui        - Start Streamlit UI"
+	@echo "  run-api       - Start FastAPI backend (http://localhost:8000)"
+	@echo "  run-ui        - Build + start Next.js UI (http://localhost:3000)"
+	@echo "  run-ui-dev    - Start Next.js UI in dev mode (recommended for development)"
 	@echo "  clean         - Remove build artifacts and caches"
 
 setup:
-	@echo "Setting up Conductor QPU environment..."
+	@echo "Setting up Conductor QPU (Python + Next.js UI)..."
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ".[dev]"
-	@echo "Setup complete. Run 'make demo' to execute demos."
+	@echo "Installing Next.js UI dependencies..."
+	cd ui && npm install
+	@echo "Setup complete."
+	@echo ""
+	@echo "Run 'make demo' for Python demos."
+	@echo "To run the full stack:  make run-api   (in one shell)"
+	@echo "                         make run-ui-dev (in another shell)"
 
 install:
 	$(PIP) install -e ".[dev]"
 
 demo: demo-calibration demo-circuit
 	@echo ""
-	@echo "=== All demos complete ==="
+	@echo "=== All Python demos complete ==="
 
 demo-calibration:
 	@echo "=== Running Calibration Demo ==="
@@ -54,9 +61,16 @@ clean:
 	rm -rf build/ dist/ *.egg-info .pytest_cache .ruff_cache __pycache__ src/__pycache__ demo_outputs/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete
+	cd ui && rm -rf .next out node_modules/.cache 2>/dev/null || true
 
 run-api:
+	@echo "Starting FastAPI on :8000 (CORS allows http://localhost:3000)"
 	$(PYTHON) -m conductor_qpu.api
 
 run-ui:
-	streamlit run src/conductor_qpu/ui/app.py
+	@echo "Building and starting Next.js UI on :3000"
+	cd ui && npm run build && npm run start
+
+run-ui-dev:
+	@echo "Starting Next.js dev server on :3000 (point NEXT_PUBLIC_API_BASE if needed)"
+	cd ui && npm run dev
