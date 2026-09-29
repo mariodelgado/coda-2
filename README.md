@@ -1,284 +1,176 @@
-# Conductor QPU — AI-to-QPU Integration Layer
+# Conductor QPU — AI-to-QPU Control Plane (Founder Spike)
 
-> **Spike for Conductor Quantum**: an agent-friendly control plane for quantum hardware calibration and operations. Fake the hardware; make the control plane real.
+> For Conductor Quantum: an agent-native control plane that treats calibration as first-class work, not an ops afterthought.
 
-This repository is a weekend-sized, self-contained prototype that demonstrates a clean separation between:
+**Thesis (in your language):**  
+Quantum hardware drifts. Calibration is the recurring tax before any useful circuit runs. Operators and agents spend their time deciding *when* and *how* to calibrate, watching whether it actually moved the needle, and correlating that with downstream job quality. This spike makes that loop legible, instrumented, and callable from code.
 
-- Natural language / agent goals
-- Deterministic orchestration and planning
-- A typed QPU adapter interface
-- An iterative calibration service
-- Job lifecycle + observability
-- A small FastAPI surface + minimal UI
-
-Everything runs **offline with zero external API keys**.
+Everything here is **offline, zero LLM keys required**, and deliberately small. The goal is signal, not theater.
 
 ---
 
-## Architecture (in Conductor language)
+## What is real vs. simulated (honest)
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        NL Gateway / Agent                        │
-│   "Bring qubit 0 to ready" | "Run a Bell pair and report fidelity"│
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        Orchestrator                              │
-│  • 5 explicit tools (calibrate, bell, state, status, cancel)     │
-│  • Deterministic planner (planner.py) — works without LLM       │
-│  • Optional LLM tool-calling behind CONDUCTOR_ENABLE_LLM=1      │
-│  • Aggregates calibration + tool metrics                        │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                ┌───────────────┼───────────────┐
-                ▼               ▼               ▼
-┌──────────────────────┐  ┌──────────────┐  ┌─────────────────────┐
-│   Calibration        │  │   Jobs /     │  │   QPU Adapter       │
-│   Service            │  │   Events     │  │   (Interface)       │
-│  • Gradient-free     │  │  • submit    │  │  submit_job         │
-│    iterative loop    │  │  • poll      │  │  poll_job           │
-│  • Records:          │  │  • cancel    │  │  cancel_job         │
-│    time_to_cal       │  │              │  │  get_device_state   │
-│    success_rate      │  │              │  │  get_calibration    │
-│    interface_latency │  │              │  │  apply_cal_update   │
-└──────────┬───────────┘  └──────┬───────┘  └──────────┬──────────┘
-           │                     │                     │
-           │                     │                     ▼
-           │                     │           ┌─────────────────────┐
-           │                     │           │ NoisySimulatorBackend│
-           │                     │           │ • 1-2 fake qubits   │
-           │                     │           │ • Drift + noise     │
-           │                     │           │ • Fidelity surface  │
-           │                     │           │   that rewards good │
-           │                     │           │   calibration       │
-           │                     │           └─────────────────────┘
-           │                     │
-           ▼                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Observability / Metrics                      │
-│  GET /metrics  →  { calibration, tools, adapter, aggregator }   │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Real (the control plane):**
+- `QPUAdapter` interface (`submit_job`, `poll_job`, `cancel_job`, `get_device_state`, `get_calibration`, `apply_calibration_update`).
+- `Orchestrator` + deterministic planner + 5 tools.
+- Structured **tool traces** (tool name, args, latency, result summary) emitted on every decision — this is what you see in the UI timeline.
+- `CalibrationService` with iterative gradient-free search, explicit fidelity threshold, and the three metrics.
+- FastAPI surface (`/goals`, `/jobs`, `/traces`, `/metrics`, `/device/*`, SSE).
+- Job history exposed over HTTP (in-memory in this spike; the seam is obvious).
+- UI is a real Next.js + shadcn client talking to that API.
 
-### Why this framing matters for Conductor
+**Simulated (the hardware model):**
+- `NoisySimulatorBackend` is a toy 1–2 qubit device.
+- It maintains a hidden "true" parameter vector per qubit.
+- That vector performs a slow random walk + sinusoidal drift on every state read.
+- Fidelity is a deterministic but noisy function of distance between applied and true params.
+- Bell counts are a cheap stochastic simulation whose contrast depends on current calibration.
+- The *dynamics* are representative: calibration is chasing a moving target; miscalibration shows up in temperature-like signals, coherence, readout, and circuit fidelity.
 
-- **Calibration is the bottleneck**: Real QPUs drift. Calibration is the tax paid before useful work. The control plane must make calibration first-class, observable, and agent-addressable.
-- **Agents are the users**: The "user" of this system is an agent or orchestrator, not a physicist at a terminal. The API and tool surface must be crisp.
-- **Interface first**: By defining `QPUAdapter` before any backend, swapping the noisy simulator for real hardware (or a vendor SDK) becomes a localized change.
+You can replace the backend without touching the orchestrator, API contract, or UI. That is the point.
 
 ---
 
-## Must-Ship Requirements (all delivered)
+## The three metrics that matter
 
-| Requirement | Implementation |
-|-------------|----------------|
-| QPU adapter interface | `QPUAdapter` with `submit_job`, `poll_job`, `cancel_job`, `get_device_state`, `get_calibration`, `apply_calibration_update` |
-| Concrete backend | `NoisySimulatorBackend` — 1-2 qubit toy device with drift, readout error, T1/T2 effects |
-| Calibration service | Iterative gradient-free loop (simulated-annealing-ish) targeting fidelity threshold |
-| Three metrics | `time_to_calibrated`, `calibration_success_rate`, `interface_latency` (decision→ack) |
-| Agent/orchestrator | `Orchestrator` + 5 tools + deterministic planner (no LLM keys required) |
-| FastAPI | `POST /goals`, `GET /jobs/{id}`, `GET /metrics`, `GET /health`, `POST /calibrate`, `POST /circuit/bell`, SSE |
-| Primary UI | Next.js (App Router) + shadcn/ui + Tailwind at `ui/` (cards, command bar, live jobs via SSE/polling, fidelity climb, metrics dashboard) |
-| Two demos | `make demo-calibration` (fidelity climbs → ready), `make demo-circuit` (Bell counts + est. fidelity) |
-| README + demo script | This file + 2-minute script below |
-| pytest | 18 tests covering adapter contract, calibration convergence, API happy path |
-| Run story | `make setup && make demo` works with Python 3.11+ and no external keys |
+- `time_to_calibrated` — wall time from start of a calibration attempt to crossing the readiness threshold.
+- `calibration_success_rate` — successes / attempts (running).
+- `interface_latency` — decision → backend ack, sampled on each calibration step.
+
+These are not vanity numbers. They are the dials a real control plane operator (or agent) would watch.
 
 ---
 
-## Quick Start
+## 2-Minute Founder Demo (precise)
+
+Prerequisites: Python 3.11+, Node 18+, no API keys.
 
 ```bash
-# From a fresh clone
-python3 -m pip install --upgrade pip
-python3 -m pip install -e ".[dev]"
-
-# Run both demos (no keys, fully offline)
-make demo
-
-# Or run individually
-make demo-calibration
-make demo-circuit
-
-# Run tests
-make test
+git clone <repo>
+cd conductor-qpu
+make setup                 # python deps + ui/ npm install
 ```
 
-Start the API + UI (two terminals):
-
+**Terminal A**
 ```bash
-# Terminal 1 — FastAPI backend (CORS allows :3000)
-make run-api
-# or: python3 -m conductor_qpu.api
-
-# Terminal 2 — Next.js UI (dev mode recommended)
-make run-ui-dev
-# or: cd ui && npm run dev
+make run-api               # FastAPI on :8000 (CORS allows :3000)
 ```
 
-Open http://localhost:3000. The UI targets the API at `http://localhost:8000` by default.  
-Override via `NEXT_PUBLIC_API_BASE=http://...` if needed.
-
----
-
-## 2-Minute Demo Script (for stakeholders)
-
-1. **Fresh clone + install** (30s)
-   ```bash
-   git clone <repo>
-   cd conductor-qpu
-   python3 -m pip install -e ".[dev]"
-   ```
-
-2. **Run the calibration demo** (30s)
-   ```bash
-   make demo-calibration
-   ```
-   - Observe: initial readiness may be marginal; after the goal "Bring qubit 0 to ready", fidelity rises.
-   - Printed metrics include: `time_to_calibrated`, `calibration_success_rate`, `interface_latency`.
-
-3. **Run the circuit demo** (20s)
-   ```bash
-   make demo-circuit
-   ```
-   - Observe: Bell counts (high |00⟩/|11⟩ population), estimated fidelity.
-   - The circuit runs against the *current* calibration; better calibration → higher contrast.
-
-4. **Exercise the API directly** (20s)
-   ```bash
-   # In one shell
-   python3 -m conductor_qpu.api   # http://localhost:8000
-
-   # In another
-   curl -X POST http://localhost:8000/goals \
-     -H 'content-type: application/json' \
-     -d '{"goal":"Bring qubit 0 to ready"}'
-
-   curl http://localhost:8000/metrics
-   curl http://localhost:8000/device/state
-   ```
-
-5. **Primary UI (Next.js + shadcn)** (30s)
-   - In a second terminal: `make run-ui-dev`
-   - Open http://localhost:3000
-   - Use the goal/command bar or Quick Action buttons ("Calibrate Qubit 0", "Run Bell Pair").
-   - Watch live job status, fidelity climb visualization, device state, and the three metrics update in real time.
-
-**Total human time: ~2 minutes.**
-
-### UI Screenshots (manual)
-
-After running the stack, the primary view shows:
-- Top command bar for NL goals + quick action buttons
-- Device state card (readiness, temperatures, readout fidelity, coherence)
-- Metrics dashboard (time_to_calibrated, success_rate, interface_latency)
-- Calibration fidelity climb chart + history
-- Live jobs table + last goal results tabs
-- Activity log
-
-To capture: run the stack locally and screenshot the dashboard after running both quick actions. No committed screenshots in this spike.
-
----
-
-## What You Would Swap for Real Hardware
-
-| Layer | Fake Today | Real Tomorrow |
-|-------|------------|---------------|
-| Backend | `NoisySimulatorBackend` | Vendor SDK (e.g. Qiskit Runtime, Braket, Azure Quantum, or a custom calibration driver) |
-| Job execution | Synchronous in `submit_job` | Fire-and-forget to hardware queue + callback/polling |
-| Calibration | Toy fidelity surface | Real tomography / randomized benchmarking / RB / XEB |
-| Drift | Simple random walk + sine | Telemetry-driven drift model |
-| Metrics | In-memory | Persisted (Prometheus + Grafana, or your existing observability) |
-| Jobs | `InMemoryJobStore` | Postgres / durable queue |
-| Planner | Deterministic rules | LLM planner with tool schemas + guardrails (behind feature flag today) |
-
-The **adapter boundary** (`QPUAdapter`) is the critical seam. Everything above it (orchestrator, calibration service, API, UI) should be reusable with minimal change.
-
----
-
-## Package Layout
-
-```
-src/conductor_qpu/          # Python control plane
-  adapter/
-    base.py                 # QPUAdapter abstract interface
-    noisy_sim.py            # Concrete toy backend
-  calibration/
-    service.py              # Iterative calibration loop + metrics
-  orchestrator/
-    orchestrator.py         # Tool registry, execution, metrics
-    planner.py              # Deterministic planner (+ optional LLM hook)
-  api/
-    server.py               # FastAPI endpoints + SSE (+ CORS for :3000)
-  jobs/
-    store.py
-  models/
-  observability/
-
-ui/                         # Next.js 16 (App Router) + shadcn/ui + Tailwind
-  app/
-    page.tsx                # Command bar, device state, metrics, fidelity climb, jobs, log
-    layout.tsx
-  components/ui/            # shadcn components (card, button, tabs, progress, etc.)
-  lib/api.ts                # Typed client against FastAPI
-
-demo_scripts/
-tests/
-```
-
----
-
-## Metrics (the three that matter)
-
-Exposed via `GET /metrics` and printed by demos:
-
-- **`time_to_calibrated`** — wall time from calibration start to crossing the fidelity threshold
-- **`calibration_success_rate`** — successes / attempts (running)
-- **`interface_latency`** — roundtrip time from orchestrator decision to backend acknowledgment (sampled per calibration step)
-
-Additional signals (tool latencies, job counts, adapter shots) are included for operational visibility.
-
----
-
-## Development
-
+**Terminal B**
 ```bash
-make setup          # installs Python deps + ui/ npm deps
-make test           # pytest (Python)
-make lint
-make format
-make demo           # Python demos only (does not start servers)
-
-# Run the full stack (two terminals):
-make run-api        # FastAPI on :8000
-make run-ui-dev     # Next.js on :3000 (dev)
+make run-ui-dev            # Next.js on :3000
 ```
 
-Python 3.11+ required for the backend. Node 18+ required for the UI. `numpy` and `scipy` are used lightly; no heavy quantum frameworks.
+Open http://localhost:3000.
 
-### Run story for a fresh clone
+### Walk (do this in order)
+
+1. **Observe the lab problem (drift).**  
+   Look at Device State. Note readiness and readout fidelity. Click Refresh a few times. You should see small movements in temperatures and detuning (Δfreq/Δamp etc). This is the hidden true state drifting.
+
+2. **Calibrate with a goal (watch real traces).**  
+   In the command bar type or click:  
+   `Bring qubit 0 to ready`  
+   Hit Execute.
+
+   Watch:
+   - The Execution Timeline populates with real orchestrator traces: `calibrate_qubit`, args, latency, OK/ERR, and a short summary (e.g. `fidelity=0.96...`).
+   - The Fidelity Climb chart renders step-by-step points with a threshold line.
+   - Device state updates; detuning shrinks if calibration helped.
+   - Metrics tick (you may see success count and interface latency change).
+
+3. **See the readiness transition.**  
+   If average readout fidelity crosses the internal "ready" bar (~0.82) and the calibration service crossed its threshold, the badge flips to READY and you may see a "CROSSED 0.82" hint. The last applied params are shown under the chart.
+
+4. **Run a circuit against current calibration.**  
+   Click **Bell 1024**.  
+   A job appears in the Jobs table (history from `/jobs`). If the backend emits SSE, status flips live; otherwise it polls. You’ll see counts and an estimated fidelity derived from |00⟩+|11⟩ population. Contrast is visibly better after a successful calibration.
+
+5. **Correlate.**  
+   Look at the three metrics cards and the trace list together. You just exercised:
+   - an agent goal,
+   - real tool calls with timing,
+   - a calibration loop chasing drift,
+   - a downstream circuit whose quality depends on that calibration,
+   - observability that survives a UI refresh (jobs are served by the backend).
+
+Close the browser tab, hard refresh, reopen. The job list repopulates from the backend. Traces for a *new* goal will appear when you run one.
+
+Total human time: ~2 minutes. All deterministic. No keys.
+
+---
+
+## What I would do in week 1 on your stack
+
+1. **Make the adapter real.**  
+   Implement the six methods against your vendor SDK or internal driver. Keep the same types. Everything above is reusable.
+
+2. **Persist jobs + traces.**  
+   Swap `InMemoryJobStore` and the in-process trace buffer for Postgres (or your store) with retention. Add a `goal_id` to correlate a user/agent goal to a set of traces and jobs.
+
+3. **Calibration policy, not just a loop.**  
+   Turn the service into a policy object with:
+   - pluggable strategies (Bayesian, RL, your existing tuner),
+   - cost model (shots, time, drift rate),
+   - explicit readiness predicate over multiple qubits / two-qubit gates,
+   - "calibrate or not" recommendation surfaced to agents.
+
+4. **Agent surface.**  
+   Expose a narrow "plan + execute + observe" API (or MCP tool surface) so higher-level agents can treat calibration as an explicit step with observable outcomes, not a side effect.
+
+5. **Drift observability.**  
+   Surface detuning / parameter error estimates from real diagnostics (not just our toy `get_detuning`). Make "how far we are from true" a first-class metric.
+
+6. **Guardrails.**  
+   Kill switches, max iterations, backoff, and "refuse circuit if below X fidelity" — all the boring but necessary control-plane bits.
+
+---
+
+## Architecture (same diagram, same contract)
+
+```
+Agent / NL goal
+      │
+      ▼
+Orchestrator (real traces)
+      │
+      ├──► CalibrationService (iterative, thresholded)
+      │         │
+      │         ▼
+      │    QPUAdapter (interface)
+      │         │
+      │         ▼
+      │    NoisySimulatorBackend  (or your real backend)
+      │
+      ├──► Jobs (submit/poll/cancel/list)
+      └──► Traces (tool decisions, not LLM fiction)
+```
+
+The adapter is the seam. Traces are the observability.
+
+---
+
+## Run (guarantees)
 
 ```bash
 make setup
-make demo               # Python-only demos + metrics
-# In two shells:
+make demo          # Python demos still work; update the three metrics; no keys
+# two terminals:
 make run-api
 make run-ui-dev
-# Open http://localhost:3000
+# open http://localhost:3000
 ```
 
----
-
-## License
-
-MIT — see `LICENSE`.
+`pytest` must stay green. `make demo` must continue to work.
 
 ---
 
 ## Notes & Honesty
 
-- This is a **control-plane prototype**, not a quantum simulator. The physics is intentionally cartoonish.
-- The fidelity surface is designed to be climbable by the calibration loop while still exhibiting drift and noise.
-- No secrets, no network calls, no K8s. The goal is to show how a clean adapter + calibration + orchestration story looks before you plug in real hardware.
+- This is a control plane demo, not a physics engine.
+- The fidelity surface is intentionally climbable while still exhibiting drift.
+- No K8s, no secrets, no external services.
+- The value is in the traces, the calibration narrative, and the clean seam — not in the visuals.
+
+If a skeptical quantum + ML founder looks at the execution timeline and the detuning card and says "I see how calibration is a recurring decision with observable cost," we did the job.

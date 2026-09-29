@@ -4,6 +4,12 @@ This is a *fake* hardware model that still exercises a real control plane.
 The "true" underlying parameters drift slowly. Applied calibration
 parameters affect simulated fidelity. The adapter exposes the standard
 QPUAdapter surface so the rest of the stack can be hardware-agnostic.
+
+Honest note for founders:
+  - There is a hidden "true" parameter vector per qubit.
+  - It performs a slow random walk + sinusoidal wander (drift).
+  - Fidelity is a deterministic but noisy function of ||applied - true||.
+  - Calibration is chasing a moving target. This is the core lab dynamic.
 """
 
 from __future__ import annotations
@@ -12,7 +18,7 @@ import math
 import random
 import time
 from datetime import datetime
-from threading import Lock, RLock
+from threading import RLock
 from uuid import UUID, uuid4
 
 import numpy as np
@@ -154,12 +160,7 @@ class NoisySimulatorBackend(QPUAdapter):
     def _simulate_bell_readout(
         self, p0: CalibrationParams, p1: CalibrationParams, shots: int
     ) -> dict[str, int]:
-        """Very cheap Bell-state simulation with readout and decoherence noise.
-
-        We treat the ideal |Phi+> as 50/50 |00> + |11> and apply:
-          - readout flips per qubit
-          - a phase/amplitude error term that reduces contrast
-        """
+        """Very cheap Bell-state simulation with readout and decoherence noise."""
         f0 = self._fidelity_from_params(0, p0)
         f1 = self._fidelity_from_params(1, p1)
         joint_f = (f0 + f1) / 2.0
@@ -185,7 +186,6 @@ class NoisySimulatorBackend(QPUAdapter):
 
             # Depolarize / lose contrast: randomly flip to wrong parity
             if self._rng.random() > contrast:
-                # Flip to an orthogonal outcome
                 if ideal == "00":
                     outcome = "01" if self._rng.random() < 0.5 else "10"
                 else:
@@ -198,6 +198,23 @@ class NoisySimulatorBackend(QPUAdapter):
         self._total_shots += shots
         return counts
 
+    # ---------------- Diagnostics for "lab feel" ----------------
+
+    def get_detuning(self, qubit_id: int) -> dict[str, float]:
+        """Return current hidden detuning (applied vs true). This is the 'problem' calibration is solving."""
+        with self._lock:
+            self._apply_drift()
+            if qubit_id not in self._true_params:
+                raise ValueError(f"Unknown qubit {qubit_id}")
+            tp = self._true_params[qubit_id]
+            ap = self._applied_params[qubit_id]
+            return {
+                "frequency_error": round(abs(ap.frequency - tp.frequency), 5),
+                "amplitude_error": round(abs(ap.amplitude - tp.amplitude), 5),
+                "phase_error": round(abs(((ap.phase - tp.phase + math.pi) % (2 * math.pi)) - math.pi), 5),
+                "readout_error_delta": round(abs(ap.readout_error - tp.readout_error), 5),
+            }
+
     # ---------------- QPUAdapter impl ----------------
 
     def submit_job(self, job: QPUJob) -> UUID:
@@ -207,16 +224,11 @@ class NoisySimulatorBackend(QPUAdapter):
             self._job_store[job_id] = job
             self._total_jobs += 1
 
-            # Kick off synchronous "execution" for demo speed.
-            # In a real system this would be background work.
             job.mark_running()
 
             if job.job_type == JobType.CALIBRATION:
                 q = int(job.payload.get("qubit_id", 0))
-                params = self._applied_params.get(
-                    q, CalibrationParams(qubit_id=q)
-                )
-                # If caller provided candidate params, stage them
+                params = self._applied_params.get(q, CalibrationParams(qubit_id=q))
                 if "candidate_params" in job.payload:
                     cand = job.payload["candidate_params"]
                     if isinstance(cand, dict):
@@ -249,7 +261,6 @@ class NoisySimulatorBackend(QPUAdapter):
                 job.mark_succeeded(jr)
 
             elif job.job_type == JobType.CIRCUIT:
-                # Expect payload like {"circuit": "bell", "shots": 1024, "qubits": [0,1]}
                 circuit = str(job.payload.get("circuit", "bell"))
                 shots = int(job.payload.get("shots", 1024))
                 qs = job.payload.get("qubits", [0, 1])
@@ -275,7 +286,6 @@ class NoisySimulatorBackend(QPUAdapter):
                     )
                     job.mark_succeeded(jr)
                 else:
-                    # Unknown circuit -> small diagnostic
                     jr = JobResult(
                         job_id=job_id,
                         status=JobStatus.SUCCEEDED,
@@ -285,7 +295,6 @@ class NoisySimulatorBackend(QPUAdapter):
                     job.mark_succeeded(jr)
 
             else:
-                # Diagnostic or unknown: just ack
                 jr = JobResult(
                     job_id=job_id,
                     status=JobStatus.SUCCEEDED,
@@ -302,6 +311,11 @@ class NoisySimulatorBackend(QPUAdapter):
             if job_id not in self._job_store:
                 raise KeyError(f"Unknown job {job_id}")
             return self._job_store[job_id]
+
+    def list_recent_jobs(self, limit: int = 50) -> list[QPUJob]:
+        with self._lock:
+            ids = sorted(self._job_store.keys(), key=lambda j: self._job_store[j].created_at or 0, reverse=True)[:limit]
+            return [self._job_store[j] for j in ids]
 
     def cancel_job(self, job_id: UUID) -> bool:
         with self._lock:
@@ -323,7 +337,6 @@ class NoisySimulatorBackend(QPUAdapter):
 
             for q in qubits:
                 p = self._applied_params[q]
-                # Temperature is fake but reacts to how "off" we are
                 f = self._fidelity_from_params(q, p)
                 base_temp = 18.0 + (1.0 - f) * 35.0
                 temps[q] = round(base_temp + self._rng.gauss(0, 0.8), 1)
@@ -332,7 +345,6 @@ class NoisySimulatorBackend(QPUAdapter):
                 t2 = max(3.0, p.t2 * (0.55 + 0.45 * f))
                 coherence[q] = (round(t1, 1), round(t2, 1))
 
-                # Readout fidelity is inverse of error, degraded by miscalibration
                 rf = _clamp(1.0 - p.readout_error * (1.3 - 0.3 * f), 0.6, 0.995)
                 readout[q] = round(rf, 4)
 
@@ -359,11 +371,6 @@ class NoisySimulatorBackend(QPUAdapter):
     def apply_calibration_update(
         self, params: CalibrationParams
     ) -> CalibrationResult:
-        """Apply candidate params and return measured fidelity.
-
-        This is intentionally not a perfect optimizer; it gives the
-        calibration service something to chase.
-        """
         start = time.time()
         with self._lock:
             self._apply_drift()
@@ -371,15 +378,8 @@ class NoisySimulatorBackend(QPUAdapter):
             if q not in self._applied_params:
                 raise ValueError(f"Unknown qubit {q}")
 
-            # Stage the params
             self._applied_params[q] = params
-
-            # "Measure" by comparing to true hidden state
             fid = self._fidelity_from_params(q, params)
-
-            # Tiny measurement jitter so successive reads aren't identical
-            fid = _clamp(fid + self._rng.gauss(0, 0.003), 0.55, 0.999)
-
             elapsed = time.time() - start
 
             return CalibrationResult(
@@ -395,7 +395,6 @@ class NoisySimulatorBackend(QPUAdapter):
     # ---------------- Extra surface for calibration loop ----------------
 
     def measure_fidelity(self, qubit_id: int) -> float:
-        """Convenience for calibration service: read current fidelity."""
         with self._lock:
             self._apply_drift()
             p = self._applied_params[qubit_id]

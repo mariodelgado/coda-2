@@ -63,6 +63,7 @@ class GoalRequest(BaseModel):
 class GoalResponse(BaseModel):
     goal: str
     results: list[dict[str, Any]]
+    traces: list[dict[str, Any]] = []
     metrics: dict[str, Any]
 
 
@@ -109,8 +110,9 @@ def post_goal(req: GoalRequest) -> GoalResponse:
         })
         if r.latency_s:
             _metrics.record_latency(r.latency_s)
+    traces = _orchestrator.get_last_traces()
     snap = _metrics.snapshot()
-    return GoalResponse(goal=req.goal, results=out, metrics=snap)
+    return GoalResponse(goal=req.goal, results=out, traces=traces, metrics=snap)
 
 
 @app.get("/jobs/{job_id}")
@@ -183,6 +185,53 @@ def get_metrics() -> dict[str, Any]:
         "aggregator": agg,
         "calibration": _calibration.metrics.to_dict(),
     }
+
+
+@app.get("/jobs")
+def list_jobs(limit: int = 50) -> dict[str, Any]:
+    """List recent jobs. In-memory; documented as non-durable."""
+    jobs = _backend.list_recent_jobs(limit=limit)
+    out = []
+    for j in jobs:
+        out.append({
+            "job_id": str(j.id),
+            "status": j.status.value,
+            "job_type": j.job_type.value,
+            "created_at": j.created_at.isoformat() if j.created_at else None,
+            "completed_at": j.completed_at.isoformat() if j.completed_at else None,
+            "result": j.result.data if j.result else None,
+            "metrics": j.result.metrics if j.result else None,
+            "error": j.error,
+        })
+    return {"jobs": out, "count": len(out)}
+
+
+@app.get("/traces")
+def get_traces() -> dict[str, Any]:
+    """Return the most recent orchestrator tool traces (real control-plane decisions)."""
+    return {"traces": _orchestrator.get_last_traces()}
+
+
+@app.get("/device/detuning/{qubit_id}")
+def get_detuning(qubit_id: int) -> dict[str, Any]:
+    """Expose how far applied calibration is from the hidden 'true' hardware state.
+    This is the 'problem' the calibration loop is solving. Surfaces drift.
+    """
+    try:
+        d = _backend.get_detuning(qubit_id)
+        applied = _backend.get_calibration(qubit_id)
+        return {
+            "qubit_id": qubit_id,
+            "detuning": d,
+            "applied": {
+                "frequency": applied.frequency,
+                "amplitude": applied.amplitude,
+                "phase": applied.phase,
+                "readout_error": applied.readout_error,
+            },
+        }
+    except ValueError as e:
+        raise HTTPException(404, str(e)) from e
 
 
 @app.get("/sse/jobs/{job_id}")

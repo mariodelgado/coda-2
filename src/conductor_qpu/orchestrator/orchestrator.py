@@ -5,6 +5,10 @@ Design:
 - Orchestrator owns job lifecycle and metrics aggregation.
 - No LLM required; a planner (planner.py) emits a sequence of ToolCalls.
 - Optional LLM tool-calling is gated behind CONDUCTOR_ENABLE_LLM.
+
+Traces: every tool invocation is recorded as a ToolTrace with args, latency,
+and a short result summary. These are the real control-plane decisions shown
+to operators and agents.
 """
 
 from __future__ import annotations
@@ -40,6 +44,23 @@ class ToolCall:
     args: dict[str, Any]
 
 
+@dataclass
+class ToolTrace:
+    """Structured observability record for one orchestrator tool call.
+
+    This is what powers the execution timeline in the UI. It captures the
+    actual decision the control plane made (which tool, with what args) and
+    how the backend responded, without any synthetic LLM narrative.
+    """
+
+    timestamp: float
+    tool: str
+    args: dict[str, Any]
+    latency_s: float
+    ok: bool
+    summary: str = ""
+
+
 Tool = Callable[..., ToolResult]
 
 
@@ -50,6 +71,7 @@ class Orchestrator:
       - register_tool(name, fn)
       - call_tool(name, **kwargs) -> ToolResult
       - run_goal(goal: str) -> list[ToolResult]
+      - get_last_traces() -> list[dict]   # for UI observability
       - get_metrics() -> dict
     """
 
@@ -66,6 +88,7 @@ class Orchestrator:
         self._tools: dict[str, Tool] = {}
         self._call_count: dict[str, int] = {}
         self._total_latency: dict[str, float] = {}
+        self._last_traces: list[ToolTrace] = []
 
         self._register_builtin_tools()
 
@@ -77,13 +100,46 @@ class Orchestrator:
     def list_tools(self) -> list[str]:
         return sorted(self._tools.keys())
 
-    def _time_call(self, name: str, fn: Callable[[], Any]) -> tuple[Any, float]:
-        t0 = time.time()
-        out = fn()
-        dt = time.time() - t0
-        self._call_count[name] = self._call_count.get(name, 0) + 1
-        self._total_latency[name] = self._total_latency.get(name, 0.0) + dt
-        return out, dt
+    # ---------------- Traces ----------------
+
+    def _make_summary(self, res: ToolResult) -> str:
+        if not res.data:
+            return res.error or ""
+        d = res.data
+        if "fidelity" in d:
+            return f"fidelity={d.get('fidelity')}"
+        if "counts" in d:
+            c = d.get("counts", {})
+            return f"00/11={c.get('00', 0)}/{c.get('11', 0)}"
+        if "is_ready" in d:
+            return f"ready={d.get('is_ready')} score={d.get('readiness_score')}"
+        keys = list(d.keys())[:3]
+        return ",".join(keys)
+
+    def _record_trace(self, tool: str, args: dict[str, Any], latency_s: float, res: ToolResult) -> None:
+        self._last_traces.append(
+            ToolTrace(
+                timestamp=time.time(),
+                tool=tool,
+                args=dict(args),
+                latency_s=latency_s,
+                ok=res.ok,
+                summary=self._make_summary(res),
+            )
+        )
+
+    def get_last_traces(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "ts": t.timestamp,
+                "tool": t.tool,
+                "args": t.args,
+                "latency_s": t.latency_s,
+                "ok": t.ok,
+                "summary": t.summary,
+            }
+            for t in self._last_traces
+        ]
 
     # ---------------- Built-in tools (4-5 as required) ----------------
 
@@ -97,24 +153,36 @@ class Orchestrator:
     def _tool_calibrate_qubit(self, qubit_id: int = 0, target_fidelity: float | None = None) -> ToolResult:
         t0 = time.time()
         try:
+            initial = None
+            try:
+                initial = self.calibration.adapter.measure_fidelity(qubit_id)
+            except Exception:
+                pass
             res = self.calibration.calibrate(qubit_id=qubit_id, target_fidelity=target_fidelity)
             dt = time.time() - t0
             self._call_count["calibrate_qubit"] = self._call_count.get("calibrate_qubit", 0) + 1
             self._total_latency["calibrate_qubit"] = (
                 self._total_latency.get("calibrate_qubit", 0.0) + dt
             )
+            data: dict[str, Any] = {
+                "fidelity": res.fidelity,
+                "iterations": res.iterations,
+                "params": {
+                    "frequency": res.params.frequency,
+                    "amplitude": res.params.amplitude,
+                    "readout_error": res.params.readout_error,
+                },
+                "duration_s": res.duration_s,
+                "history": res.history,
+            }
+            if initial is not None:
+                data["initial_fidelity"] = round(initial, 5)
+            # surface the service threshold for "why ready"
+            thresh = getattr(self.calibration, "fidelity_threshold", 0.88)
+            data["threshold"] = thresh
             return ToolResult(
                 ok=res.success,
-                data={
-                    "fidelity": res.fidelity,
-                    "iterations": res.iterations,
-                    "params": {
-                        "frequency": res.params.frequency,
-                        "amplitude": res.params.amplitude,
-                        "readout_error": res.params.readout_error,
-                    },
-                    "duration_s": res.duration_s,
-                },
+                data=data,
                 latency_s=round(dt, 4),
             )
         except Exception as e:  # noqa: BLE001
@@ -226,26 +294,31 @@ class Orchestrator:
 
     def call_tool(self, name: str, **kwargs: Any) -> ToolResult:
         if name not in self._tools:
-            return ToolResult(ok=False, data={}, latency_s=0.0, error=f"Unknown tool: {name}")
+            tr = ToolResult(ok=False, data={}, latency_s=0.0, error=f"Unknown tool: {name}")
+            self._record_trace(name, kwargs, 0.0, tr)
+            return tr
         fn = self._tools[name]
-        # fn already records timing internally for builtins
-        return fn(**kwargs)
+        t0 = time.time()
+        res = fn(**kwargs)
+        dt = time.time() - t0
+        self._record_trace(name, kwargs, round(dt, 4), res)
+        return res
 
     def run_goal(self, goal: str, planner: Callable[[str], list[ToolCall]] | None = None) -> list[ToolResult]:
         """Execute a natural-language-ish goal via a planner + tool calls.
 
-        If no planner is supplied, uses the deterministic planner.
+        Traces for this execution are available via get_last_traces().
         """
         from conductor_qpu.orchestrator.planner import plan_from_goal as default_planner
 
         plan_fn = planner or default_planner
         plan = plan_fn(goal)
 
+        self._last_traces = []
         results: list[ToolResult] = []
         for step in plan:
             res = self.call_tool(step.tool, **step.args)
             results.append(res)
-            # Early exit on critical failure for calibration/circuit goals
             if not res.ok and step.tool in ("calibrate_qubit", "run_bell_pair"):
                 break
         return results
