@@ -3,10 +3,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "motion/react"
-import { Send, Square, Command as CommandIcon, X, Cpu, Zap } from "lucide-react"
+import { Send, Square, Command as CommandIcon } from "lucide-react"
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, ReferenceLine, ResponsiveContainer,
 } from "recharts"
@@ -28,7 +27,7 @@ interface Turn {
   goal: string
   status: "running" | "succeeded" | "failed"
   traces: ToolTrace[]
-  results: Array<{ ok: boolean; data?: any; latency_s: number; error?: string | null }>
+  results: any[]
   fidelityHistory: FidelityPoint[]
   calThreshold: number
   lastCalParams?: Record<string, number> | null
@@ -37,7 +36,7 @@ interface Turn {
   createdAt: number
 }
 
-export default function ConductorQPUChat() {
+export default function ConductorQPUInstrument() {
   const setCommandOpen = useControlPlaneStore((s) => s.setCommandOpen)
 
   const [apiBase, setApiBaseState] = useState<string>(getApiBase())
@@ -50,9 +49,7 @@ export default function ConductorQPUChat() {
   const [metrics, setMetrics] = useState<any>(null)
 
   const [turns, setTurns] = useState<Turn[]>([])
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const [viewingDriftFor, setViewingDriftFor] = useState<string | null>(null)
-
+  const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null)
   const [goalInput, setGoalInput] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
@@ -60,9 +57,7 @@ export default function ConductorQPUChat() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const eventSourcesRef = useRef<Record<string, EventSource>>({})
 
-  const [inspectOpen, setInspectOpen] = useState(false)
-
-  const threadRef = useRef<HTMLDivElement>(null)
+  const dockRef = useRef<HTMLDivElement>(null)
 
   const updateApiBase = useCallback((base: string) => {
     const t = base.replace(/\/$/, "")
@@ -104,7 +99,7 @@ export default function ConductorQPUChat() {
 
   const loadRecentJobs = useCallback(async () => {
     try {
-      const { jobs: list } = await api.listJobs(50)
+      const { jobs: list } = await api.listJobs(40)
       const map: Record<string, JobRecord> = {}
       list.forEach(j => { map[j.job_id] = j })
       setJobs(map)
@@ -148,12 +143,6 @@ export default function ConductorQPUChat() {
     }
   }, [pollJobOnce])
 
-  const scrollToBottom = useCallback(() => {
-    requestAnimationFrame(() => {
-      threadRef.current?.scrollTo({ top: 999999, behavior: "smooth" })
-    })
-  }, [])
-
   const extractFromResults = (results: any[]) => {
     let history: FidelityPoint[] = []
     let params: Record<string, number> | null = null
@@ -189,12 +178,9 @@ export default function ConductorQPUChat() {
       createdAt: Date.now(),
     }
     setTurns(prev => [...prev, newTurn])
-    setExpanded(prev => ({ ...prev, [turnId]: false }))
-    setViewingDriftFor(null)
+    setSelectedTurnId(turnId)
     setSubmitting(true)
     setGoalInput("")
-
-    scrollToBottom()
 
     try {
       const resp = await api.postGoal(goal)
@@ -215,7 +201,6 @@ export default function ConductorQPUChat() {
         }
       }))
 
-      // If a job came back, wire it
       const maybe = (resp.results || []).find((r: any) => typeof r?.data?.job_id === "string")
       const jobId: string | undefined = (maybe?.data as any)?.job_id
       if (jobId) {
@@ -241,24 +226,20 @@ export default function ConductorQPUChat() {
       toast.error("Failed", { description: msg })
     } finally {
       setSubmitting(false)
-      scrollToBottom()
     }
-  }, [refreshDevice, refreshMetrics, loadRecentJobs, startJobSSE, scrollToBottom])
+  }, [refreshDevice, refreshMetrics, loadRecentJobs, startJobSSE])
 
-  const runSuggested = useCallback((label: string, goal: string) => {
+  const runSuggested = useCallback((goal: string) => {
     void submitGoal(goal)
   }, [submitGoal])
 
   const stopActive = useCallback(async () => {
     const runningJob = Object.values(jobs).find(j => j.status === "running" || j.status === "queued")
-    if (runningJob) {
-      await cancelJob(runningJob.job_id)
-    }
-    // Also mark any running turn as cancelled (best effort)
+    if (runningJob) await cancelJob(runningJob.job_id)
     setTurns(prev => prev.map(t => t.status === "running" ? { ...t, status: "failed", error: "cancelled" } : t))
   }, [jobs, cancelJob])
 
-  // Bootstrap
+  // Bootstrap + polling
   useEffect(() => {
     void checkConnection().then(ok => {
       if (ok) {
@@ -269,384 +250,301 @@ export default function ConductorQPUChat() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Background refresh
   useEffect(() => {
     const id = setInterval(() => {
       if (connected) {
         void refreshDevice()
         void refreshMetrics()
       }
-    }, 8000)
+    }, 6500)
     return () => clearInterval(id)
   }, [connected, refreshDevice, refreshMetrics])
 
-  // Poll active job
   useEffect(() => {
     if (!activeJobId) return
     const j = jobs[activeJobId]
     if (!j || j.status !== "running") return
-    const iv = setInterval(() => { void pollJobOnce(activeJobId) }, 900)
+    const iv = setInterval(() => { void pollJobOnce(activeJobId) }, 850)
     return () => clearInterval(iv)
   }, [activeJobId, jobs, pollJobOnce])
 
-  const hasRunning = useMemo(() => turns.some(t => t.status === "running") || Object.values(jobs).some(j => j.status === "running"), [turns, jobs])
+  const hasRunning = useMemo(() =>
+    turns.some(t => t.status === "running") || Object.values(jobs).some(j => j.status === "running"),
+  [turns, jobs])
 
   const suggested = useMemo(() => [
     { label: "Calibrate Q0", goal: "Bring qubit 0 to ready" },
     { label: "Bell pair", goal: "Run a Bell pair and report fidelity" },
-    { label: "Bring device ready", goal: "Bring qubit 0 to ready" },
+    { label: "Bring ready", goal: "Bring qubit 0 to ready" },
   ], [])
 
+  // Live readouts for top bar (instrument)
+  const q0Fid = device?.readout_fidelity?.["0"] ?? device?.readout_fidelity?.[0 as any] ?? null
+  const q0Temp = device?.temperatures_mk?.["0"] ?? device?.temperatures_mk?.[0 as any] ?? null
+  const isReady = !!device?.is_ready
+  const readiness = device ? device.readiness_score.toFixed(3) : null
+
+  // Current active fidelity for stage HUD (prefer latest turn, then device)
+  const activeTurn = useMemo(() => {
+    if (selectedTurnId) return turns.find(t => t.id === selectedTurnId) || null
+    return [...turns].reverse().find(t => t.fidelityHistory.length) || turns[turns.length - 1] || null
+  }, [turns, selectedTurnId])
+
+  const latestFidelity = activeTurn?.fidelityHistory?.length
+    ? activeTurn.fidelityHistory[activeTurn.fidelityHistory.length - 1].fidelity
+    : (q0Fid != null ? q0Fid : null)
+
+  const threshold = activeTurn?.calThreshold ?? 0.88
+
+  // For the hero surface, feed the most recent cal history so the landscape uses recent fidelity as base
+  const surfaceHistory = activeTurn?.fidelityHistory ?? []
+
   const commandActions: CommandAction[] = useMemo(() => [
-    { id: "c1", label: "Bring qubit 0 to ready", hint: "calibrate", group: "Goals", icon: defaultCommandIcons.calibrate, run: () => submitGoal("Bring qubit 0 to ready") },
-    { id: "c2", label: "Run a Bell pair and report fidelity", hint: "circuit", group: "Goals", icon: defaultCommandIcons.bell, run: () => submitGoal("Run a Bell pair and report fidelity") },
-    { id: "c3", label: "Refresh device", group: "Quick", icon: defaultCommandIcons.refresh, run: async () => { await Promise.all([refreshDevice(), refreshMetrics()]) } },
-    { id: "c4", label: "Force fail next calibration", hint: "demo", group: "Demo", icon: defaultCommandIcons.fail, run: async () => { try { await api.demoForceFailNextCal(); toast.message("Next cal will fail") } catch { toast.error("unavailable") } } },
-    { id: "c5", label: "Start long job (cancel me)", hint: "demo", group: "Demo", icon: defaultCommandIcons.long, run: async () => {
+    { id: "g1", label: "Bring qubit 0 to ready", hint: "calibrate", group: "Goals", icon: defaultCommandIcons.calibrate, run: () => submitGoal("Bring qubit 0 to ready") },
+    { id: "g2", label: "Run a Bell pair and report fidelity", hint: "circuit", group: "Goals", icon: defaultCommandIcons.bell, run: () => submitGoal("Run a Bell pair and report fidelity") },
+    { id: "q1", label: "Refresh device", group: "Quick", icon: defaultCommandIcons.refresh, run: async () => { await Promise.all([refreshDevice(), refreshMetrics()]) } },
+    { id: "d1", label: "Force fail next calibration", hint: "demo", group: "Demo", icon: defaultCommandIcons.fail, run: async () => { try { await api.demoForceFailNextCal(); toast.message("Next cal will fail") } catch { toast.error("unavailable") } } },
+    { id: "d2", label: "Start long job (cancel me)", hint: "demo", group: "Demo", icon: defaultCommandIcons.long, run: async () => {
       try {
         const r = await api.demoStartLongJob()
         const tId = (globalThis.crypto?.randomUUID?.() || `t_${Date.now()}`) as string
-        setTurns(prev => [...prev, { id: tId, goal: "Start long job (demo)", status: "running", traces: [], results: [], fidelityHistory: [], calThreshold: 0.88, createdAt: Date.now() }])
-        setActiveJobId(r.job_id)
-        startJobSSE(r.job_id)
+        const nt: Turn = { id: tId, goal: "Start long job (demo)", status: "running", traces: [], results: [], fidelityHistory: [], calThreshold: 0.88, createdAt: Date.now() }
+        setTurns(p => [...p, nt]); setSelectedTurnId(tId)
+        setActiveJobId(r.job_id); startJobSSE(r.job_id)
         toast.message("Long job running")
       } catch { toast.error("unavailable") }
-    }} ,
+    }},
   ], [submitGoal, refreshDevice, refreshMetrics, startJobSSE])
 
-  const toggleExpand = (id: string) => setExpanded(p => ({ ...p, [id]: !p[id] }))
+  const selectedTurn = useMemo(() => turns.find(t => t.id === selectedTurnId) || null, [turns, selectedTurnId])
 
-  const openDriftFor = (id: string) => {
-    setViewingDriftFor(id)
-    setInspectOpen(true)
+  // Compact ledger summary
+  const ledger = useMemo(() => [...turns].reverse().slice(0, 12), [turns])
+
+  const lastSummary = (t: Turn) => {
+    if (t.error) return t.error
+    if (t.bellCounts) return Object.entries(t.bellCounts).map(([k,v]) => `${k}=${v}`).join(" ")
+    if (t.fidelityHistory.length) {
+      const f = t.fidelityHistory[t.fidelityHistory.length-1].fidelity
+      return `f=${f.toFixed(4)}`
+    }
+    return t.traces[t.traces.length-1]?.summary || ""
   }
 
-  // Current turn for drift (latest or selected)
-  const driftTurn = useMemo(() => {
-    if (viewingDriftFor) return turns.find(t => t.id === viewingDriftFor) || null
-    return [...turns].reverse().find(t => t.fidelityHistory?.length) || null
-  }, [turns, viewingDriftFor])
-
-  const currentMetrics = useMemo(() => {
-    const cal = (metrics?.orchestrator?.calibration || metrics?.calibration || {}) as any
-    return {
-      attempts: Number(cal.attempts ?? 0),
-      successes: Number(cal.successes ?? 0),
-      successRate: Number(cal.calibration_success_rate ?? 0),
-      timeToCal: Number(cal.avg_time_to_calibrated_s ?? 0),
-      iface: Number(cal.avg_interface_latency_s ?? 0),
-    }
-  }, [metrics])
-
   return (
-    <div className="min-h-screen bg-[#0a0a0b] text-zinc-200 flex flex-col selection:bg-white/20">
+    <div className="h-screen w-screen overflow-hidden bg-[#0a0a0b] text-zinc-200 flex flex-col">
       <CommandPalette actions={commandActions} disabled={!connected && backendDown} />
 
-      {/* Minimal top chrome — just the name */}
-      <header className="h-12 border-b border-white/10 bg-[#0a0a0b]/95 backdrop-blur flex items-center px-4 z-50">
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded bg-emerald-500" />
-          <div className="font-semibold tracking-[-0.3px]">Conductor <span className="text-zinc-500">QPU</span></div>
-          <Badge variant={connected ? "default" : "destructive"} className="px-1.5 py-0 text-[10px]">{connected ? "LIVE" : "OFFLINE"}</Badge>
+      {/* Thin 32px instrument status bar — mono readouts */}
+      <div className="status-bar shrink-0 border-b hairline flex items-center px-3 text-[11px] bg-[#0a0a0b] z-50">
+        <div className="flex items-center gap-2 font-medium">
+          <span className="font-sans tracking-[-0.2px]">Conductor QPU</span>
+          <span className="px-1.5 py-px rounded bg-emerald-500 text-[10px] text-black font-mono tracking-[0.5px]">LIVE</span>
+          <span className={isReady ? "text-emerald-400" : "text-amber-400"}>
+            {isReady ? "READY" : "CAL NEEDED"}
+          </span>
+          {readiness && <span className="text-zinc-500">· {readiness}</span>}
         </div>
 
-        <div className="ml-auto flex items-center gap-1.5 text-xs">
-          <button
-            onClick={() => setInspectOpen(v => !v)}
-            className="flex items-center gap-1 rounded border border-white/10 px-2 py-1 hover:bg-white/5"
-          >
-            <Cpu className="h-3.5 w-3.5" /> Device
-          </button>
+        <div className="ml-auto flex items-center gap-4 instrument-mono text-zinc-400">
+          {q0Fid != null && (
+            <span>Q0 <span className="text-zinc-200">{(q0Fid * 100).toFixed(1)}</span>%</span>
+          )}
+          {q0Temp != null && (
+            <span><span className="text-zinc-200">{q0Temp}</span> mK</span>
+          )}
+          {detuning && (
+            <span className="text-amber-400">Δf {Number(detuning.frequency_error || 0).toFixed(3)}</span>
+          )}
+          {latestFidelity != null && (
+            <span>fid <span className="text-emerald-400">{latestFidelity.toFixed(4)}</span></span>
+          )}
+
           <button
             onClick={() => setCommandOpen(true)}
-            className="flex items-center gap-1 rounded border border-white/10 px-2 py-1 hover:bg-white/5"
+            className="rounded border hairline px-1.5 py-px hover:bg-white/5"
             title="⌘K"
           >
-            <CommandIcon className="h-3.5 w-3.5" />
+            <CommandIcon className="h-3 w-3" />
           </button>
           <button
             onClick={() => { void refreshDevice(); void refreshMetrics() }}
-            className="rounded border border-white/10 px-2 py-1 hover:bg-white/5"
+            className="rounded border hairline px-1.5 py-px hover:bg-white/5"
           >
-            Refresh
+            refresh
           </button>
-          <div className="pl-2 text-[10px] text-zinc-500 hidden md:block">No LLM keys · real traces</div>
         </div>
-      </header>
+      </div>
 
       {backendDown && (
-        <div className="border-b border-red-900/40 bg-red-950/40 text-[11px] px-4 py-1 text-red-300">
-          Cannot reach backend — <span className="font-mono">make run-api</span> in another terminal.
+        <div className="text-[10px] px-3 py-px bg-red-950/60 text-red-300 border-b hairline">
+          Cannot reach backend — start with <span className="font-mono">make run-api</span>
         </div>
       )}
 
-      {/* Vast center / thread area */}
-      <div ref={threadRef} className="flex-1 overflow-y-auto">
-        {turns.length === 0 ? (
-          // First paint — ChatGPT-like empty with centered soft suggestions
-          <div className="min-h-[calc(100vh-140px)] flex items-center justify-center">
-            <div className="max-w-xl px-6 text-center">
-              <div className="text-2xl font-semibold tracking-[-0.4px] mb-2">What would you like to run?</div>
-              <div className="text-sm text-zinc-500 mb-6">Real traces. No theater.</div>
+      {/* Center stage — the room. WebGPU drift surface is the hero. */}
+      <div className="stage flex-1 relative min-h-0">
+        <CalibrationSurfaceLazy
+          detuning={detuning}
+          applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
+          fidelityHistory={surfaceHistory}
+          readinessScore={device?.readiness_score ?? 0.7}
+          readoutFidelity={device?.readout_fidelity ?? null}
+          className="absolute inset-0"
+        />
 
-              <div className="flex flex-wrap gap-2 justify-center">
-                {suggested.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => runSuggested(s.label, s.goal)}
-                    disabled={!connected || submitting}
-                    className="rounded-full border border-white/10 bg-zinc-950 px-4 py-2 text-sm hover:bg-white/5 active:scale-[0.985] transition disabled:opacity-50"
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
+        {/* Sparse instrument HUD — never busy */}
+        <div className="absolute top-3 left-3 stage-hud text-zinc-500 pointer-events-none">
+          param drift · Δfreq × Δamp
+        </div>
 
-              <div className="mt-8 text-[11px] text-zinc-600">
-                Or type anything below. ⌘K for more.
+        {/* Fidelity climb HUD when we have recent cal data (small, does not steal the room) */}
+        {activeTurn && activeTurn.fidelityHistory.length > 0 && (
+          <div className="absolute bottom-3 right-3 w-[320px] rounded border hairline bg-black/70 backdrop-blur p-2 text-[10px]">
+            <div className="flex items-baseline justify-between mb-1 px-1">
+              <div className="text-zinc-400">fidelity climb</div>
+              <div className="instrument-mono text-emerald-400">
+                {latestFidelity?.toFixed(4)} / {threshold}
               </div>
             </div>
+            <div className="h-20 -mx-1">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart
+                  data={activeTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))}
+                  margin={{ top: 4, right: 6, bottom: 0, left: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
+                  <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
+                  <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
+                  <ReferenceLine y={threshold} stroke="#f59e0b" strokeDasharray="2 2" />
+                  <Line type="monotone" dataKey="fidelity" stroke="#10b981" strokeWidth={1.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="px-1 text-[9px] text-zinc-500">gradient-free steps · threshold shown</div>
           </div>
-        ) : (
-          <div className="mx-auto max-w-3xl px-4 pt-6 pb-28 space-y-8">
-            {turns.map((turn, idx) => {
-              const isOpen = !!expanded[turn.id]
-              const latestF = turn.fidelityHistory.length ? turn.fidelityHistory[turn.fidelityHistory.length - 1].fidelity : null
-              const outcome = turn.bellCounts
-                ? `Bell: ${Object.entries(turn.bellCounts).map(([k, v]) => `${k}=${v}`).join(" ")}`
-                : latestF != null
-                  ? `fidelity = ${latestF.toFixed(5)} (threshold ${turn.calThreshold})`
-                  : turn.status === "running" ? "Running…" : "Complete"
+        )}
 
+        {/* WebGL honest fallback badge lives inside the surface component */}
+      </div>
+
+      {/* Bottom agent rail — shallow dock. Chat + ledger only here. */}
+      <div className="rail shrink-0 pb-2" style={{ minHeight: 132 }}>
+        {/* Quiet ledger turns (no bubbles, no cards) */}
+        {ledger.length > 0 && (
+          <div ref={dockRef} className="max-h-[92px] overflow-auto text-[11px] border-b hairline">
+            {ledger.map((t) => {
+              const isSel = t.id === selectedTurnId
               return (
-                <div key={turn.id} className="group">
-                  {/* User turn */}
-                  <div className="flex justify-end">
-                    <div className="max-w-[80%] rounded-2xl bg-white/5 border border-white/10 px-3.5 py-2 text-sm">
-                      {turn.goal}
-                    </div>
-                  </div>
-
-                  {/* Assistant response */}
-                  <div className="mt-3 pl-1">
-                    <div className="text-[10px] uppercase tracking-widest text-zinc-500 mb-1">Conductor</div>
-
-                    {turn.status === "running" && (
-                      <div className="text-sm text-zinc-400">Working…</div>
-                    )}
-
-                    {turn.traces.length > 0 && (
-                      <div className="mt-1 space-y-1 text-sm">
-                        {turn.traces.slice(-6).map((t, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs text-zinc-400">
-                            <span className="font-mono text-emerald-400/90">{t.tool}</span>
-                            <span className="truncate text-zinc-500">{JSON.stringify(t.args).slice(0, 80)}</span>
-                            <span className="tabular-nums ml-auto">{t.latency_s.toFixed(3)}s</span>
-                            <span className={t.ok ? "text-emerald-400" : "text-red-400"}>{t.ok ? "ok" : "err"}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="mt-2 text-sm">
-                      {turn.status === "failed" && turn.error ? (
-                        <span className="text-red-400">{turn.error}</span>
-                      ) : (
-                        <span className="text-emerald-400">{outcome}</span>
-                      )}
-                    </div>
-
-                    {/* Per-turn details (opt-in, calm) */}
-                    <div className="mt-2">
-                      <button
-                        onClick={() => toggleExpand(turn.id)}
-                        className="text-xs text-zinc-500 hover:text-zinc-300 underline decoration-white/20"
-                      >
-                        {isOpen ? "Hide details" : "Details"}
-                      </button>
-
-                      {isOpen && (
-                        <div className="mt-3 rounded-xl border border-white/10 bg-zinc-950/60 p-3 text-sm">
-                          {turn.fidelityHistory.length > 0 && (
-                            <div className="mb-3">
-                              <div className="text-[10px] text-zinc-500 mb-1">Fidelity climb</div>
-                              <div className="h-40 -mx-1">
-                                <ResponsiveContainer width="100%" height="100%">
-                                  <LineChart data={turn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 6, right: 10, bottom: 2, left: -6 }}>
-                                    <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
-                                    <XAxis dataKey="step" tick={{ fontSize: 10, fill: "#52525b" }} />
-                                    <YAxis domain={[0.5, 1.02]} tick={{ fontSize: 10, fill: "#52525b" }} />
-                                    <ReferenceLine y={turn.calThreshold} stroke="#f59e0b" strokeDasharray="2 2" />
-                                    <Line type="monotone" dataKey="fidelity" stroke="#10b981" strokeWidth={2} dot={{ r: 1.2 }} />
-                                  </LineChart>
-                                </ResponsiveContainer>
-                              </div>
-                              <div className="text-[10px] text-zinc-500">Real steps from the gradient-free loop.</div>
-                            </div>
-                          )}
-
-                          {turn.bellCounts && (
-                            <div className="mb-3 text-xs text-emerald-400/90">
-                              Counts: {JSON.stringify(turn.bellCounts)}
-                            </div>
-                          )}
-
-                          {turn.traces.length > 0 && (
-                            <div>
-                              <div className="text-[10px] text-zinc-500 mb-1">Traces</div>
-                              <div className="font-mono text-[10px] space-y-0.5 text-zinc-400 max-h-[140px] overflow-auto">
-                                {turn.traces.map((t, i) => (
-                                  <div key={i}>{new Date(t.ts * 1000).toLocaleTimeString()} · {t.tool} · {t.summary || JSON.stringify(t.args).slice(0, 60)}</div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="mt-3">
-                            <button
-                              onClick={() => openDriftFor(turn.id)}
-                              className="text-xs rounded border border-white/10 px-2 py-1 hover:bg-white/5"
-                            >
-                              View param drift surface
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <button
+                  key={t.id}
+                  onClick={() => setSelectedTurnId(t.id)}
+                  className={`ledger-row w-full text-left flex items-baseline gap-3 instrument-mono ${isSel ? "bg-white/5" : ""}`}
+                >
+                  <span className="text-zinc-500 w-[78px] shrink-0 tabular-nums">
+                    {new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                  </span>
+                  <span className="text-emerald-400/90 shrink-0">{t.goal}</span>
+                  <span className="text-zinc-400 truncate">{lastSummary(t)}</span>
+                  {t.status === "running" && <span className="ml-auto text-amber-400">running</span>}
+                  {t.status === "failed" && <span className="ml-auto text-red-400">failed</span>}
+                </button>
               )
             })}
           </div>
         )}
-      </div>
 
-      {/* Bottom composer — ChatGPT style */}
-      <div className="border-t border-white/10 bg-[#0a0a0b] p-3">
-        <div className="mx-auto max-w-3xl">
-          {/* Compact suggestions when conversation started */}
-          {turns.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-1.5 px-1">
-              {suggested.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => runSuggested(s.label, s.goal)}
-                  disabled={!connected || submitting}
-                  className="rounded-full border border-white/10 px-3 py-0.5 text-xs text-zinc-400 hover:bg-white/5 disabled:opacity-50"
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          )}
+        {/* Presets + composer */}
+        <div className="px-3 pt-2 flex items-center gap-1.5">
+          {suggested.map((s, i) => (
+            <button
+              key={i}
+              onClick={() => runSuggested(s.goal)}
+              disabled={!connected || submitting}
+              className="preset-chip"
+            >
+              {s.label}
+            </button>
+          ))}
 
-          <div className="flex items-center gap-2 rounded-3xl border border-white/10 bg-zinc-950 px-3 py-1.5 shadow-inner">
-            <Input
-              className="flex-1 border-0 bg-transparent focus-visible:ring-0 text-sm placeholder:text-zinc-600 h-9"
-              placeholder="Type a goal… or pick a suggestion above"
+          <div className="flex-1" />
+
+          <div className="composer flex items-center flex-1 max-w-[620px] pl-3 pr-1.5 py-1">
+            <input
+              className="flex-1 bg-transparent outline-none text-sm placeholder:text-zinc-600 instrument-mono"
+              placeholder="Type a goal… or pick above"
               value={goalInput}
-              onChange={e => setGoalInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !submitting) void submitGoal(goalInput) }}
+              onChange={(e) => setGoalInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !submitting) void submitGoal(goalInput) }}
               disabled={submitting || !connected}
             />
             {hasRunning ? (
-              <Button variant="outline" size="icon" className="h-8 w-8 border-white/10" onClick={() => { void stopActive() }}>
-                <Square className="h-3.5 w-3.5" />
+              <Button variant="outline" size="sm" className="h-7 ml-2 border-white/10" onClick={() => { void stopActive() }}>
+                <Square className="h-3 w-3 mr-1" /> stop
               </Button>
             ) : (
-              <Button
-                size="icon"
-                className="h-8 w-8"
+              <button
                 onClick={() => { void submitGoal(goalInput) }}
                 disabled={submitting || !goalInput.trim() || !connected}
+                className="ml-2 rounded-full p-1.5 hover:bg-white/5 disabled:opacity-40"
+                aria-label="send"
               >
-                <Send className="h-3.5 w-3.5" />
-              </Button>
+                <Send className="h-4 w-4" />
+              </button>
             )}
           </div>
 
-          <div className="mt-1 px-1 text-[10px] text-zinc-600 text-center">
-            Real control plane. Traces only. No LLM.
-          </div>
+          <button onClick={() => setCommandOpen(true)} className="text-[10px] px-2 py-1 rounded border hairline text-zinc-500 hover:text-zinc-300">⌘K</button>
         </div>
+
+        {/* Slim in-dock details for selected turn — never steals stage */}
+        <AnimatePresence>
+          {selectedTurn && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.12, ease: easeOut }}
+              className="details mx-3 mt-2 p-2 rounded text-[11px] overflow-hidden"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="text-zinc-400">{selectedTurn.goal}</div>
+                <button className="text-[10px] text-zinc-500" onClick={() => setSelectedTurnId(null)}>close</button>
+              </div>
+
+              {selectedTurn.fidelityHistory.length > 0 && (
+                <div className="h-[92px] -mx-1 mb-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={selectedTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: -4 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
+                      <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
+                      <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
+                      <ReferenceLine y={selectedTurn.calThreshold} stroke="#f59e0b" strokeDasharray="2 2" />
+                      <Line type="monotone" dataKey="fidelity" stroke="#10b981" strokeWidth={1.5} dot={{ r: 1 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              {selectedTurn.traces.length > 0 && (
+                <div className="instrument-mono text-[10px] text-zinc-400 space-y-px max-h-[64px] overflow-auto">
+                  {selectedTurn.traces.slice(-5).map((tr, i) => (
+                    <div key={i}>{new Date(tr.ts * 1000).toLocaleTimeString()} · {tr.tool} · {tr.summary}</div>
+                  ))}
+                </div>
+              )}
+
+              {selectedTurn.bellCounts && (
+                <div className="instrument-mono text-emerald-400 text-[10px] mt-1">
+                  {JSON.stringify(selectedTurn.bellCounts)}
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="px-3 pt-1 text-[9px] text-zinc-600 text-center">Real control plane. Traces only. No LLM.</div>
       </div>
-
-      {/* Quiet side panel (device + drift) — never on first paint */}
-      <AnimatePresence>
-        {inspectOpen && (
-          <motion.aside
-            initial={{ x: 20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 20, opacity: 0 }}
-            transition={{ duration: 0.16, ease: easeOut }}
-            className="fixed right-0 top-12 bottom-0 w-[320px] border-l border-white/10 bg-[#0a0a0b] p-3 overflow-auto z-[60]"
-          >
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-sm font-medium">Device &amp; drift</div>
-              <button onClick={() => setInspectOpen(false)} className="text-zinc-400 hover:text-zinc-200"><X className="h-4 w-4" /></button>
-            </div>
-
-            {!device && (
-              <div className="text-xs text-zinc-500">No snapshot yet. Run something or refresh.</div>
-            )}
-
-            {device && (
-              <div className="space-y-3 text-sm">
-                <div className="rounded-lg border border-white/10 bg-black/30 p-2 text-xs">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant={device.is_ready ? "default" : "destructive"} className="text-[10px]">{device.is_ready ? "READY" : "CAL NEEDED"}</Badge>
-                    <span className="tabular-nums text-zinc-400">{device.readiness_score.toFixed(3)}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-x-3">
-                    <div>
-                      <div className="text-[10px] text-zinc-500">Temps (mK)</div>
-                      {Object.entries(device.temperatures_mk).map(([q, t]) => <div key={q} className="tabular-nums">Q{q}: {t}</div>)}
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-zinc-500">Readout</div>
-                      {Object.entries(device.readout_fidelity).map(([q, f]) => <div key={q} className="tabular-nums">Q{q}: {(f * 100).toFixed(1)}%</div>)}
-                    </div>
-                  </div>
-                  {detuning && (
-                    <div className="mt-2 text-[10px] text-amber-400/90">Δfreq {detuning.frequency_error} · Δamp {detuning.amplitude_error}</div>
-                  )}
-                </div>
-
-                <div className="rounded-lg border border-white/10 bg-black/30 p-2 text-xs">
-                  <div className="text-[10px] text-zinc-500 mb-1">Metrics</div>
-                  <div>attempts {currentMetrics.attempts} · successes {currentMetrics.successes}</div>
-                  <div>success rate {(currentMetrics.successRate * 100).toFixed(1)}%</div>
-                  <div>avg time {currentMetrics.timeToCal.toFixed(4)}s · iface {currentMetrics.iface.toFixed(4)}s</div>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-4">
-              <div className="flex items-center gap-1.5 text-xs uppercase tracking-widest text-zinc-500 mb-1">
-                <Zap className="h-3 w-3" /> Param drift
-              </div>
-              <div className="h-[220px] rounded-lg border border-white/10 overflow-hidden">
-                <CalibrationSurfaceLazy
-                  detuning={detuning}
-                  applied={appliedParams || (driftTurn?.lastCalParams ?? null)}
-                  fidelityHistory={driftTurn?.fidelityHistory ?? []}
-                  readinessScore={device?.readiness_score ?? 0.7}
-                  readoutFidelity={device?.readout_fidelity ?? null}
-                />
-              </div>
-              <div className="mt-1 text-[10px] text-zinc-500">Cyan = true target, amber = applied. Only renders when opened.</div>
-            </div>
-
-            <div className="mt-4 text-[10px] text-zinc-600">
-              API {apiBase}
-              <button className="ml-2 underline" onClick={() => {
-                const v = prompt("API base", apiBase)
-                if (v) { updateApiBase(v); void checkConnection(v) }
-              }}>change</button>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
     </div>
   )
 }

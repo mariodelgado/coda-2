@@ -1,85 +1,134 @@
 @import "tailwindcss";
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
-  --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222.2 47.4% 11.2%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
-  --radius: 0.5rem;
+  --background: 10 10 11;
+  --foreground: 228 228 231;
 
-  /* Emil design-eng easing tokens */
+  /* Instrument hairlines and surfaces */
+  --hairline: rgba(255, 255, 255, 0.08);
+  --panel: #111113;
+  --panel-2: #0f0f11;
+
+  /* Typography tokens */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-mono-inst: var(--font-ibm-plex-mono), var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
-  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .dark {
-  --background: 240 6% 4%;
-  --foreground: 210 40% 98%;
-  --card: 240 5% 7%;
-  --card-foreground: 210 40% 98%;
-  --popover: 240 5% 7%;
-  --popover-foreground: 210 40% 98%;
-  --primary: 160 84% 39%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 240 4% 16%;
-  --secondary-foreground: 210 40% 98%;
-  --muted: 240 4% 16%;
-  --muted-foreground: 215 20.2% 65.1%;
-  --accent: 240 4% 16%;
-  --accent-foreground: 210 40% 98%;
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 240 4% 16%;
-  --input: 240 4% 16%;
-  --ring: 160 84% 39%;
+  --background: 10 10 11;
+  --foreground: 228 228 231;
 }
 
 * {
-  border-color: hsl(var(--border));
+  border-color: var(--hairline);
 }
 
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  background-color: #0a0a0b;
+  color: #e4e4e7;
+  font-family: var(--font-sans);
 }
 
-.metric-value {
-  font-variant-numeric: tabular-nums;
+/* Instrument mono for all data */
+.instrument-mono,
+.readout,
+.trace,
+.metric {
+  font-family: var(--font-mono-inst);
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: -0.01em;
 }
 
-.job-row {
-  transition: background-color 0.12s var(--ease-out);
+/* Thin 32px status bar */
+.status-bar {
+  height: 32px;
+  font-size: 11px;
+  letter-spacing: 0.02em;
 }
 
-.job-row:hover {
-  background-color: hsl(var(--muted) / 0.5);
+/* Hero stage */
+.stage {
+  background: #0a0a0b;
+  position: relative;
 }
 
-.command-input {
-  font-family: var(--font-geist-mono);
+/* Hairline borders */
+.hairline {
+  border-color: var(--hairline);
 }
 
-/* Prefer transform/opacity only for UI motion */
-.ui-fade {
-  transition: opacity 0.2s var(--ease-out), transform 0.2s var(--ease-out);
+/* Bottom rail — shallow dock */
+.rail {
+  background: #0a0a0b;
+  border-top: 1px solid var(--hairline);
 }
 
-button:active:not(:disabled) {
-  transform: scale(0.97);
+/* Quiet ledger lines for turns (no bubbles) */
+.ledger-row {
+  font-size: 11px;
+  line-height: 1.1;
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--hairline);
+}
+.ledger-row:last-child {
+  border-bottom: none;
+}
+.ledger-row:hover {
+  background: rgba(255,255,255,0.015);
+}
+
+/* Composer */
+.composer {
+  background: #0f0f11;
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+}
+
+/* Preset chips — soft, instrument */
+.preset-chip {
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: #a1a1aa;
+  transition: background 80ms var(--ease-out), color 80ms var(--ease-out);
+}
+.preset-chip:hover {
+  background: rgba(255,255,255,0.04);
+  color: #e4e4e7;
+}
+.preset-chip:active {
+  transform: scale(0.985);
+}
+
+/* Tiny HUD labels on stage */
+.stage-hud {
+  font-family: var(--font-mono-inst);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+/* Details panel inside rail or slim overlay */
+.details {
+  font-size: 11px;
+  background: #0f0f11;
+  border: 1px solid var(--hairline);
+}
+
+/* Quiet focus states */
+input:focus-visible,
+button:focus-visible {
+  outline: 1px solid rgba(163, 163, 172, 0.4);
+  outline-offset: -1px;
+}
+
+/* Sonner already good, keep it minimal */
+[data-sonner-toaster] {
+  --normal-bg: #111113;
+  --normal-text: #e4e4e7;
+  --normal-border: var(--hairline);
 }
