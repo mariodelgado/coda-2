@@ -65,47 +65,39 @@ make run-ui-dev            # Next.js on :3000
 
 Open http://localhost:3000.
 
-**Current UI (ChatGPT-inspired, this PR):**  
-Vast empty center is the conversation thread.  
-Soft suggested chips (Calibrate Q0, Bell pair, Bring device ready) are the primary path; typing is secondary via a bottom composer.  
-Each run appears as a turn in the thread (goal → agent steps → result).  
-Device state, WebGPU drift surface, metrics, and per-run details are opt-in (side panel or “Details” on a turn) — never on first paint.  
-Minimal top chrome (product name + LIVE + discreet actions). ⌘K still available for power users. Sonner for quiet status.
+**Layout #2 — quantum instrument (this PR):**  
+- Thin 32 px status bar at top: product name · LIVE · READY · instrument mono readouts (Q0 fidelity, mK, Δfreq, latest fid).  
+- Center stage is the full hero: WebGPU param-drift surface (cyan = true target, amber = applied). Fidelity climb HUD appears in the corner only when a calibration is active.  
+- Bottom agent rail only: soft intent chips + composer. Quiet ledger-line turns stack upward in a shallow dock (no full-page chat, no bubbles, no cards).  
+- Details (fidelity plot + traces) expand inside the rail as a slim panel — never steal the stage.  
+- Typography: geometric sans for labels; premium mono (IBM Plex Mono + Geist Mono) for every metric, trace, fidelity, temp, and qubit id.  
+- First paint feels like a scope/stage, not SaaS or theater.
 
 ### Walk (do this in order)
 
-1. **Observe the lab problem (drift).**  
-   Look at Device State. Note readiness and readout fidelity. Click Refresh a few times. You should see small movements in temperatures and detuning (Δfreq/Δamp etc). This is the hidden true state drifting.
+1. **First paint is the instrument.**  
+   You see a near-black stage with the live WebGPU param-drift surface (cyan sphere = hidden true target, amber = applied calibration). Top 32 px status bar shows LIVE / READY / Q0 fidelity / mK / Δfreq in instrument mono. Bottom rail holds the soft chips and composer.
 
-2. **Calibrate with a goal (watch real traces).**  
-   In the command bar type or click:  
-   `Bring qubit 0 to ready`  
-   Hit Execute.
+2. **Observe drift.**  
+   The surface breathes slowly. Watch the cyan marker drift relative to amber as the hidden true params walk. The top bar shows live Δfreq and the current readout fidelity. This is the “problem” the control plane solves.
 
-   Watch:
-   - The Execution Timeline populates with real orchestrator traces: `calibrate_qubit`, args, latency, OK/ERR, and a short summary (e.g. `fidelity=0.96...`).
-   - The Fidelity Climb chart renders step-by-step points with a threshold line.
-   - Device state updates; detuning shrinks if calibration helped.
-   - Metrics tick (you may see success count and interface latency change).
+3. **Run a calibration from the rail.**  
+   Click **Calibrate Q0** (or type `Bring qubit 0 to ready` and send).  
+   A ledger turn appears in the bottom dock. The stage stays the hero surface; a small fidelity-climb HUD appears in the corner while the loop runs.  
+   When done, the turn shows the final fidelity and the surface updates (drift shrinks if it helped).
 
-3. **See the readiness transition.**  
-   If average readout fidelity crosses the internal "ready" bar (~0.82) and the calibration service crossed its threshold, the badge flips to READY and you may see a "CROSSED 0.82" hint. The last applied params are shown under the chart.
+4. **Inspect a turn.**  
+   Click the ledger row. A slim in-rail panel expands with the real step-by-step fidelity line + the last tool traces (no popups stealing the room).
 
-4. **Run a circuit against current calibration.**  
-   Click **Bell 1024**.  
-   A job appears in the Jobs table (history from `/jobs`). If the backend emits SSE, status flips live; otherwise it polls. You’ll see counts and an estimated fidelity derived from |00⟩+|11⟩ population. Contrast is visibly better after a successful calibration.
+5. **Run a circuit.**  
+   Click **Bell pair**. The turn lands in the dock with counts. The surface remains the primary view; the status bar shows the latest device snapshot.
 
-5. **Correlate.**  
-   Look at the three metrics cards and the trace list together. You just exercised:
-   - an agent goal,
-   - real tool calls with timing,
-   - a calibration loop chasing drift,
-   - a downstream circuit whose quality depends on that calibration,
-   - observability that survives a UI refresh (jobs are served by the backend).
+6. **Details on demand.**  
+   Open the **Device** button (top right) or press ⌘K for more. The surface never leaves the center. Everything else is rail or overlay.
 
-Close the browser tab, hard refresh, reopen. The job list repopulates from the backend. Traces for a *new* goal will appear when you run one.
+Hard refresh or new tab: still an instrument. No “empty chat void”, no card wall. Real traces, real drift, tight mono readouts.
 
-Total human time: ~2 minutes. All deterministic. No keys.
+Total human time: ~90 seconds. All deterministic. No keys.
 
 ---
 
