@@ -19,6 +19,7 @@ Everything here is **offline, zero LLM keys required**, and deliberately small. 
 - FastAPI surface (`/goals`, `/jobs`, `/traces`, `/metrics`, `/device/*`, SSE).
 - Job history exposed over HTTP (in-memory in this spike; the seam is obvious).
 - UI is a real Next.js + shadcn client talking to that API.
+- UI stack follows Emil Kowalski skills (`cmdk`, Sonner, NumberFlow, `motion`, `next-themes`, zustand, leva) plus a **WebGPU param-drift surface** (`three` + `@react-three/fiber`) tied to `/device/state` and `/device/detuning`.
 
 **Simulated (the hardware model):**
 - `NoisySimulatorBackend` is a toy 1–2 qubit device.
@@ -101,6 +102,28 @@ Total human time: ~2 minutes. All deterministic. No keys.
 
 ---
 
+---
+
+## UI stack (Emil + WebGPU)
+
+Skills from `emilkowalski/skills` are vendored under `.cursor/skills` (and `ui/.cursor/skills`).
+
+**Design rules applied:** dark dense instrument panel; animate only `transform`/`opacity`; strong ease-out (`cubic-bezier(0.23, 1, 0.32, 1)`); **no animation on ⌘K open**; NumberFlow on the three metrics; Sonner toasts for calibration success/fail, job cancel, and backend-down; cmdk command palette for goals.
+
+**WebGPU viz:** live fidelity landscape over Δfreq × Δamp. Cyan marker = hidden true target from detuning; amber = applied calibration. Uses async `WebGPURenderer` (`three/webgpu`) with WebGL fallback + banner when `navigator.gpu` is missing.
+
+```bash
+make setup
+# Terminal A
+make run-api
+# Terminal B
+make run-ui-dev
+# open http://localhost:3000  — press ⌘K for goals
+cd ui && npm run build   # must succeed
+```
+
+See `ui/README.md` for dependency table and WebGPU caveats.
+
 ## What I would do in week 1 on your stack
 
 1. **Make the adapter real.**  
@@ -171,6 +194,6 @@ make run-ui-dev
 - This is a control plane demo, not a physics engine.
 - The fidelity surface is intentionally climbable while still exhibiting drift.
 - No K8s, no secrets, no external services.
-- The value is in the traces, the calibration narrative, and the clean seam — not in the visuals.
+- The value is in the traces, the calibration narrative, the clean seam, and a viz that explains drift — not decoration.
 
 If a skeptical quantum + ML founder looks at the execution timeline and the detuning card and says "I see how calibration is a recurring decision with observable cost," we did the job.

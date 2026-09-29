@@ -10,8 +10,8 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
 parts/
 sdist/
 var/
@@ -56,3 +56,7 @@ Thumbs.db
 .env.local
 *.pem
 *.key
+
+# Keep Next.js ui/lib (API client + utils) tracked
+!ui/lib/
+!ui/lib/**
