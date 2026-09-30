@@ -329,225 +329,182 @@ export default function ConductorQPUInstrument() {
     <div className="h-screen w-screen overflow-hidden bg-[#000000] text-white flex flex-col">
       <CommandPalette actions={commandActions} disabled={!connected && backendDown} />
 
-      {/* Status bar is thin; the rest of the viewport is split 65/35 with continuous gradient (no hard seam) */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* HERO — 65% of remaining height */}
-        <div className="hero">
-        {/* Floating instrument status bar over the viz */}
-        <div className="status-bar absolute top-0 left-0 right-0 z-50 flex items-center px-3">
-          <div className="flex items-center gap-2 font-medium">
-            <span className="font-sans tracking-[-0.2px]">Conductor QPU</span>
-            <span className="px-1.5 py-px rounded text-[10px] text-black font-mono tracking-[0.5px]" style={{background: 'var(--success)'}}>LIVE</span>
-            <span className={isReady ? "text-success" : "text-applied"}>
-              {isReady ? "READY" : "CAL NEEDED"}
-            </span>
-            {readiness && <span className="text-zinc-500">· {readiness}</span>}
-          </div>
-
-          <div className="ml-auto flex items-center gap-4 instrument-mono text-zinc-400">
-            {q0Fid != null && (
-              <span>Q0 <span className="text-zinc-200">{(q0Fid * 100).toFixed(1)}</span>%</span>
-            )}
-            {q0Temp != null && (
-              <span><span className="text-zinc-200">{q0Temp}</span> mK</span>
-            )}
-            {detuning && (
-              <span className="text-applied">Δf {Number(detuning.frequency_error || 0).toFixed(3)}</span>
-            )}
-            {latestFidelity != null && (
-              <span>fid <span className="text-true">{latestFidelity.toFixed(4)}</span></span>
-            )}
-
-            <button
-              onClick={() => setCommandOpen(true)}
-              className="rounded border hairline px-1.5 py-px hover:bg-white/5"
-              title="⌘K"
-            >
-              <CommandIcon className="h-3 w-3" />
-            </button>
-            <button
-              onClick={() => { void refreshDevice(); void refreshMetrics() }}
-              className="rounded border hairline px-1.5 py-px hover:bg-white/5"
-            >
-              refresh
-            </button>
-          </div>
+      {/* Frosted macOS / iMovie toolbar */}
+      <div className="toolbar relative">
+        {/* Traffic lights */}
+        <div className="traffic">
+          <div className="traffic-dot close" />
+          <div className="traffic-dot min" />
+          <div className="traffic-dot max" />
         </div>
 
-        {backendDown && (
-          <div className="absolute top-[34px] left-0 right-0 z-40 text-[10px] px-3 py-px bg-red-950/70 text-red-300 border-b border-red-900/40">
-            Cannot reach backend — start with <span className="font-mono">make run-api</span>
-          </div>
-        )}
-
-        <CalibrationSurfaceLazy
-          detuning={detuning}
-          applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
-          fidelityHistory={surfaceHistory}
-          readinessScore={device?.readiness_score ?? 0.7}
-          readoutFidelity={device?.readout_fidelity ?? null}
-          className="absolute inset-0"
-        />
-
-        {/* Tiny stage label */}
-        <div className="absolute top-3 left-3 stage-hud text-zinc-500 pointer-events-none">
-          param drift · Δfreq × Δamp
+        <div className="flex items-center gap-2 font-medium pl-4">
+          <span className="font-sans tracking-[-0.2px]">Conductor QPU</span>
+          <span className="px-1.5 py-px rounded text-[10px] text-black font-mono tracking-[0.5px]" style={{background: 'var(--success)'}}>LIVE</span>
+          <span className={isReady ? "text-success" : "text-applied"}>
+            {isReady ? "READY" : "CAL NEEDED"}
+          </span>
+          {readiness && <span className="text-zinc-500">· {readiness}</span>}
         </div>
 
-        {/* Small fidelity climb HUD (only when we have real steps) */}
-        {activeTurn && activeTurn.fidelityHistory.length > 0 && (
-          <div className="absolute bottom-3 right-3 w-[300px] hud rounded px-2 py-1.5 text-[10px]">
-            <div className="flex items-baseline justify-between mb-0.5 px-1">
-              <div className="text-zinc-400">fidelity climb</div>
-              <div className="instrument-mono" style={{color: 'var(--success)'}}>
-                {latestFidelity?.toFixed(4)} / {threshold}
-              </div>
-            </div>
-            <div className="h-[72px] -mx-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart
-                  data={activeTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))}
-                  margin={{ top: 2, right: 6, bottom: 0, left: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
-                  <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
-                  <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
-                  <ReferenceLine y={threshold} stroke="#FF9500" strokeDasharray="2 2" />
-                  <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
+        <div className="ml-auto flex items-center gap-4 instrument-mono text-zinc-400 pr-1">
+          {q0Fid != null && <span>Q0 <span className="text-white">{(q0Fid * 100).toFixed(1)}</span>%</span>}
+          {q0Temp != null && <span><span className="text-white">{q0Temp}</span> mK</span>}
+          {detuning && <span className="text-applied">Δf {Number(detuning.frequency_error || 0).toFixed(3)}</span>}
+          {latestFidelity != null && <span>fid <span className="text-true">{latestFidelity.toFixed(4)}</span></span>}
+
+          <button onClick={() => setCommandOpen(true)} className="rounded border hairline px-1.5 py-px hover:bg-white/5" title="⌘K">
+            <CommandIcon className="h-3 w-3" />
+          </button>
+          <button onClick={() => { void refreshDevice(); void refreshMetrics() }} className="rounded border hairline px-1.5 py-px hover:bg-white/5">
+            refresh
+          </button>
+        </div>
       </div>
 
-      {/* BOTTOM 35% — agent zone (continuous gradient, no hard seam) */}
-      <div className="lower">
-        <div className="constrained">
-          {/* Quiet centered ledger turns */}
-          {ledger.length > 0 && (
-            <div className="ledger mb-1">
-              {ledger.map((t) => {
-                const isSel = t.id === selectedTurnId
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedTurnId(t.id)}
-                    className={`ledger-row w-full text-left ${isSel ? "selected" : ""}`}
-                  >
-                    <span className="text-zinc-500 w-[76px] shrink-0 tabular-nums instrument-mono">
-                      {new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-                    </span>
-                    <span className="text-true shrink-0">{t.goal}</span>
-                    <span className="text-zinc-400 truncate">{lastSummary(t)}</span>
-                    {t.status === "running" && <span className="ml-auto text-applied">running</span>}
-                    {t.status === "failed" && <span className="ml-auto text-red-400">failed</span>}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Intent chips + centered composer */}
-          <div className="mt-1 flex flex-col items-center gap-2">
-            <div className="flex flex-wrap justify-center gap-1.5">
-              {suggested.map((s, i) => (
-                <button
-                  key={i}
-                  onClick={() => runSuggested(s.goal)}
-                  disabled={!connected || submitting}
-                  className="preset-chip"
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="composer-wrap w-full">
-              <div className="composer">
-                <input
-                  className="instrument-mono"
-                  placeholder="Type a goal… or pick above"
-                  value={goalInput}
-                  onChange={(e) => setGoalInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !submitting) void submitGoal(goalInput) }}
-                  disabled={submitting || !connected}
-                />
-                {hasRunning ? (
-                  <Button variant="outline" size="sm" className="h-7 border-white/10" onClick={() => { void stopActive() }}>
-                    <Square className="h-3 w-3 mr-1" /> stop
-                  </Button>
-                ) : (
-                  <button
-                    onClick={() => { void submitGoal(goalInput) }}
-                    disabled={submitting || !goalInput.trim() || !connected}
-                    className="rounded-full p-1.5 hover:bg-white/5 disabled:opacity-40"
-                    aria-label="send"
-                  >
-                    <Send className="h-4 w-4" />
-                  </button>
-                )}
-                <button
-                  onClick={() => setCommandOpen(true)}
-                  className="ml-1 text-[10px] px-1.5 py-0.5 rounded border hairline text-zinc-500 hover:text-zinc-300"
-                  title="⌘K"
-                >
-                  ⌘K
-                </button>
+      {/* Main content: 65/35 split with bezel + material dock */}
+      <div className="main-split">
+        {/* HERO 65% — viewer bezel */}
+        <div className="hero">
+          <div className="viewer-bezel h-full">
+            {backendDown && (
+              <div className="absolute top-2 left-2 z-40 text-[10px] px-2 py-px rounded bg-red-950/80 text-red-300 border border-red-900/40">
+                Cannot reach backend — <span className="font-mono">make run-api</span>
               </div>
-            </div>
-          </div>
-
-          {/* Slim in-rail details for selected turn */}
-          <AnimatePresence>
-            {selectedTurn && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.12, ease: easeOut }}
-                className="details mt-2 rounded p-2 overflow-hidden"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-zinc-400">{selectedTurn.goal}</div>
-                  <button className="text-[10px] text-zinc-500" onClick={() => setSelectedTurnId(null)}>close</button>
-                </div>
-
-                {selectedTurn.fidelityHistory.length > 0 && (
-                  <div className="h-[84px] -mx-1 mb-2">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={selectedTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: -4 }}>
-                        <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
-                        <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
-                        <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
-                        <ReferenceLine y={selectedTurn.calThreshold} stroke="#FF9500" strokeDasharray="2 2" />
-                        <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={{ r: 1 }} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-
-                {selectedTurn.traces.length > 0 && (
-                  <div className="instrument-mono text-[10px] text-zinc-400 space-y-px max-h-[58px] overflow-auto">
-                    {selectedTurn.traces.slice(-5).map((tr, i) => (
-                      <div key={i}>{new Date(tr.ts * 1000).toLocaleTimeString()} · {tr.tool} · {tr.summary}</div>
-                    ))}
-                  </div>
-                )}
-
-                {selectedTurn.bellCounts && (
-                  <div className="instrument-mono text-true text-[10px] mt-1">
-                    {JSON.stringify(selectedTurn.bellCounts)}
-                  </div>
-                )}
-              </motion.div>
             )}
-          </AnimatePresence>
+
+            <CalibrationSurfaceLazy
+              detuning={detuning}
+              applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
+              fidelityHistory={surfaceHistory}
+              readinessScore={device?.readiness_score ?? 0.7}
+              readoutFidelity={device?.readout_fidelity ?? null}
+              className="absolute inset-0"
+            />
+
+            <div className="absolute top-2 left-2 stage-hud text-zinc-500 pointer-events-none">param drift · Δfreq × Δamp</div>
+
+            {activeTurn && activeTurn.fidelityHistory.length > 0 && (
+              <div className="absolute bottom-2 right-2 w-[280px] hud rounded px-2 py-1 text-[10px]">
+                <div className="flex items-baseline justify-between mb-0.5 px-1">
+                  <div className="text-zinc-400">fidelity climb</div>
+                  <div className="instrument-mono" style={{color: 'var(--success)'}}>
+                    {latestFidelity?.toFixed(4)} / {threshold}
+                  </div>
+                </div>
+                <div className="h-[64px] -mx-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={activeTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
+                      <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
+                      <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
+                      <ReferenceLine y={threshold} stroke="#FF9500" strokeDasharray="2 2" />
+                      <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="mt-auto pt-1 text-[9px] text-zinc-600 text-center">Real control plane. Traces only. No LLM.</div>
+        {/* BOTTOM 35% — material dock (iMovie library) */}
+        <div className="dock">
+          <div className="constrained">
+            {/* Clip rows (ledger as clip list) */}
+            {ledger.length > 0 && (
+              <div className="clip-list">
+                {ledger.map((t) => {
+                  const isSel = t.id === selectedTurnId;
+                  return (
+                    <button key={t.id} onClick={() => setSelectedTurnId(t.id)} className={`clip-row w-full text-left ${isSel ? "selected" : ""}`}>
+                      <span className="time instrument-mono">{new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
+                      <span className="text-true shrink-0">{t.goal}</span>
+                      <span className="text-zinc-400 truncate">{lastSummary(t)}</span>
+                      {t.status === "running" && <span className="ml-auto text-applied">running</span>}
+                      {t.status === "failed" && <span className="ml-auto text-fail">failed</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Chips + centered native-style composer */}
+            <div className="mt-1 flex flex-col items-center gap-2">
+              <div className="flex flex-wrap justify-center gap-1.5">
+                {suggested.map((s, i) => (
+                  <button key={i} onClick={() => runSuggested(s.goal)} disabled={!connected || submitting} className="preset-chip">
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="composer-wrap w-full">
+                <div className="composer">
+                  <input
+                    className="instrument-mono"
+                    placeholder="Type a goal… or pick above"
+                    value={goalInput}
+                    onChange={(e) => setGoalInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !submitting) void submitGoal(goalInput) }}
+                    disabled={submitting || !connected}
+                  />
+                  {hasRunning ? (
+                    <Button variant="outline" size="sm" className="h-7 border-white/10" onClick={() => { void stopActive() }}>
+                      <Square className="h-3 w-3 mr-1" /> stop
+                    </Button>
+                  ) : (
+                    <button onClick={() => { void submitGoal(goalInput) }} disabled={submitting || !goalInput.trim() || !connected} className="rounded-full p-1.5 hover:bg-white/5 disabled:opacity-40" aria-label="send">
+                      <Send className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button onClick={() => setCommandOpen(true)} className="ml-1 text-[10px] px-1.5 py-0.5 rounded border hairline text-zinc-500 hover:text-zinc-300" title="⌘K">⌘K</button>
+                </div>
+              </div>
+            </div>
+
+            {/* Slim details (still in dock, never steals stage) */}
+            <AnimatePresence>
+              {selectedTurn && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.12, ease: easeOut }} className="details mt-2 rounded p-2 overflow-hidden">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="text-zinc-400">{selectedTurn.goal}</div>
+                    <button className="text-[10px] text-zinc-500" onClick={() => setSelectedTurnId(null)}>close</button>
+                  </div>
+
+                  {selectedTurn.fidelityHistory.length > 0 && (
+                    <div className="h-[84px] -mx-1 mb-2">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={selectedTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: -4 }}>
+                          <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
+                          <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
+                          <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
+                          <ReferenceLine y={selectedTurn.calThreshold} stroke="#FF9500" strokeDasharray="2 2" />
+                          <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={{ r: 1 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {selectedTurn.traces.length > 0 && (
+                    <div className="instrument-mono text-[10px] text-zinc-400 space-y-px max-h-[58px] overflow-auto">
+                      {selectedTurn.traces.slice(-5).map((tr, i) => (
+                        <div key={i}>{new Date(tr.ts * 1000).toLocaleTimeString()} · {tr.tool} · {tr.summary}</div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selectedTurn.bellCounts && (
+                    <div className="instrument-mono text-true text-[10px] mt-1">{JSON.stringify(selectedTurn.bellCounts)}</div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className="mt-auto pt-0.5 text-[9px] text-zinc-600 text-center">Real control plane. Traces only. No LLM.</div>
+        </div>
       </div>
     </div>
-  </div>
   )
 }
