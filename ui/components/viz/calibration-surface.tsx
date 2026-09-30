@@ -78,10 +78,10 @@ function FidelitySurface({
       const dy = y - trueOffset.y
       const f = estimateFidelity(dx, dy, latestFidelity || 0.75)
       pos.setZ(i, (f - 0.5) * surfaceGain)
-      // emerald → amber → red
-      if (f >= 0.88) color.setRGB(0.06, 0.75, 0.45)
-      else if (f >= 0.75) color.setRGB(0.96, 0.62, 0.04)
-      else color.setRGB(0.86, 0.2, 0.27)
+      // Quantum palette: electric teal (true/high) → soft gold/coral (applied/mid) → muted violet (low)
+      if (f >= 0.88) color.setHex(0x67f6ff)
+      else if (f >= 0.75) color.setHex(0xfb923c)
+      else color.setHex(0xa78bfa)
       colors[i * 3] = color.r
       colors[i * 3 + 1] = color.g
       colors[i * 3 + 2] = color.b
@@ -128,19 +128,19 @@ function Markers({
 
   return (
     <group>
-      {/* Applied params sit at landscape origin (what we set) */}
+      {/* Applied params sit at landscape origin (what we set) — soft gold/coral */}
       <mesh ref={appliedRef} position={[0, 0.45, 0]}>
         <sphereGeometry args={[0.055, 16, 16]} />
-        <meshStandardMaterial color="#f59e0b" emissive="#f59e0b" emissiveIntensity={0.55} />
+        <meshStandardMaterial color="#fb923c" emissive="#fb923c" emissiveIntensity={0.65} />
       </mesh>
-      {/* True target drifts with live detuning */}
+      {/* True target drifts with live detuning — electric teal */}
       <mesh ref={trueRef} position={[trueX, 0.55, trueY]}>
-        <sphereGeometry args={[0.07, 16, 16]} />
-        <meshStandardMaterial color="#22d3ee" emissive="#22d3ee" emissiveIntensity={0.7} />
+        <sphereGeometry args={[0.072, 16, 16]} />
+        <meshStandardMaterial color="#67f6ff" emissive="#67f6ff" emissiveIntensity={0.85} />
       </mesh>
       <mesh position={[trueX, 0.02, trueY]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.1, 0.14, 32]} />
-        <meshBasicMaterial color="#22d3ee" transparent opacity={0.55} />
+        <ringGeometry args={[0.095, 0.135, 32]} />
+        <meshBasicMaterial color="#67f6ff" transparent opacity={0.45} />
       </mesh>
     </group>
   )
@@ -159,14 +159,15 @@ function Scene({
 }) {
   return (
     <>
-      <color attach="background" args={["#09090b"]} />
-      <ambientLight intensity={0.45} />
-      <directionalLight position={[3, 5, 2]} intensity={1.1} />
-      <directionalLight position={[-2, 2, -3]} intensity={0.35} color="#67e8f9" />
+      <color attach="background" args={["#000000"]} />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[4.5, 7.5, 3.5]} intensity={1.55} />
+      <directionalLight position={[-5, 2.5, -6]} intensity={0.55} color="#a5b4fc" />
+      <pointLight position={[0.5, 4.2, 1.5]} intensity={0.7} color="#ffffff" />
       <FidelitySurface detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} />
       <Markers detuning={detuning} />
-      <gridHelper args={[3, 12, "#27272a", "#18181b"]} position={[0, -0.35, 0]} />
-      <OrbitControls enablePan={false} minDistance={2.2} maxDistance={5.5} maxPolarAngle={Math.PI / 2.1} />
+      <gridHelper args={[3, 12, "#1f2937", "#111113"]} position={[0, -0.35, 0]} />
+      <OrbitControls enablePan={false} minDistance={2.1} maxDistance={5.8} maxPolarAngle={Math.PI / 2.05} />
     </>
   )
 }
@@ -262,31 +263,30 @@ export function CalibrationSurface({
       </Canvas>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2 text-[10px]">
-        <div className="rounded bg-black/50 px-2 py-1 font-mono text-zinc-300 backdrop-blur">
-          <span className="text-cyan-400">●</span> true target &nbsp;
-          <span className="text-amber-400">●</span> applied &nbsp;
+        <div className="rounded bg-black/60 px-2 py-1 font-mono text-zinc-300 backdrop-blur border border-white/10">
+          <span style={{color: '#67f6ff'}}>●</span> true &nbsp;
+          <span style={{color: '#fb923c'}}>●</span> applied &nbsp;
           drift={driftMag.toFixed(4)}
           {applied?.frequency != null && (
             <span className="text-zinc-500">
-              {" "}
-              · f={applied.frequency.toFixed(3)} a={Number(applied.amplitude ?? 0).toFixed(3)}
+              {" "}· f={applied.frequency.toFixed(3)} a={Number(applied.amplitude ?? 0).toFixed(3)}
             </span>
           )}
         </div>
         <div
           className={cn(
-            "rounded px-2 py-1 font-mono backdrop-blur",
+            "rounded px-2 py-1 font-mono backdrop-blur border border-white/10",
             mode === "webgpu"
-              ? "bg-emerald-950/70 text-emerald-300"
+              ? "bg-[#0a0a0f] text-[#67f6ff]"
               : mode === "checking"
-                ? "bg-zinc-900/70 text-zinc-400"
-                : "bg-amber-950/70 text-amber-300",
+                ? "bg-[#0a0a0f] text-zinc-400"
+                : "bg-[#0a0a0f] text-[#fb923c]",
           )}
         >
           {mode === "webgpu" && "WebGPU"}
-          {mode === "webgl" && "WebGL fallback"}
+          {mode === "webgl" && "WebGL"}
           {mode === "checking" && "init…"}
-          {mode === "unavailable" && "GPU unavailable"}
+          {mode === "unavailable" && "no GPU"}
         </div>
       </div>
 

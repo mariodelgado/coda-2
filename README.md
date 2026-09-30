@@ -66,12 +66,7 @@ make run-ui-dev            # Next.js on :3000
 Open http://localhost:3000.
 
 **Layout #2 — quantum instrument (this PR):**  
-- Thin 32 px status bar at top: product name · LIVE · READY · instrument mono readouts (Q0 fidelity, mK, Δfreq, latest fid).  
-- Center stage is the full hero: WebGPU param-drift surface (cyan = true target, amber = applied). Fidelity climb HUD appears in the corner only when a calibration is active.  
-- Bottom agent rail only: soft intent chips + composer. Quiet ledger-line turns stack upward in a shallow dock (no full-page chat, no bubbles, no cards).  
-- Details (fidelity plot + traces) expand inside the rail as a slim panel — never steal the stage.  
-- Typography: geometric sans for labels; premium mono (IBM Plex Mono + Geist Mono) for every metric, trace, fidelity, temp, and qubit id.  
-- First paint feels like a scope/stage, not SaaS or theater.
+Golden split (φ): top ~38% premium WebGPU drift hero on gradient black; bottom ~62% with centered composer (max ~42rem) + chips + constrained ledger. Quantum palette: electric teal (true), soft gold (applied). Mono readouts. No bubbles/cards. Details in-rail only.
 
 ### Walk (do this in order)
 
