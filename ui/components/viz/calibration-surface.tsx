@@ -78,10 +78,10 @@ function FidelitySurface({
       const dy = y - trueOffset.y
       const f = estimateFidelity(dx, dy, latestFidelity || 0.75)
       pos.setZ(i, (f - 0.5) * surfaceGain)
-      // Quantum palette: electric teal (true/high) → soft gold/coral (applied/mid) → muted violet (low)
-      if (f >= 0.88) color.setHex(0x67f6ff)
-      else if (f >= 0.75) color.setHex(0xfb923c)
-      else color.setHex(0xa78bfa)
+      // iOS system palette (no purple): system blue for high/true, system orange for mid/applied, tertiary gray for low
+      if (f >= 0.88) color.setHex(0x007AFF)
+      else if (f >= 0.75) color.setHex(0xFF9500)
+      else color.setHex(0x8E8E93)
       colors[i * 3] = color.r
       colors[i * 3 + 1] = color.g
       colors[i * 3 + 2] = color.b
@@ -128,19 +128,19 @@ function Markers({
 
   return (
     <group>
-      {/* Applied params sit at landscape origin (what we set) — soft gold/coral */}
+      {/* Applied params sit at landscape origin (what we set) — system orange */}
       <mesh ref={appliedRef} position={[0, 0.45, 0]}>
         <sphereGeometry args={[0.055, 16, 16]} />
-        <meshStandardMaterial color="#fb923c" emissive="#fb923c" emissiveIntensity={0.65} />
+        <meshStandardMaterial color="#FF9500" emissive="#FF9500" emissiveIntensity={0.65} />
       </mesh>
-      {/* True target drifts with live detuning — electric teal */}
+      {/* True target drifts with live detuning — system blue */}
       <mesh ref={trueRef} position={[trueX, 0.55, trueY]}>
         <sphereGeometry args={[0.072, 16, 16]} />
-        <meshStandardMaterial color="#67f6ff" emissive="#67f6ff" emissiveIntensity={0.85} />
+        <meshStandardMaterial color="#007AFF" emissive="#007AFF" emissiveIntensity={0.85} />
       </mesh>
       <mesh position={[trueX, 0.02, trueY]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.095, 0.135, 32]} />
-        <meshBasicMaterial color="#67f6ff" transparent opacity={0.45} />
+        <meshBasicMaterial color="#007AFF" transparent opacity={0.45} />
       </mesh>
     </group>
   )
@@ -251,7 +251,7 @@ export function CalibrationSurface({
   }, [detuning])
 
   return (
-    <div className={cn("relative h-full w-full overflow-hidden rounded-lg border border-white/10 bg-zinc-950", className)}>
+    <div className={cn("relative h-full w-full overflow-hidden", className)}>
       <Canvas
         dpr={[1, 1.75]}
         camera={{ position: [1.6, 1.5, 2.2], fov: 42, near: 0.1, far: 40 }}
@@ -264,8 +264,8 @@ export function CalibrationSurface({
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2 text-[10px]">
         <div className="rounded bg-black/60 px-2 py-1 font-mono text-zinc-300 backdrop-blur border border-white/10">
-          <span style={{color: '#67f6ff'}}>●</span> true &nbsp;
-          <span style={{color: '#fb923c'}}>●</span> applied &nbsp;
+          <span style={{color: '#007AFF'}}>●</span> true &nbsp;
+          <span style={{color: '#FF9500'}}>●</span> applied &nbsp;
           drift={driftMag.toFixed(4)}
           {applied?.frequency != null && (
             <span className="text-zinc-500">
@@ -277,10 +277,10 @@ export function CalibrationSurface({
           className={cn(
             "rounded px-2 py-1 font-mono backdrop-blur border border-white/10",
             mode === "webgpu"
-              ? "bg-[#0a0a0f] text-[#67f6ff]"
+              ? "bg-[#0a0a0f] text-[#007AFF]"
               : mode === "checking"
                 ? "bg-[#0a0a0f] text-zinc-400"
-                : "bg-[#0a0a0f] text-[#fb923c]",
+                : "bg-[#0a0a0f] text-[#FF9500]",
           )}
         >
           {mode === "webgpu" && "WebGPU"}

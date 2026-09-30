@@ -2,15 +2,19 @@
 
 :root {
   --background: #000000;
-  --foreground: #e4e4e7;
+  --foreground: #FFFFFF;
 
-  /* Quantum instrument palette */
-  --true: #67f6ff;        /* electric teal / cyan — true target */
-  --applied: #fb923c;     /* soft gold / coral-amber — applied */
-  --secondary: #a78bfa;   /* muted violet */
-  --hairline: rgba(255, 255, 255, 0.06);
-  --panel: #0a0a0f;
-  --panel-2: #050508;
+  /* iOS system dark palette (SF-feel) */
+  --true: #007AFF;          /* system blue — true/target */
+  --applied: #FF9500;       /* system orange — applied */
+  --success: #34C759;       /* system green */
+  --fail: #FF3B30;          /* system red */
+  --label: #FFFFFF;
+  --secondary-label: rgba(235, 235, 245, 0.60);  /* #EBEBF5 @ 60% */
+  --tertiary-label: #8E8E93;
+  --hairline: rgba(84, 84, 88, 0.65);  /* iOS dark separator */
+  --fill: rgba(120, 120, 128, 0.18);
+  --panel: #1C1C1E;
 
   /* Typography */
   --font-sans: var(--font-geist-sans);
@@ -22,7 +26,7 @@
 
 .dark {
   --background: #000000;
-  --foreground: #e4e4e7;
+  --foreground: #FFFFFF;
 }
 
 * {
@@ -35,11 +39,12 @@ html, body {
 
 body {
   background: #000000;
-  color: #e4e4e7;
+  color: #FFFFFF;
   font-family: var(--font-sans);
+  /* Continuous gradient black void — blends hero + agent zone with no hard seam */
   background-image:
-    radial-gradient(circle at 50% 18%, rgba(103, 246, 255, 0.035) 0%, transparent 42%),
-    linear-gradient(to bottom, #000000 0%, #050508 38%, #0a0a0f 100%);
+    radial-gradient(ellipse at 50% 20%, rgba(0, 122, 255, 0.035) 0%, transparent 60%),
+    linear-gradient(180deg, #000000 0%, #030303 32%, #050505 100%);
 }
 
 /* Instrument mono for all data */
@@ -52,33 +57,35 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Floating instrument status bar (over viz) */
+/* Floating instrument status bar (over viz) — iOS style, very light, no hard cut */
 .status-bar {
   height: 32px;
   font-size: 11px;
   letter-spacing: 0.02em;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--hairline);
+  /* no bottom border — keeps the viz continuous under the bar */
 }
 
-/* Golden-ratio hero (top ~38%) */
+/* 65/35 split — top hero viz 65%, bottom agent 35%.
+   Wrapped in a flex-1 column so % is of remaining height after status bar. */
 .hero {
-  height: 38.2vh;
-  min-height: 220px;
+  flex: 0 0 65%;
+  min-height: 260px;
   position: relative;
   overflow: hidden;
-  background: #000000;
+  background: transparent;
 }
 
-/* Lower agent zone (~62%) — centered content */
+/* Lower agent zone — 35%, blended */
 .lower {
-  flex: 1;
+  flex: 0 0 35%;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  padding-top: 8px;
-  padding-bottom: 12px;
+  padding-top: 4px;
+  padding-bottom: 6px;
+  background: transparent;
 }
 
 /* Constrained centered column for ledger + composer */
@@ -114,8 +121,8 @@ body {
   background: rgba(255,255,255,0.018);
 }
 .ledger-row.selected {
-  background: rgba(103, 246, 255, 0.06);
-  color: #e4e4e7;
+  background: rgba(0, 122, 255, 0.08);
+  color: #FFFFFF;
 }
 
 /* Preset chips — calm */
@@ -181,10 +188,19 @@ body {
   border-color: var(--hairline);
 }
 
-/* Quantum accent helpers */
-.text-true { color: var(--true); }
-.text-applied { color: var(--applied); }
-.text-secondary { color: var(--secondary); }
+/* iOS system accent helpers (no violet) */
+.text-true { color: var(--true); }        /* system blue */
+.text-applied { color: var(--applied); }  /* system orange */
+.text-success { color: var(--success); }  /* system green */
+.text-fail { color: var(--fail); }        /* system red */
+
+/* iOS dark fills / separators */
+.ios-fill {
+  background: var(--fill);
+}
+.ios-separator {
+  border-color: var(--hairline);
+}
 
 /* Details rail panel */
 .details {

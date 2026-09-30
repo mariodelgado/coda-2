@@ -326,17 +326,19 @@ export default function ConductorQPUInstrument() {
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#000000] text-zinc-200 flex flex-col">
+    <div className="h-screen w-screen overflow-hidden bg-[#000000] text-white flex flex-col">
       <CommandPalette actions={commandActions} disabled={!connected && backendDown} />
 
-      {/* HERO — top ~38% (golden) — gradient page bg shows through */}
-      <div className="hero">
+      {/* Status bar is thin; the rest of the viewport is split 65/35 with continuous gradient (no hard seam) */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* HERO — 65% of remaining height */}
+        <div className="hero">
         {/* Floating instrument status bar over the viz */}
         <div className="status-bar absolute top-0 left-0 right-0 z-50 flex items-center px-3">
           <div className="flex items-center gap-2 font-medium">
             <span className="font-sans tracking-[-0.2px]">Conductor QPU</span>
-            <span className="px-1.5 py-px rounded bg-emerald-500 text-[10px] text-black font-mono tracking-[0.5px]">LIVE</span>
-            <span className={isReady ? "text-emerald-400" : "text-amber-400"}>
+            <span className="px-1.5 py-px rounded text-[10px] text-black font-mono tracking-[0.5px]" style={{background: 'var(--success)'}}>LIVE</span>
+            <span className={isReady ? "text-success" : "text-applied"}>
               {isReady ? "READY" : "CAL NEEDED"}
             </span>
             {readiness && <span className="text-zinc-500">· {readiness}</span>}
@@ -397,7 +399,7 @@ export default function ConductorQPUInstrument() {
           <div className="absolute bottom-3 right-3 w-[300px] hud rounded px-2 py-1.5 text-[10px]">
             <div className="flex items-baseline justify-between mb-0.5 px-1">
               <div className="text-zinc-400">fidelity climb</div>
-              <div className="instrument-mono text-emerald-400">
+              <div className="instrument-mono" style={{color: 'var(--success)'}}>
                 {latestFidelity?.toFixed(4)} / {threshold}
               </div>
             </div>
@@ -410,8 +412,8 @@ export default function ConductorQPUInstrument() {
                   <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
                   <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
                   <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
-                  <ReferenceLine y={threshold} stroke="#fb923c" strokeDasharray="2 2" />
-                  <Line type="monotone" dataKey="fidelity" stroke="#67f6ff" strokeWidth={1.5} dot={false} />
+                  <ReferenceLine y={threshold} stroke="#FF9500" strokeDasharray="2 2" />
+                  <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -419,7 +421,7 @@ export default function ConductorQPUInstrument() {
         )}
       </div>
 
-      {/* LOWER AGENT ZONE — ~62% golden */}
+      {/* BOTTOM 35% — agent zone (continuous gradient, no hard seam) */}
       <div className="lower">
         <div className="constrained">
           {/* Quiet centered ledger turns */}
@@ -518,8 +520,8 @@ export default function ConductorQPUInstrument() {
                         <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
                         <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
                         <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
-                        <ReferenceLine y={selectedTurn.calThreshold} stroke="#fb923c" strokeDasharray="2 2" />
-                        <Line type="monotone" dataKey="fidelity" stroke="#67f6ff" strokeWidth={1.5} dot={{ r: 1 }} />
+                        <ReferenceLine y={selectedTurn.calThreshold} stroke="#FF9500" strokeDasharray="2 2" />
+                        <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={{ r: 1 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -546,5 +548,6 @@ export default function ConductorQPUInstrument() {
         <div className="mt-auto pt-1 text-[9px] text-zinc-600 text-center">Real control plane. Traces only. No LLM.</div>
       </div>
     </div>
+  </div>
   )
 }

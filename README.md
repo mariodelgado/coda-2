@@ -66,7 +66,7 @@ make run-ui-dev            # Next.js on :3000
 Open http://localhost:3000.
 
 **Layout #2 — quantum instrument (this PR):**  
-Golden split (φ): top ~38% premium WebGPU drift hero on gradient black; bottom ~62% with centered composer (max ~42rem) + chips + constrained ledger. Quantum palette: electric teal (true), soft gold (applied). Mono readouts. No bubbles/cards. Details in-rail only.
+65/35 split (top hero 65% viz, bottom 35% agent). Continuous gradient black (no hard seam). iOS system palette (blue true/target, orange applied, green/red status, label grays, iOS hairlines). Centered composer (max ~42rem) in bottom band. Mono instrument readouts. No bubbles/cards. Details in-rail only.
 
 ### Walk (do this in order)
 
