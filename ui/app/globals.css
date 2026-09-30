@@ -129,19 +129,92 @@ body {
   position: relative;
 }
 
-/* Bottom dock / library (35%) — frosted material with rounded top */
+/* Bottom dock (35%) — progressive / graduated blur.
+   Strongest (more opaque + more blur) near the composer at the bottom.
+   Fades upward toward transparent so the WebGPU viz shows through at the top of the dock.
+   Chromium-friendly: stacked semi-transparent layers + backdrop-filter + mask-image gradients.
+   Not a solid panel — the upper portion of the 35% zone is nearly see-through. */
 .dock {
   flex: 0 0 35%;
   display: flex;
   flex-direction: column;
-  background: rgba(28, 28, 30, 0.88);
-  backdrop-filter: blur(24px) saturate(170%);
-  -webkit-backdrop-filter: blur(24px) saturate(170%);
-  border-top: 1px solid var(--hairline);
+  position: relative;
+  /* Subtle top hairline for separation; the progressive bg fades so this doesn't create a "bar" */
+  border-top: 1px solid rgba(84, 84, 88, 0.38);
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
   padding: 8px 0 4px;
   overflow: hidden;
+  background: transparent;
+}
+
+/* Primary heavy blur layer — strongest at very bottom (composer area), falls off quickly upward */
+.dock::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(
+    to top,
+    rgba(28, 28, 30, 0.94) 0%,
+    rgba(28, 28, 30, 0.82) 16%,
+    rgba(28, 28, 30, 0.48) 34%,
+    rgba(28, 28, 30, 0.18) 50%,
+    rgba(28, 28, 30, 0.04) 66%,
+    transparent 82%
+  );
+  backdrop-filter: blur(28px) saturate(175%);
+  -webkit-backdrop-filter: blur(28px) saturate(175%);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  /* Confine the heavy material almost entirely to the lower ~half of the dock */
+  mask-image: linear-gradient(
+    to top,
+    black 0%,
+    black 42%,
+    transparent 80%
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    black 0%,
+    black 42%,
+    transparent 80%
+  );
+}
+
+/* Secondary lighter blur layer — fills the transition band and smooths the handoff to full transparency */
+.dock::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to top,
+    transparent 6%,
+    rgba(28, 28, 30, 0.26) 24%,
+    rgba(28, 28, 30, 0.10) 44%,
+    rgba(28, 28, 30, 0.02) 62%,
+    transparent 82%
+  );
+  backdrop-filter: blur(9px) saturate(120%);
+  -webkit-backdrop-filter: blur(9px) saturate(120%);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
+  /* This layer lives mostly in the mid-upper dock to create continuous graduation, then disappears */
+  mask-image: linear-gradient(
+    to top,
+    transparent 4%,
+    black 20%,
+    black 56%,
+    transparent 82%
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent 4%,
+    black 20%,
+    black 56%,
+    transparent 82%
+  );
 }
 
 /* Constrained centered column for ledger + composer */
