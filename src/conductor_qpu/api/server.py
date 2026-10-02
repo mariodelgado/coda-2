@@ -177,7 +177,9 @@ def device_state() -> dict[str, Any]:
 
 @app.post("/goals")
 def post_goal(req: GoalRequest) -> GoalResponse:
-    # Capture a lightweight device snapshot for the narrator to reference
+    # Run the goal first, then capture a *fresh* device snapshot so the narrator
+    # sees the post-calibration readiness (is_ready + score) for affirmative messaging.
+    full = _orchestrator.run_goal_full(req.goal, device_snapshot=None)
     try:
         dev = _backend.get_device_state()
         device_snapshot = {
@@ -189,7 +191,17 @@ def post_goal(req: GoalRequest) -> GoalResponse:
     except Exception:  # noqa: BLE001
         device_snapshot = None
 
-    full = _orchestrator.run_goal_full(req.goal, device_snapshot=device_snapshot)
+    # Re-narrate with the fresh snapshot if the orchestrator didn't already have one.
+    # This ensures "Q0 ... is usable for circuits" appears when the predicate passes.
+    if device_snapshot:
+        try:
+            from conductor_qpu.orchestrator.narrator import narrate as renarrate
+
+            fresh_msg = renarrate(req.goal, full.get("traces", []), full.get("results", []), device_snapshot=device_snapshot)
+            if fresh_msg:
+                full["agent_message"] = fresh_msg
+        except Exception:  # noqa: BLE001
+            pass
     out = full.get("results", [])
     for r in out:
         if r.get("latency_s"):
