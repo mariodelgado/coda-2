@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from typing import Any
 from uuid import UUID
 
@@ -30,7 +31,6 @@ from conductor_qpu.models import types as model_types
 from conductor_qpu.models.types import JobType, QPUJob
 from conductor_qpu.observability.metrics import MetricsAggregator
 from conductor_qpu.orchestrator.orchestrator import Orchestrator
-from conductor_qpu.orchestrator.planner import plan
 
 # Optional import for demo long-job helper on sim
 try:
@@ -86,8 +86,14 @@ class BellRequest(BaseModel):
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "service": "conductor-qpu"}
+def health() -> dict[str, Any]:
+    llm_on = os.getenv("CONDUCTOR_ENABLE_LLM", "0") in ("1", "true", "yes")
+    return {
+        "status": "ok",
+        "service": "conductor-qpu",
+        "llm_planner": "on" if llm_on else "off",
+        "llm_model": os.getenv("CONDUCTOR_LLM_MODEL", "gpt-4o-mini") if llm_on else None,
+    }
 
 
 @app.get("/device/state")
@@ -117,12 +123,14 @@ def post_goal(req: GoalRequest) -> GoalResponse:
     results = _orchestrator.run_goal(req.goal)
     out = []
     for r in results:
-        out.append({
-            "ok": r.ok,
-            "data": r.data,
-            "latency_s": r.latency_s,
-            "error": r.error,
-        })
+        out.append(
+            {
+                "ok": r.ok,
+                "data": r.data,
+                "latency_s": r.latency_s,
+                "error": r.error,
+            }
+        )
         if r.latency_s:
             _metrics.record_latency(r.latency_s)
     traces = _orchestrator.get_last_traces()
@@ -208,16 +216,18 @@ def list_jobs(limit: int = 50) -> dict[str, Any]:
     jobs = _backend.list_recent_jobs(limit=limit)
     out = []
     for j in jobs:
-        out.append({
-            "job_id": str(j.id),
-            "status": j.status.value,
-            "job_type": j.job_type.value,
-            "created_at": j.created_at.isoformat() if j.created_at else None,
-            "completed_at": j.completed_at.isoformat() if j.completed_at else None,
-            "result": j.result.data if j.result else None,
-            "metrics": j.result.metrics if j.result else None,
-            "error": j.error,
-        })
+        out.append(
+            {
+                "job_id": str(j.id),
+                "status": j.status.value,
+                "job_type": j.job_type.value,
+                "created_at": j.created_at.isoformat() if j.created_at else None,
+                "completed_at": j.completed_at.isoformat() if j.completed_at else None,
+                "result": j.result.data if j.result else None,
+                "metrics": j.result.metrics if j.result else None,
+                "error": j.error,
+            }
+        )
     return {"jobs": out, "count": len(out)}
 
 
@@ -284,6 +294,7 @@ async def sse_job(job_id: str) -> StreamingResponse:
 
 # ---------------- Demo / Guardrail endpoints (founder demo) ----------------
 
+
 @app.get("/readiness_predicate")
 def readiness_predicate() -> dict[str, Any]:
     """Exact predicate used to declare a device 'ready'.
@@ -304,7 +315,11 @@ def demo_fail_next_cal() -> dict[str, Any]:
     cap = 0.69
     if hasattr(_backend, "set_demo_fid_cap"):
         _backend.set_demo_fid_cap(cap)
-    return {"ok": True, "fid_cap": cap, "note": "next calibration attempts will be capped below readiness"}
+    return {
+        "ok": True,
+        "fid_cap": cap,
+        "note": "next calibration attempts will be capped below readiness",
+    }
 
 
 @app.post("/demo/start_long_job")

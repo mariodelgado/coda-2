@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from conductor_qpu.adapter.noisy_sim import NoisySimulatorBackend
 from conductor_qpu.calibration.service import CalibrationService
-from conductor_qpu.jobs.store import InMemoryJobStore
 from conductor_qpu.models.types import JobType, QPUJob
 from conductor_qpu.orchestrator.orchestrator import Orchestrator
 
@@ -30,7 +29,7 @@ def test_calibration_fails_when_fidelity_capped():
     orch = Orchestrator(adapter=backend, calibration=cal)
 
     # Run via the real orchestrator path (traces will be captured)
-    results = orch.run_goal("Bring qubit 0 to ready")
+    _ = orch.run_goal("Bring qubit 0 to ready")
     traces = orch.get_last_traces()
 
     # The calibration step should have been attempted

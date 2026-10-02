@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import math
 import time
-from dataclasses import dataclass, field
-from typing import Callable
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from conductor_qpu.adapter.base import QPUAdapter
 from conductor_qpu.models.types import CalibrationParams, CalibrationResult
@@ -75,8 +75,8 @@ class CalibrationService:
         self,
         adapter: QPUAdapter,
         fidelity_threshold: float = 0.88,
-        max_iterations: int = 60,
-        patience: int = 12,
+        max_iterations: int = 80,
+        patience: int = 14,
         seed: int | None = 123,
     ) -> None:
         self.adapter = adapter
@@ -93,22 +93,27 @@ class CalibrationService:
         return self._metrics
 
     def _sample_neighbor(self, base: CalibrationParams, scale: float) -> CalibrationParams:
-        """Generate a nearby parameter set with broader early exploration."""
+        """Generate a nearby parameter set with broader early exploration and
+        higher-leverage directions first. Tuned so that starting-from-typical-drift
+        states reliably climb above ~0.88 for founder demos.
+        """
+
         def j(v: float, rel: float, lo: float, hi: float) -> float:
             delta = self._rng.gauss(0, rel * scale)
             return max(lo, min(hi, v + delta))
 
-        # Aggressive early exploration; frequency and readout are highest leverage
-        freq_step = 0.032 if scale > 1.0 else 0.018
-        amp_step = 0.065 if scale > 1.0 else 0.035
-        ro_step = 0.22 if scale > 1.0 else 0.13
+        # Frequency and readout_error dominate fidelity; give them stronger steps.
+        # Amplitude/phase are second-order. T1/T2 are coherence levers but slower.
+        freq_step = 0.048 if scale > 1.0 else 0.026
+        amp_step = 0.085 if scale > 1.0 else 0.042
+        ro_step = 0.29 if scale > 1.0 else 0.18
 
         return base.with_updates(
             frequency=j(base.frequency, freq_step, 4.20, 5.90),
             amplitude=j(base.amplitude, amp_step, 0.24, 0.76),
-            phase=j(base.phase, 0.28, -math.pi, math.pi),
-            t1=j(base.t1, 0.10, 15.0, 88.0),
-            t2=j(base.t2, 0.11, 10.0, 68.0),
+            phase=j(base.phase, 0.32, -math.pi, math.pi),
+            t1=j(base.t1, 0.12, 15.0, 88.0),
+            t2=j(base.t2, 0.13, 10.0, 68.0),
             readout_error=j(base.readout_error, ro_step, 0.002, 0.16),
         )
 
@@ -137,8 +142,6 @@ class CalibrationService:
         final_res: CalibrationResult | None = None
 
         for it in range(1, self.max_iterations + 1):
-            t0 = time.time()
-
             # Temperature-like schedule for accepting worse steps (higher early)
             progress = (it - 1) / max(1, self.max_iterations)
             temp = max(0.015, 0.55 * (1.0 - progress))

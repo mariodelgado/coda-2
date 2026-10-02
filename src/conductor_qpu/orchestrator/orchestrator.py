@@ -14,16 +14,15 @@ to operators and agents.
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
 from conductor_qpu.adapter.base import QPUAdapter
 from conductor_qpu.calibration.service import CalibrationService
 from conductor_qpu.jobs.store import InMemoryJobStore
 from conductor_qpu.models.types import (
-    CalibrationParams,
-    JobResult,
     JobStatus,
     JobType,
     QPUJob,
@@ -116,7 +115,9 @@ class Orchestrator:
         keys = list(d.keys())[:3]
         return ",".join(keys)
 
-    def _record_trace(self, tool: str, args: dict[str, Any], latency_s: float, res: ToolResult) -> None:
+    def _record_trace(
+        self, tool: str, args: dict[str, Any], latency_s: float, res: ToolResult
+    ) -> None:
         self._last_traces.append(
             ToolTrace(
                 timestamp=time.time(),
@@ -150,7 +151,9 @@ class Orchestrator:
         self.register_tool("get_job_status", self._tool_get_job_status)
         self.register_tool("cancel_job", self._tool_cancel_job)
 
-    def _tool_calibrate_qubit(self, qubit_id: int = 0, target_fidelity: float | None = None) -> ToolResult:
+    def _tool_calibrate_qubit(
+        self, qubit_id: int = 0, target_fidelity: float | None = None
+    ) -> ToolResult:
         t0 = time.time()
         try:
             initial = None
@@ -189,7 +192,9 @@ class Orchestrator:
             dt = time.time() - t0
             return ToolResult(ok=False, data={}, latency_s=round(dt, 4), error=str(e))
 
-    def _tool_run_bell_pair(self, shots: int = 1024, qubits: tuple[int, int] = (0, 1)) -> ToolResult:
+    def _tool_run_bell_pair(
+        self, shots: int = 1024, qubits: tuple[int, int] = (0, 1)
+    ) -> ToolResult:
         t0 = time.time()
         try:
             job = QPUJob(
@@ -239,7 +244,9 @@ class Orchestrator:
                     "is_ready": state.is_ready,
                     "readiness_score": round(state.readiness_score(), 4),
                     "readout_fidelity": {q: round(v, 4) for q, v in state.readout_fidelity.items()},
-                    "coherence_us": {q: [round(a, 1), round(b, 1)] for q, (a, b) in state.coherence_us.items()},
+                    "coherence_us": {
+                        q: [round(a, 1), round(b, 1)] for q, (a, b) in state.coherence_us.items()
+                    },
                     "temperatures_mk": state.temperatures_mk,
                     "notes": state.notes,
                 },
@@ -282,9 +289,7 @@ class Orchestrator:
             ok = self.adapter.cancel_job(jid)
             dt = time.time() - t0
             self._call_count["cancel_job"] = self._call_count.get("cancel_job", 0) + 1
-            self._total_latency["cancel_job"] = (
-                self._total_latency.get("cancel_job", 0.0) + dt
-            )
+            self._total_latency["cancel_job"] = self._total_latency.get("cancel_job", 0.0) + dt
             return ToolResult(ok=ok, data={"cancelled": ok}, latency_s=round(dt, 4))
         except Exception as e:  # noqa: BLE001
             dt = time.time() - t0
@@ -304,7 +309,9 @@ class Orchestrator:
         self._record_trace(name, kwargs, round(dt, 4), res)
         return res
 
-    def run_goal(self, goal: str, planner: Callable[[str], list[ToolCall]] | None = None) -> list[ToolResult]:
+    def run_goal(
+        self, goal: str, planner: Callable[[str], list[ToolCall]] | None = None
+    ) -> list[ToolResult]:
         """Execute a natural-language-ish goal via a planner + tool calls.
 
         Traces for this execution are available via get_last_traces().

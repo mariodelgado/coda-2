@@ -35,7 +35,7 @@ def main() -> int:
     # Initial state
     state0 = backend.get_device_state()
     print(f"Initial readiness: {state0.is_ready}  score={state0.readiness_score():.3f}")
-    print(f"Initial readout: { {q: round(v,4) for q,v in state0.readout_fidelity.items()} }")
+    print(f"Initial readout: { {q: round(v, 4) for q, v in state0.readout_fidelity.items()} }")
     print()
 
     # Run calibration on qubit 0 via the orchestrator tool (exercises full path)
@@ -44,12 +44,14 @@ def main() -> int:
     for i, r in enumerate(results, 1):
         print(f"  step {i}: ok={r.ok} latency={r.latency_s:.4f}s")
         if r.data:
-            print(f"           data: fidelity={r.data.get('fidelity')} iters={r.data.get('iterations')}")
+            print(
+                f"           data: fidelity={r.data.get('fidelity')} iters={r.data.get('iterations')}"
+            )
 
     # Final state
     state1 = backend.get_device_state()
     print(f"\nFinal readiness: {state1.is_ready}  score={state1.readiness_score():.3f}")
-    print(f"Final readout: { {q: round(v,4) for q,v in state1.readout_fidelity.items()} }")
+    print(f"Final readout: { {q: round(v, 4) for q, v in state1.readout_fidelity.items()} }")
 
     # Metrics
     m = orch.get_metrics()

@@ -17,6 +17,7 @@ import {
 import { useControlPlaneStore } from "@/lib/store"
 import { CommandPalette, defaultCommandIcons, type CommandAction } from "@/components/command/command-palette"
 import { CalibrationSurfaceLazy } from "@/components/viz/calibration-surface-lazy"
+import { Device3DLazy } from "@/components/viz/device-3d-lazy"
 
 const easeOut = [0.23, 1, 0.32, 1] as const
 
@@ -47,6 +48,7 @@ export default function ConductorQPUInstrument() {
   const [detuning, setDetuning] = useState<Record<string, number> | null>(null)
   const [appliedParams, setAppliedParams] = useState<any>(null)
   const [metrics, setMetrics] = useState<any>(null)
+  const [stageTab, setStageTab] = useState<"drift" | "device">("drift")
 
   const [turns, setTurns] = useState<Turn[]>([])
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null)
@@ -374,17 +376,44 @@ export default function ConductorQPUInstrument() {
             </div>
           )}
 
-          <CalibrationSurfaceLazy
-            detuning={detuning}
-            applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
-            fidelityHistory={surfaceHistory}
-            readinessScore={device?.readiness_score ?? 0.7}
-            readoutFidelity={device?.readout_fidelity ?? null}
-            className="absolute inset-0"
-          />
+          {/* Stage tabs: clearest founder-demo layout (drift landscape vs hardware 3D) */}
+          <div className="absolute top-1.5 left-1.5 z-30 flex rounded border border-white/10 bg-black/70 backdrop-blur">
+            <button
+              onClick={() => setStageTab("drift")}
+              className={`px-2 py-0.5 text-[10px] font-mono rounded-l ${stageTab === "drift" ? "bg-white/10 text-white" : "text-zinc-400 hover:text-zinc-200"}`}
+            >
+              drift
+            </button>
+            <button
+              onClick={() => setStageTab("device")}
+              className={`px-2 py-0.5 text-[10px] font-mono border-l border-white/10 rounded-r ${stageTab === "device" ? "bg-white/10 text-white" : "text-zinc-400 hover:text-zinc-200"}`}
+            >
+              device
+            </button>
+          </div>
+
+          {stageTab === "drift" ? (
+            <CalibrationSurfaceLazy
+              detuning={detuning}
+              applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
+              fidelityHistory={surfaceHistory}
+              readinessScore={device?.readiness_score ?? 0.7}
+              readoutFidelity={device?.readout_fidelity ?? null}
+              className="absolute inset-0"
+            />
+          ) : (
+            <Device3DLazy
+              device={device}
+              detuning={detuning}
+              applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
+              className="absolute inset-0"
+            />
+          )}
 
           {/* HUD label stays in the upper visible stage area */}
-          <div className="absolute top-2 left-2 stage-hud text-zinc-500 pointer-events-none">param drift · Δfreq × Δamp</div>
+          <div className="absolute top-2 right-2 stage-hud text-zinc-500 pointer-events-none">
+            {stageTab === "drift" ? "param drift · Δfreq × Δamp" : "hardware · cryo stage"}
+          </div>
 
           {/* Fidelity climb HUD — in the visible upper stage (above the progressive dock overlay) */}
           {activeTurn && activeTurn.fidelityHistory.length > 0 && (

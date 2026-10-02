@@ -50,7 +50,13 @@ def main() -> int:
     m = orch.get_metrics()
     print("\n--- Orchestrator Metrics ---")
     print("calibration:", m["calibration"])
-    print("tools:", {k: {kk: round(vv, 4) if isinstance(vv, float) else vv for kk, vv in v.items()} for k, v in m.get("tools", {}).items()})
+    print(
+        "tools:",
+        {
+            k: {kk: round(vv, 4) if isinstance(vv, float) else vv for kk, vv in v.items()}
+            for k, v in m.get("tools", {}).items()
+        },
+    )
     print("adapter:", m.get("adapter", {}))
 
     print("\nDemo complete.")
