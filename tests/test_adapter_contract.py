@@ -6,8 +6,6 @@ and that core operations behave as expected.
 
 from __future__ import annotations
 
-from uuid import uuid4
-
 import pytest
 
 from conductor_qpu.adapter.base import QPUAdapter
@@ -46,7 +44,10 @@ def test_calibration_job_updates_params(backend: NoisySimulatorBackend) -> None:
         job_type=JobType.CALIBRATION,
         payload={
             "qubit_id": q,
-            "candidate_params": {"frequency": before.frequency + 0.01, "amplitude": before.amplitude},
+            "candidate_params": {
+                "frequency": before.frequency + 0.01,
+                "amplitude": before.amplitude,
+            },
         },
     )
     jid = backend.submit_job(job)
@@ -61,7 +62,7 @@ def test_cancel_nonterminal_job(backend: NoisySimulatorBackend) -> None:
     # In our impl jobs are sync, so we test the API shape: cancel on terminal returns False.
     job = QPUJob(job_type=JobType.DIAGNOSTIC)
     jid = backend.submit_job(job)
-    polled = backend.poll_job(jid)
+    _ = backend.poll_job(jid)
     # After submit it is already terminal in this impl; cancel should be False.
     ok = backend.cancel_job(jid)
     assert isinstance(ok, bool)

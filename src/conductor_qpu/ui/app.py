@@ -8,8 +8,6 @@ Focus is on demonstrating the control plane, not on UI polish:
 
 from __future__ import annotations
 
-import time
-
 import httpx
 import streamlit as st
 
@@ -57,7 +55,7 @@ with colA:
         else:
             st.write("**Results**")
             for i, r in enumerate(lg.get("results", [])):
-                st.markdown(f"**Step {i+1}** — ok={r['ok']} latency={r['latency_s']}s")
+                st.markdown(f"**Step {i + 1}** — ok={r['ok']} latency={r['latency_s']}s")
                 st.json(r.get("data", {}))
                 if r.get("error"):
                     st.warning(r["error"])
@@ -96,10 +94,12 @@ else:
     temps = dev.get("temperatures_mk", {})
     c4.metric("Temps (mK)", ", ".join(f"{q}:{t}" for q, t in temps.items()))
     st.caption(dev.get("notes", ""))
-    st.json({
-        "readout_fidelity": dev.get("readout_fidelity"),
-        "coherence_us": dev.get("coherence_us"),
-    })
+    st.json(
+        {
+            "readout_fidelity": dev.get("readout_fidelity"),
+            "coherence_us": dev.get("coherence_us"),
+        }
+    )
 
 st.divider()
 

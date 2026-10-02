@@ -3,11 +3,18 @@
 Converts simple natural-language goals into a sequence of ToolCalls.
 No LLM required. Works offline. If CONDUCTOR_ENABLE_LLM=1 and openai
 is importable, an optional LLM planner can be swapped in (best-effort).
+
+LLM path (when enabled):
+- Uses CONDUCTOR_LLM_MODEL or gpt-4o-mini.
+- Robust JSON extraction (strips ``` fences and surrounding prose).
+- On any parse/LLM failure, falls back to plan_from_goal.
 """
 
 from __future__ import annotations
 
+import json
 import os
+import re
 from typing import Any
 
 from conductor_qpu.orchestrator.orchestrator import ToolCall
@@ -68,10 +75,50 @@ def plan_from_goal(goal: str) -> list[ToolCall]:
     ]
 
 
+_JSON_ARRAY_RE = re.compile(r"\[[\s\S]*\]")
+
+
+def _extract_json_array(text: str) -> list[Any] | None:
+    """Best-effort extraction of a top-level JSON array from model output.
+
+    Handles:
+      - raw JSON
+      - fenced ```json ... ``` or ``` ... ```
+      - surrounding prose with an embedded array
+    """
+    if not text:
+        return None
+    t = text.strip()
+    # Strip common code fences
+    if t.startswith("```"):
+        # remove opening fence line
+        t = re.sub(r"^```(?:json|JSON)?\s*", "", t)
+        t = re.sub(r"\s*```$", "", t)
+    # Try direct parse first
+    try:
+        val = json.loads(t)
+        if isinstance(val, list):
+            return val
+    except Exception:  # noqa: BLE001
+        pass
+    # Find the first [ ... ] block and parse it
+    m = _JSON_ARRAY_RE.search(t)
+    if m:
+        try:
+            val = json.loads(m.group(0))
+            if isinstance(val, list):
+                return val
+        except Exception:  # noqa: BLE001
+            return None
+    return None
+
+
 def maybe_llm_plan(goal: str) -> list[ToolCall] | None:
     """Optional LLM planner. Only used when env var is set.
 
-    Returns None if not enabled or unavailable. Never raises to callers.
+    Returns None if not enabled or unavailable. On any error (network, parse,
+    schema) it falls back to None so callers use the deterministic planner.
+    Never raises to callers.
     """
     if os.getenv("CONDUCTOR_ENABLE_LLM", "0") not in ("1", "true", "yes"):
         return None
@@ -80,41 +127,56 @@ def maybe_llm_plan(goal: str) -> list[ToolCall] | None:
     except Exception:  # noqa: BLE001
         return None
 
-    # Best-effort; keep prompt tiny and constrained.
+    model = os.getenv("CONDUCTOR_LLM_MODEL", "gpt-4o-mini")
+
+    # Constrained prompt: ask for pure JSON only.
+    sys = (
+        "You are a planner for a quantum control plane. "
+        "Output ONLY a JSON array of tool calls. No prose, no explanations. "
+        "Available tools: "
+        "calibrate_qubit(qubit_id: int, target_fidelity?: float), "
+        "run_bell_pair(shots?: int, qubits?: [int,int]), "
+        "get_device_state(), get_job_status(job_id: string), cancel_job(job_id: string). "
+        "If the goal is ambiguous, return []."
+    )
+
     try:
         client = openai.OpenAI()
-        sys = (
-            "You are a planner for a quantum control plane. "
-            "Output ONLY a JSON array of tool calls. Tools: "
-            "calibrate_qubit(qubit_id, target_fidelity?), "
-            "run_bell_pair(shots?, qubits?), get_device_state(), "
-            "get_job_status(job_id), cancel_job(job_id). "
-            "Return [] if unsure."
-        )
         resp = client.chat.completions.create(
-            model=os.getenv("CONDUCTOR_LLM_MODEL", "gpt-4o-mini"),
+            model=model,
             messages=[
                 {"role": "system", "content": sys},
                 {"role": "user", "content": goal},
             ],
             temperature=0.0,
-            max_tokens=200,
+            max_tokens=220,
         )
-        txt = resp.choices[0].message.content or "[]"
-        import json
-
-        arr = json.loads(txt)
+        txt = (resp.choices[0].message.content or "").strip()
+        arr = _extract_json_array(txt)
+        if not arr:
+            return None
         out: list[ToolCall] = []
         for item in arr:
             if isinstance(item, dict) and "tool" in item:
-                out.append(ToolCall(tool=str(item["tool"]), args=dict(item.get("args", {}))))
-        return out or None
+                args = item.get("args") or {}
+                if not isinstance(args, dict):
+                    args = {}
+                out.append(ToolCall(tool=str(item["tool"]), args=dict(args)))
+        # If the model returned an empty array or only unknown tools, fall back.
+        if not out:
+            return None
+        return out
     except Exception:  # noqa: BLE001
+        # Any failure (auth, network, schema, rate limit, parse) -> fallback
         return None
 
 
 def plan(goal: str) -> list[ToolCall]:
-    """Public entry: tries LLM if enabled, else deterministic planner."""
+    """Public entry: tries LLM if enabled, else deterministic planner.
+
+    When CONDUCTOR_ENABLE_LLM=1 and OpenAI is configured, the LLM path is used.
+    On any failure the deterministic plan_from_goal is used (no silent bad plans).
+    """
     llm = maybe_llm_plan(goal)
     if llm is not None:
         return llm

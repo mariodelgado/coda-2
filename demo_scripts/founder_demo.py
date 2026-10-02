@@ -24,8 +24,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from conductor_qpu.adapter.noisy_sim import NoisySimulatorBackend
 from conductor_qpu.adapter.hardware_stub import ConductorShapedAdapter
+from conductor_qpu.adapter.noisy_sim import NoisySimulatorBackend
 from conductor_qpu.calibration.service import CalibrationService
 from conductor_qpu.orchestrator.orchestrator import Orchestrator
 
@@ -63,7 +63,7 @@ def main() -> int:
     traces = orch.get_last_traces()
     print(f"    steps: {len(results)}")
     for i, r in enumerate(results):
-        print(f"      step {i+1}: ok={r.ok} latency={r.latency_s:.4f}s")
+        print(f"      step {i + 1}: ok={r.ok} latency={r.latency_s:.4f}s")
     print(f"    traces captured: {len(traces)}")
     for t in traces[-3:]:
         print(f"      - {t['tool']} ok={t['ok']} summary={t['summary']} ({t['latency_s']:.4f}s)")

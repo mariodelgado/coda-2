@@ -19,12 +19,11 @@ import random
 import time
 from datetime import datetime
 from threading import RLock
-from uuid import UUID, uuid4
+from uuid import UUID
 
 import numpy as np
 
 from conductor_qpu.adapter.base import QPUAdapter
-from conductor_qpu.models import types as model_types
 from conductor_qpu.models.types import (
     CalibrationParams,
     CalibrationResult,
@@ -94,7 +93,9 @@ class NoisySimulatorBackend(QPUAdapter):
                 phase=base.phase + self._rng.uniform(-0.15, 0.15),
                 t1=_clamp(base.t1 + self._rng.uniform(-8, 8), 20, 80),
                 t2=_clamp(base.t2 + self._rng.uniform(-6, 6), 15, 60),
-                readout_error=_clamp(base.readout_error + self._rng.uniform(-0.02, 0.03), 0.01, 0.12),
+                readout_error=_clamp(
+                    base.readout_error + self._rng.uniform(-0.02, 0.03), 0.01, 0.12
+                ),
             )
 
         # Simple circuit execution counters for observability
@@ -119,12 +120,8 @@ class NoisySimulatorBackend(QPUAdapter):
             # Small random walk + gentle sinusoidal wander
             f_drift = self._drift_rate * (1.0 + 0.3 * math.sin(now * 0.7 + q))
             self._true_params[q] = tp.with_updates(
-                frequency=_clamp(
-                    tp.frequency + self._rng.gauss(0, f_drift * steps), 4.2, 5.9
-                ),
-                amplitude=_clamp(
-                    tp.amplitude + self._rng.gauss(0, 0.0008 * steps), 0.25, 0.75
-                ),
+                frequency=_clamp(tp.frequency + self._rng.gauss(0, f_drift * steps), 4.2, 5.9),
+                amplitude=_clamp(tp.amplitude + self._rng.gauss(0, 0.0008 * steps), 0.25, 0.75),
                 phase=tp.phase + self._rng.gauss(0, 0.002 * steps),
                 t1=_clamp(tp.t1 + self._rng.gauss(0, 0.02 * steps), 18, 85),
                 t2=_clamp(tp.t2 + self._rng.gauss(0, 0.018 * steps), 12, 65),
@@ -151,22 +148,25 @@ class NoisySimulatorBackend(QPUAdapter):
 
         # Squared penalties, wide basin
         err = (
-            0.9 * (df ** 2)
-            + 0.7 * (da ** 2)
-            + 0.5 * (dp ** 2)
-            + 0.35 * (dt1 ** 2)
-            + 0.35 * (dt2 ** 2)
-            + 0.85 * (dr ** 2)
+            0.9 * (df**2)
+            + 0.7 * (da**2)
+            + 0.5 * (dp**2)
+            + 0.35 * (dt1**2)
+            + 0.35 * (dt2**2)
+            + 0.85 * (dr**2)
         )
-        # Map error to fidelity in a wide, forgiving range
-        fid = 0.94 * math.exp(-1.8 * err) + 0.05
+        # Map error to fidelity in a wide, forgiving range.
+        # Wider kernels and softer floor so that typical drift states remain climbable.
+        fid = 0.96 * math.exp(-1.35 * err) + 0.04
 
-        # Demo guardrail: cap fidelity for failure path demos
+        # Demo guardrail: cap fidelity for failure path demos (force-stuck scenarios)
         cap = getattr(self, "_demo_fid_cap", None)
         if cap is not None:
             fid = min(fid, float(cap))
 
-        return _clamp(fid, 0.55, 0.999)
+        # Soft floor: low enough to feel "bad" but high enough that gradient steps can escape.
+        # Real devices would never be exactly zero, but we keep an honest low signal.
+        return _clamp(fid, 0.38, 0.999)
 
     def _simulate_bell_readout(
         self, p0: CalibrationParams, p1: CalibrationParams, shots: int
@@ -222,7 +222,9 @@ class NoisySimulatorBackend(QPUAdapter):
             return {
                 "frequency_error": round(abs(ap.frequency - tp.frequency), 5),
                 "amplitude_error": round(abs(ap.amplitude - tp.amplitude), 5),
-                "phase_error": round(abs(((ap.phase - tp.phase + math.pi) % (2 * math.pi)) - math.pi), 5),
+                "phase_error": round(
+                    abs(((ap.phase - tp.phase + math.pi) % (2 * math.pi)) - math.pi), 5
+                ),
                 "readout_error_delta": round(abs(ap.readout_error - tp.readout_error), 5),
             }
 
@@ -270,34 +272,46 @@ class NoisySimulatorBackend(QPUAdapter):
                     cand = job.payload["candidate_params"]
                     if isinstance(cand, dict):
                         params = params.with_updates(**cand)
-                # Use the real calibration service if the adapter is driven by one in the API layer,
-                # but for direct job submission we drive the loop here using the service-like behavior
-                # by repeatedly calling apply until we would stop. For demo we just take one step
-                # and let the orchestrator tool do the full loop (which records traces).
-                # To support "fail to converge" demo we re-apply the service loop here when needed.
-                # Simpler: run a tiny local loop honoring the demo cap.
+                # Run a modest local loop (similar to CalibrationService) so direct job submission
+                # also converges reliably for founder demos. Honors the demo fid cap if set.
                 best_f = self.measure_fidelity(q)
+                best_params = params
                 iters = 0
-                maxit = 25
+                maxit = 42
                 thresh = 0.88
-                while best_f < thresh and iters < maxit:
+                # Wider steps early to escape the floor, then tighten.
+                for _ in range(maxit):
+                    if best_f >= thresh:
+                        break
+                    step = 0.9 if iters < 8 else (0.55 if iters < 22 else 0.32)
                     cand_p = params.with_updates(
-                        frequency=params.frequency + self._rng.gauss(0, 0.02),
-                        amplitude=_clamp(params.amplitude + self._rng.gauss(0, 0.03), 0.25, 0.75),
-                        readout_error=_clamp(params.readout_error + self._rng.gauss(0, 0.01), 0.002, 0.16),
+                        frequency=_clamp(
+                            params.frequency + self._rng.gauss(0, 0.028 * step), 4.2, 5.9
+                        ),
+                        amplitude=_clamp(
+                            params.amplitude + self._rng.gauss(0, 0.038 * step), 0.24, 0.76
+                        ),
+                        readout_error=_clamp(
+                            params.readout_error + self._rng.gauss(0, 0.014 * step), 0.002, 0.16
+                        ),
+                        phase=params.phase + self._rng.gauss(0, 0.18 * step),
                     )
                     r = self.apply_calibration_update(cand_p)
                     params = r.params
-                    best_f = r.fidelity
                     iters += 1
+                    if r.fidelity > best_f:
+                        best_f = r.fidelity
+                        best_params = r.params
                 final_res = CalibrationResult(
                     success=best_f >= thresh,
-                    params=params,
+                    params=best_params,
                     fidelity=round(best_f, 5),
                     iterations=iters or 1,
                     duration_s=0.001,
                     history=[(iters or 1, round(best_f, 5))],
-                    message="Converged" if best_f >= thresh else "Max iters / capped (demo failure)",
+                    message="Converged"
+                    if best_f >= thresh
+                    else "Max iters / capped (demo failure)",
                 )
                 jr = JobResult(
                     job_id=job_id,
@@ -315,8 +329,13 @@ class NoisySimulatorBackend(QPUAdapter):
                             "message": final_res.message,
                         }
                     },
-                    metrics={"fidelity": final_res.fidelity, "iterations": float(final_res.iterations)},
-                    error=None if final_res.success else "Calibration did not reach threshold (demo guardrail or drift)",
+                    metrics={
+                        "fidelity": final_res.fidelity,
+                        "iterations": float(final_res.iterations),
+                    },
+                    error=None
+                    if final_res.success
+                    else "Calibration did not reach threshold (demo guardrail or drift)",
                 )
                 if final_res.success:
                     job.mark_succeeded(jr)
@@ -377,7 +396,11 @@ class NoisySimulatorBackend(QPUAdapter):
 
     def list_recent_jobs(self, limit: int = 50) -> list[QPUJob]:
         with self._lock:
-            ids = sorted(self._job_store.keys(), key=lambda j: self._job_store[j].created_at or 0, reverse=True)[:limit]
+            ids = sorted(
+                self._job_store.keys(),
+                key=lambda j: self._job_store[j].created_at or 0,
+                reverse=True,
+            )[:limit]
             return [self._job_store[j] for j in ids]
 
     def cancel_job(self, job_id: UUID) -> bool:
@@ -431,9 +454,7 @@ class NoisySimulatorBackend(QPUAdapter):
                 raise ValueError(f"Unknown qubit {qubit_id}")
             return self._applied_params[qubit_id]
 
-    def apply_calibration_update(
-        self, params: CalibrationParams
-    ) -> CalibrationResult:
+    def apply_calibration_update(self, params: CalibrationParams) -> CalibrationResult:
         start = time.time()
         with self._lock:
             self._apply_drift()

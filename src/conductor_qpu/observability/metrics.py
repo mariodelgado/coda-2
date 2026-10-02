@@ -22,7 +22,9 @@ class MetricsAggregator:
     _lock: RLock = field(default_factory=RLock, repr=False)
     _latencies_ms: deque[float] = field(default_factory=lambda: deque(maxlen=512), repr=False)
     _fidelities: deque[float] = field(default_factory=lambda: deque(maxlen=512), repr=False)
-    _job_outcomes: dict[str, int] = field(default_factory=lambda: {"succeeded": 0, "failed": 0, "cancelled": 0})
+    _job_outcomes: dict[str, int] = field(
+        default_factory=lambda: {"succeeded": 0, "failed": 0, "cancelled": 0}
+    )
 
     def record_latency(self, seconds: float) -> None:
         with self._lock:

@@ -37,10 +37,9 @@ To integrate real hardware:
 
 from __future__ import annotations
 
-import time
 from datetime import datetime
 from threading import RLock
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from conductor_qpu.adapter.base import QPUAdapter
 from conductor_qpu.models.types import (
@@ -98,7 +97,11 @@ class ConductorShapedAdapter(QPUAdapter):
                     data={
                         "note": "hardware stub",
                         "payload_shape": {
-                            k: (type(v).__name__ if not isinstance(v, (int, float, str, bool, list, dict)) else v)
+                            k: (
+                                type(v).__name__
+                                if not isinstance(v, (int, float, str, bool, list, dict))
+                                else v
+                            )
                             for k, v in job.payload.items()
                         },
                     },
@@ -193,9 +196,7 @@ class ConductorShapedAdapter(QPUAdapter):
                 return CalibrationParams(qubit_id=qubit_id)
             return self._last_applied[qubit_id]
 
-    def apply_calibration_update(
-        self, params: CalibrationParams
-    ) -> CalibrationResult:
+    def apply_calibration_update(self, params: CalibrationParams) -> CalibrationResult:
         """Shape of committing a calibration table.
 
         Real implementation would:

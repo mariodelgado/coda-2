@@ -1,4 +1,4 @@
-.PHONY: setup install demo demo-calibration demo-circuit test lint format clean run-api run-ui run-ui-dev help
+.PHONY: setup install demo demo-calibration demo-circuit test lint format clean run-api run-ui run-ui-dev founder-demo founder-demo-llm founder-demo-stub help
 
 PYTHON := python3
 PIP := pip3
@@ -13,6 +13,9 @@ help:
 	@echo "  demo          - Run both Python demos (calibration + circuit)"
 	@echo "  demo-calibration - Run calibration demo (Python)"
 	@echo "  demo-circuit  - Run Bell pair circuit demo (Python)"
+	@echo "  founder-demo  - Run the scriptable founder demo (orchestrator + traces)"
+	@echo "  founder-demo-llm - Same as founder-demo but with CONDUCTOR_ENABLE_LLM=1 (requires OPENAI_API_KEY)"
+	@echo "  founder-demo-stub - Run founder demo against the hardware-shaped stub (no sim)"
 	@echo "  test          - Run pytest suite"
 	@echo "  lint          - Run ruff linting"
 	@echo "  format        - Format code with ruff"
@@ -78,6 +81,11 @@ run-ui-dev:
 founder-demo:
 	@echo "=== Running Founder Demo (scriptable, no UI) ==="
 	$(PYTHON) -m demo_scripts.founder_demo
+
+founder-demo-llm:
+	@echo "=== Running Founder Demo with LLM planner (CONDUCTOR_ENABLE_LLM=1) ==="
+	@echo "Requires OPENAI_API_KEY in env. Falls back to deterministic on any LLM error."
+	CONDUCTOR_ENABLE_LLM=1 $(PYTHON) -m demo_scripts.founder_demo
 
 founder-demo-stub:
 	@echo "=== Running Founder Demo against ConductorShapedAdapter (stub) ==="

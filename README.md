@@ -183,11 +183,69 @@ make run-ui-dev
 
 ---
 
+## How to run (API + UI)
+
+Two terminals, no keys required:
+
+```bash
+# Terminal A
+make run-api                 # FastAPI on :8000
+
+# Terminal B
+make run-ui-dev              # Next.js on :3000
+```
+
+Open http://localhost:3000. The instrument appears immediately.
+
+### See calibration live
+
+1. The **stage** (top) shows the current device view.
+2. Toggle **drift** / **device** tabs in the upper-left of the stage:
+   - **drift**: param-drift fidelity landscape (cyan = true target, amber = applied). Shows how far calibration is from hidden hardware state.
+   - **device**: 3D cryo-stage hardware view (stylized 1–2 qubit chips + resonators). Qubit spheres are colored by live readout fidelity; small dots show applied vs true positions driven by `/device/detuning`.
+3. Top toolbar shows LIVE / READY, Q0 fidelity %, mK, Δfreq.
+4. Click **Calibrate Q0** (or type `Bring qubit 0 to ready`). A fidelity-climb HUD appears; the surface and 3D view update as params move.
+5. Ledger rows below the composer show turns. Click one to expand the step-by-step fidelity line + tool traces.
+
+### Metrics
+- GET /metrics returns orchestrator + calibration metrics (success rate, avg time to calibrated, interface latency).
+- The three control-plane metrics are the point: time_to_calibrated, calibration_success_rate, interface_latency.
+
+---
+
+## LLM planner (optional)
+
+Default planner is deterministic and offline. To use the real OpenAI path:
+
+```bash
+export CONDUCTOR_ENABLE_LLM=1
+export CONDUCTOR_LLM_MODEL=gpt-4o-mini   # or gpt-4o, etc.
+export OPENAI_API_KEY=sk-...
+make run-api
+```
+
+Behavior:
+- Planner attempts an LLM call and robustly parses JSON (strips ``` fences and surrounding prose).
+- On any failure (auth, network, parse, unknown tool) it falls back to the deterministic `plan_from_goal`.
+- UI does not require secrets; the server advertises LLM mode via GET /health (`llm_planner` and `llm_model`).
+
+Founder-demo targets:
+
+```bash
+make demo                 # Python calibration + circuit demos
+make founder-demo         # Orchestrator-driven founder script
+make test                 # full pytest
+make lint && make format
+cd ui && npm run build    # must be clean
+```
+
+---
+
 ## Notes & Honesty
 
 - This is a control plane demo, not a physics engine.
 - The fidelity surface is intentionally climbable while still exhibiting drift.
-- No K8s, no secrets, no external services.
+- No K8s, no secrets, no external services (unless you opt into the LLM path).
 - The value is in the traces, the calibration narrative, the clean seam, and a viz that explains drift — not decoration.
 
 If a skeptical quantum + ML founder looks at the execution timeline and the detuning card and says "I see how calibration is a recurring decision with observable cost," we did the job.

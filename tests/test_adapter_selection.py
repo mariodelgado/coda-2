@@ -2,8 +2,6 @@
 
 import os
 
-import pytest
-
 from conductor_qpu.adapter.base import QPUAdapter
 from conductor_qpu.adapter.factory import create_backend
 from conductor_qpu.adapter.hardware_stub import ConductorShapedAdapter
@@ -34,5 +32,12 @@ def test_stub_selection():
 def test_stub_interface_shape():
     b = ConductorShapedAdapter()
     # must implement the six methods
-    for name in ["submit_job", "poll_job", "cancel_job", "get_device_state", "get_calibration", "apply_calibration_update"]:
+    for name in [
+        "submit_job",
+        "poll_job",
+        "cancel_job",
+        "get_device_state",
+        "get_calibration",
+        "apply_calibration_update",
+    ]:
         assert hasattr(b, name) and callable(getattr(b, name))

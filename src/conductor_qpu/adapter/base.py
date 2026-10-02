@@ -14,7 +14,6 @@ from conductor_qpu.models.types import (
     CalibrationParams,
     CalibrationResult,
     DeviceState,
-    JobResult,
     QPUJob,
 )
 
@@ -59,9 +58,7 @@ class QPUAdapter(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def apply_calibration_update(
-        self, params: CalibrationParams
-    ) -> CalibrationResult:
+    def apply_calibration_update(self, params: CalibrationParams) -> CalibrationResult:
         """Apply a candidate parameter set and measure its quality.
 
         Returns a result indicating fidelity and whether the device

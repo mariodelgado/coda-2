@@ -13,7 +13,6 @@ from fastapi.testclient import TestClient
 
 from conductor_qpu.api.server import app
 
-
 client = TestClient(app)
 
 
