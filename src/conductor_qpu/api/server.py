@@ -117,7 +117,7 @@ def health() -> dict[str, Any]:
     model = os.getenv("CONDUCTOR_LLM_MODEL")
     if not model:
         if (provider or "").lower() == "nvidia":
-            model = "meta/llama-3.1-8b-instruct"
+            model = "meta/llama-3.2-11b-vision-instruct"
         elif (provider or "").lower() == "groq":
             model = "llama-3.3-70b-versatile"
         elif provider:

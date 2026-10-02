@@ -168,7 +168,7 @@ def _get_planner_llm_client() -> tuple[Any, str] | None:
         return None
 
     if provider == "nvidia" and nvidia_key:
-        model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.1-8b-instruct"
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.2-11b-vision-instruct"
         try:
             client = OpenAI(
                 api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1"
@@ -195,7 +195,7 @@ def _get_planner_llm_client() -> tuple[Any, str] | None:
 
     # Cross fallbacks (respect any present keys)
     if nvidia_key:
-        model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.1-8b-instruct"
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.2-11b-vision-instruct"
         try:
             client = OpenAI(
                 api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1"
