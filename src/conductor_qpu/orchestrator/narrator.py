@@ -114,7 +114,11 @@ def _get_llm_config() -> tuple[tuple[str, str, str] | None, str | None]:
 
     # At this point we have a provider+key+model
     if not model:
-        model = "meta/llama-3.2-11b-vision-instruct" if provider == "nvidia" else "llama-3.3-70b-versatile"
+        model = (
+            "meta/llama-3.2-11b-vision-instruct"
+            if provider == "nvidia"
+            else "llama-3.3-70b-versatile"
+        )
     return (provider, model, api_key), base_url  # type: ignore[return-value]
 
 
@@ -182,6 +186,42 @@ def _template_narrate(
             if tok.isdigit():
                 q = max(0, min(1, int(tok)))
                 break
+
+        # Authoritative readiness comes from the post-goal device snapshot when present.
+        # If the device itself reports is_ready=true, we MUST affirm READY/usable
+        # regardless of whether the calibrate tool's final_fidelity met its own threshold.
+        snap_ready = None
+        snap_q0 = None
+        if device_snapshot and isinstance(device_snapshot, dict):
+            try:
+                snap_ready = bool(device_snapshot.get("is_ready"))
+            except Exception:  # noqa: BLE001
+                snap_ready = None
+            try:
+                rf = device_snapshot.get("readout_fidelity") or {}
+                snap_q0 = rf.get("0") if "0" in rf else rf.get(0)
+                if snap_q0 is not None:
+                    snap_q0 = float(snap_q0)
+            except Exception:  # noqa: BLE001
+                snap_q0 = None
+
+        if snap_ready is True:
+            # Ground truth: device is ready. Affirm in plain English.
+            q0_txt = f"Q0 readout fidelity {snap_q0:.3f}. " if snap_q0 is not None else ""
+            return (
+                f"{q0_txt}Device reports ready. "
+                "Qubit meets the readiness predicate and is usable for circuits."
+            ).strip()
+
+        if snap_ready is False:
+            # Explicitly not ready per device; be clear another pass is needed.
+            q0_txt = f"Q0 readout fidelity {snap_q0:.3f}. " if snap_q0 is not None else ""
+            return (
+                f"{q0_txt}Device is not yet ready. "
+                "Another calibration pass is needed before the qubit can be used for circuits."
+            ).strip()
+
+        # No authoritative snapshot (neither True nor False); fall back to tool fidelity + any snapshot hints (legacy path).
         if final_f is not None:
             init = init_f if init_f is not None else (final_f - 0.15)
             delta = final_f - init
@@ -189,7 +229,6 @@ def _template_narrate(
             # fall back to the documented readiness floor (0.82) for UI language.
             thresh = 0.82
             try:
-                # results entries are dicts with .data or ["data"]
                 for r in results or []:
                     d = (r or {}).get("data") if isinstance(r, dict) else getattr(r, "data", None)
                     if isinstance(d, dict) and isinstance(d.get("threshold"), (int, float)):
@@ -197,7 +236,6 @@ def _template_narrate(
                         break
             except Exception:  # noqa: BLE001
                 pass
-            # Also consider explicit success from the tool result
             cal_ok = False
             try:
                 for r in results or []:
@@ -207,13 +245,12 @@ def _template_narrate(
                         break
             except Exception:  # noqa: BLE001
                 pass
-            # Device snapshot (fresh post-goal) can authoritatively say is_ready
+            # Any snapshot present can still inform the legacy path (post-goal preferred when orchestrator provides it)
             dev_ready = False
             try:
                 if device_snapshot:
                     if device_snapshot.get("is_ready") is True:
                         dev_ready = True
-                    # readiness_score >= 0.82 is the documented floor
                     rs = device_snapshot.get("readiness_score")
                     if isinstance(rs, (int, float)) and rs >= 0.82:
                         dev_ready = True
@@ -332,6 +369,10 @@ def _call_llm_narrate(
         "Given a goal, tool traces, and numeric results, produce ONE short plain-English sentence (or two) "
         "that explains what happened in terms an operator understands: fidelity change, readiness, drift implications, or circuit quality. "
         "Use the actual numbers from context. No hype, no marketing language. No JSON. No lists. "
+        "CRITICAL RULE — readiness is authoritative: the 'device' object in context contains the post-execution device state. "
+        "If device.is_ready is true (boolean), the qubit IS ready and usable for circuits — affirm this in plain English (e.g., 'ready', 'usable for circuits', 'meets the readiness predicate'). "
+        "If device.is_ready is false, clearly state another pass is needed; do not claim ready. "
+        "The calibrate tool may report a final_fidelity against a different internal threshold; ignore that for the READY/usable determination when device.is_ready is present. "
         "Tone example: 'Q0 climbed from 0.55 to 0.91 fidelity — the applied drive is close enough that this qubit is READY for circuits. Residual Δfreq is small; drift will pull it away again.'"
     )
     user = (
@@ -419,6 +460,38 @@ def narrate(
     # 1) Try LLM
     llm_text = _call_llm_narrate(goal, norm_traces, norm_results, device_snapshot)
     if llm_text:
+        # Guard: never let LLM contradict an authoritative post-goal device snapshot.
+        # For calibrate-style goals, if device.is_ready is explicitly true, the narration
+        # must contain affirmative READY/usable language. If the LLM denied it, fall back.
+        g = (goal or "").lower()
+        is_cal_goal = any(k in g for k in ["calibrat", "bring", "ready", "tune"])
+        snap_ready = None
+        if device_snapshot and isinstance(device_snapshot, dict):
+            try:
+                snap_ready = bool(device_snapshot.get("is_ready"))
+            except Exception:  # noqa: BLE001
+                snap_ready = None
+        if is_cal_goal and snap_ready is True:
+            txt_lower = llm_text.lower()
+            affirms = any(
+                w in txt_lower
+                for w in ["ready", "usable for circuits", "meets the readiness", "usable"]
+            )
+            denies = any(
+                w in txt_lower
+                for w in [
+                    "not ready",
+                    "not yet ready",
+                    "still not",
+                    "short of",
+                    "below",
+                    "needs another",
+                    "another pass",
+                ]
+            )
+            if not affirms or denies:
+                # LLM contradicted or failed to affirm authoritative readiness; use template
+                return _template_narrate(goal, norm_traces, norm_results, device_snapshot)
         return llm_text
 
     # 2) Deterministic template (guaranteed non-empty)

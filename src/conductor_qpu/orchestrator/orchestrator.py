@@ -345,13 +345,35 @@ class Orchestrator:
 
         The agent_message is produced by the narrator (LLM if configured, else
         deterministic high-quality template). It is never empty.
+
+        A fresh post-goal device snapshot is captured from the adapter to ensure
+        narration reflects authoritative readiness (is_ready) after calibration.
+        The caller-provided snapshot is only used as a last-resort fallback.
         """
         results = self.run_goal(goal, planner=planner)
         traces = self.get_last_traces()
+
+        # Capture a fresh, post-goal snapshot from the live adapter when possible.
+        # This is the authoritative state for narrator decisions about READY.
+        fresh_snapshot: dict[str, Any] | None = None
+        try:
+            state = self.adapter.get_device_state()
+            fresh_snapshot = {
+                "is_ready": state.is_ready,
+                "readiness_score": round(state.readiness_score(), 4),
+                "readout_fidelity": {q: round(v, 4) for q, v in state.readout_fidelity.items()},
+                "temperatures_mk": state.temperatures_mk,
+            }
+        except Exception:  # noqa: BLE001
+            pass
+
+        # Prefer fresh post-goal snapshot; fall back to any caller snapshot.
+        effective_snapshot = fresh_snapshot or device_snapshot
+
         try:
             from conductor_qpu.orchestrator.narrator import narrate
 
-            agent_message = narrate(goal, traces, results, device_snapshot=device_snapshot)
+            agent_message = narrate(goal, traces, results, device_snapshot=effective_snapshot)
         except Exception:  # noqa: BLE001
             # Hard safety: never leave the caller without text
             agent_message = _fallback_template_narrate(goal, traces, results)
