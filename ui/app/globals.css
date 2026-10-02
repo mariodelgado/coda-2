@@ -1,0 +1,390 @@
+@import "tailwindcss";
+
+:root {
+  --background: #000000;
+  --foreground: #FFFFFF;
+
+  /* iOS system dark palette (SF-feel) */
+  --true: #007AFF;          /* system blue — true/target */
+  --applied: #FF9500;       /* system orange — applied */
+  --success: #34C759;       /* system green */
+  --fail: #FF3B30;          /* system red */
+  --label: #FFFFFF;
+  --secondary-label: rgba(235, 235, 245, 0.60);  /* #EBEBF5 @ 60% */
+  --tertiary-label: #8E8E93;
+  --hairline: rgba(84, 84, 88, 0.65);  /* iOS dark separator */
+  --fill: rgba(120, 120, 128, 0.18);
+  --panel: #1C1C1E;
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-mono-inst: var(--font-ibm-plex-mono), var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #FFFFFF;
+}
+
+* {
+  border-color: var(--hairline);
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: #000000;
+  color: #FFFFFF;
+  font-family: var(--font-sans);
+  /* Continuous gradient black void — blends hero + agent zone with no hard seam */
+  background-image:
+    radial-gradient(ellipse at 50% 20%, rgba(0, 122, 255, 0.035) 0%, transparent 60%),
+    linear-gradient(180deg, #000000 0%, #030303 32%, #050505 100%);
+}
+
+/* Instrument mono for all data */
+.instrument-mono,
+.readout,
+.trace,
+.metric {
+  font-family: var(--font-mono-inst);
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: -0.01em;
+}
+
+/* macOS / iMovie-style frosted toolbar (top chrome) */
+.toolbar {
+  height: 38px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px 0 76px; /* space for simulated traffic lights */
+  background: rgba(22, 22, 24, 0.82);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--hairline);
+  z-index: 70;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--label);
+}
+
+/* Simulated traffic lights (left of toolbar) */
+.traffic {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 6px;
+}
+.traffic-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.4);
+}
+.traffic-dot.close { background: #ff5f57; }
+.traffic-dot.min { background: #febc2e; }
+.traffic-dot.max { background: #28c840; }
+
+/* Viewer bezel — iMovie preview pane feel (now a transparent frame overlay; canvas lives behind) */
+.viewer-bezel {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 12px 32px rgba(0,0,0,0.65),
+    0 2px 8px rgba(0,0,0,0.45);
+  /* frame overlay must not clip or paint over the full-bleed stage */
+  overflow: visible;
+}
+
+/* Content area below toolbar: relative container for full-bleed stage + overlaid dock.
+   The WebGPU canvas lives at absolute inset-0 so it extends under the dock.
+   The dock is absolute at bottom (35%) with transparent base + progressive backdrop blur layers. */
+.content-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #000000;
+}
+
+/* Legacy .hero / .main-split kept for reference but no longer drive the 65/35 split.
+   The split is now achieved by absolute positioning (stage full + dock 35% from bottom). */
+.main-split {
+  display: none;
+}
+.hero {
+  display: none;
+}
+
+/* Content area: full-bleed stage + overlaid progressive dock.
+   The WebGPU canvas lives at absolute inset-0 and extends UNDER the dock.
+   The dock is absolute at the bottom (~35%), base is fully transparent.
+   Progressive blur is provided by stacked ::before/::after with backdrop-filter + mask gradients. */
+.content-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #000000;
+}
+
+/* Full-bleed stage (WebGPU viz lives here and bleeds under the dock) */
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000000;
+}
+
+/* Overlaid dock — 35% from bottom, fully transparent base.
+   Strongest blur + tint at bottom (near composer), fades to none at top of dock. */
+.dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 35%;
+  min-height: 180px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0 4px;
+  overflow: hidden;
+  background: transparent; /* critical: nothing solid here */
+  /* No hard top border — the progressive layers provide the transition */
+}
+
+/* Progressive heavy blur layer: strongest + most opaque at the very bottom */
+.dock::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background: linear-gradient(
+    to top,
+    rgba(20, 20, 24, 0.92) 0%,
+    rgba(20, 20, 24, 0.78) 18%,
+    rgba(20, 20, 24, 0.44) 36%,
+    rgba(20, 20, 24, 0.16) 52%,
+    rgba(20, 20, 24, 0.04) 68%,
+    transparent 82%
+  );
+  backdrop-filter: blur(26px) saturate(170%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  /* Rounded top corners for iMovie dock feel — only the lower part is heavily material */
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  /* Mask confines the heavy material to bottom ~half of the dock */
+  mask-image: linear-gradient(
+    to top,
+    black 0%,
+    black 44%,
+    transparent 82%
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    black 0%,
+    black 44%,
+    transparent 82%
+  );
+}
+
+/* Secondary lighter blur layer for smooth graduation upward to full transparency */
+.dock::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    to top,
+    transparent 4%,
+    rgba(20, 20, 24, 0.22) 22%,
+    rgba(20, 20, 24, 0.08) 42%,
+    rgba(20, 20, 24, 0.02) 60%,
+    transparent 80%
+  );
+  backdrop-filter: blur(8px) saturate(115%);
+  -webkit-backdrop-filter: blur(8px) saturate(115%);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  /* This layer bridges mid-dock and then disappears toward the top */
+  mask-image: linear-gradient(
+    to top,
+    transparent 2%,
+    black 18%,
+    black 58%,
+    transparent 82%
+  );
+  -webkit-mask-image: linear-gradient(
+    to top,
+    transparent 2%,
+    black 18%,
+    black 58%,
+    transparent 82%
+  );
+}
+
+/* Constrained centered column for ledger + composer */
+.constrained {
+  width: 100%;
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+/* Clip rows (iMovie library list style) — extremely translucent so progressive dock blur shows through */
+.clip-list {
+  max-height: 106px;
+  overflow-y: auto;
+  font-size: 11px;
+  line-height: 1.2;
+  margin-bottom: 4px;
+  background: transparent;
+}
+.clip-row {
+  padding: 3px 10px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  color: var(--secondary-label);
+  border-bottom: 1px solid transparent;
+  background: transparent;
+}
+.clip-row:nth-child(odd) {
+  background: rgba(255,255,255,0.012);
+}
+.clip-row:hover {
+  background: rgba(255,255,255,0.028);
+}
+.clip-row.selected {
+  /* very light selection tint so the graduated blur underneath remains visible */
+  background: rgba(0, 122, 255, 0.07);
+  color: var(--label);
+}
+.clip-row .time {
+  width: 76px;
+  flex-shrink: 0;
+  color: var(--tertiary-label);
+}
+
+/* Preset chips — calm */
+.preset-chip {
+  font-size: 11px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: transparent;
+  color: #a1a1aa;
+  transition: all 80ms var(--ease-out);
+}
+.preset-chip:hover {
+  border-color: rgba(255,255,255,0.18);
+  color: #e4e4e7;
+}
+
+/* Centered premium composer — glassy, lets progressive dock blur show through */
+.composer-wrap {
+  display: flex;
+  justify-content: center;
+}
+.composer {
+  width: 100%;
+  max-width: 42rem;
+  /* Very translucent so the graduated blur underneath is visible; still readable */
+  background: rgba(12, 12, 16, 0.28);
+  border: 1px solid rgba(84, 84, 88, 0.55);
+  border-radius: 999px;
+  padding: 6px 10px 6px 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* mild inner blur to sit on the progressive dock */
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+}
+.composer input {
+  flex: 1;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  color: #e4e4e7;
+}
+.composer input::placeholder {
+  color: #52525b;
+}
+
+/* Stage / viz container — full bleed under the overlaid dock */
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000000; /* under the three canvas; canvas draws the grid */
+  border-radius: 10px; /* soft frame for iMovie viewer feel above the dock */
+  overflow: hidden;
+}
+
+/* Small fidelity HUD on hero */
+.hud {
+  font-size: 10px;
+  background: rgba(0,0,0,0.65);
+  border: 1px solid var(--hairline);
+  backdrop-filter: blur(6px);
+}
+
+/* Hairline utility */
+.hairline {
+  border-color: var(--hairline);
+}
+
+/* iOS system accent helpers (no violet) */
+.text-true { color: var(--true); }        /* system blue */
+.text-applied { color: var(--applied); }  /* system orange */
+.text-success { color: var(--success); }  /* system green */
+.text-fail { color: var(--fail); }        /* system red */
+
+/* iOS dark fills / separators */
+.ios-fill {
+  background: var(--fill);
+}
+.ios-separator {
+  border-color: var(--hairline);
+}
+
+/* Details rail panel — glass so progressive dock blur is visible underneath */
+.details {
+  font-size: 11px;
+  background: rgba(12, 12, 16, 0.32);
+  border: 1px solid rgba(84, 84, 88, 0.45);
+  /* let the graduated blur show through while keeping text readable */
+  backdrop-filter: blur(4px) saturate(110%);
+  -webkit-backdrop-filter: blur(4px) saturate(110%);
+}
+
+/* Quiet focus */
+input:focus-visible,
+button:focus-visible {
+  outline: 1px solid rgba(103,246,255,0.35);
+  outline-offset: -1px;
+}
+
+/* Sonner */
+[data-sonner-toaster] {
+  --normal-bg: #0a0a0f;
+  --normal-text: #e4e4e7;
+  --normal-border: var(--hairline);
+}
