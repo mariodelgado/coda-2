@@ -203,11 +203,8 @@ export function Device3D({ device, detuning, applied, className }: Device3DProps
         </React.Suspense>
       </Canvas>
 
-      {/* Live overlay badges (iOS mono, no cards) */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-1.5 text-[9px]">
-        <div className="rounded bg-black/70 px-1.5 py-px font-mono border border-white/10 text-zinc-400">
-          cryo stage
-        </div>
+      {/* Live overlay badge — right side only (iOS mono). Left "cryo stage" removed to avoid collision with page-level stage label on device tab. */}
+      <div className="pointer-events-none absolute top-1.5 right-1.5 text-[9px]">
         <div
           className={cn(
             "rounded px-1.5 py-px font-mono border border-white/10 flex items-center gap-1.5",
