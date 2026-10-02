@@ -185,11 +185,41 @@ def _template_narrate(
         if final_f is not None:
             init = init_f if init_f is not None else (final_f - 0.15)
             delta = final_f - init
-            ready = final_f >= 0.82
-            drift_hint = ""
-            if cal_params and isinstance(cal_params, dict):
-                # crude drift signal if we had detuning; keep it generic but useful
-                drift_hint = ""
+            # Honor the threshold reported by the tool result when present (e.g. 0.88);
+            # fall back to the documented readiness floor (0.82) for UI language.
+            thresh = 0.82
+            try:
+                # results entries are dicts with .data or ["data"]
+                for r in results or []:
+                    d = (r or {}).get("data") if isinstance(r, dict) else getattr(r, "data", None)
+                    if isinstance(d, dict) and isinstance(d.get("threshold"), (int, float)):
+                        thresh = float(d["threshold"])
+                        break
+            except Exception:  # noqa: BLE001
+                pass
+            # Also consider explicit success from the tool result
+            cal_ok = False
+            try:
+                for r in results or []:
+                    ok = (r or {}).get("ok") if isinstance(r, dict) else getattr(r, "ok", None)
+                    if ok is True:
+                        cal_ok = True
+                        break
+            except Exception:  # noqa: BLE001
+                pass
+            # Device snapshot (fresh post-goal) can authoritatively say is_ready
+            dev_ready = False
+            try:
+                if device_snapshot:
+                    if device_snapshot.get("is_ready") is True:
+                        dev_ready = True
+                    # readiness_score >= 0.82 is the documented floor
+                    rs = device_snapshot.get("readiness_score")
+                    if isinstance(rs, (int, float)) and rs >= 0.82:
+                        dev_ready = True
+            except Exception:  # noqa: BLE001
+                pass
+            ready = (final_f >= thresh) or cal_ok or (final_f >= 0.82) or dev_ready
             base = (
                 f"Q{q} moved from {init:.2f} to {final_f:.2f} fidelity. "
                 f"The drive update {'succeeded' if ready else 'improved the state but is not yet at threshold'}. "

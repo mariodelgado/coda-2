@@ -1,0 +1,15 @@
+{
+  "task": "Fix chat transcript dock layout bug",
+  "branch": "cursor/fix-chat-dock-layout-47c9",
+  "status": "complete",
+  "pr": "https://github.com/mariodelgado/ai-to-qpu-spike/pull/8",
+  "steps": [
+    "Investigated ui/app/page.tsx and ui/app/globals.css for dock/chat layout",
+    "Root cause: tall 35% dock + limited material mask + no bottom-anchoring caused transcript to float mid-stage",
+    "Fixed: tightened dock height band (clamp 220px/26vh/340px); extended progressive blur masks upward; added justify-content:flex-end to transcript; marked chips flex:0 0 auto",
+    "Kept structure: transcript (flex fill) > chips > composer (flush bottom) inside .chat-dock/.chat-constrained",
+    "Preserved progressive blur, LIVE/OFFLINE, qpu api paths (no proxy changes)",
+    "Ran lint/build: build succeeded; pre-existing unrelated lint issues untouched",
+    "Committed, pushed, opened PR to main"
+  ]
+}

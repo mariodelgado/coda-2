@@ -1,0 +1,12 @@
+{
+  "task": "Harden demo success path: Calibrate Q0 => toolbar READY + affirmative agent_message",
+  "branch": "cursor/fix-chat-dock-layout-47c9",
+  "notes": "Layout fix remains primary and already landed. This adds reliable founder-demo outcome without fake metrics.",
+  "checks": [
+    "After cal to f>=0.88, device.is_ready==true and readiness_score>=0.82",
+    "agent_message affirms 'ready' / 'usable for circuits' on threshold clear",
+    "No invented numbers; model coupling strengthened + predicate aligned",
+    "post-goal device snapshot for narrator",
+    "Tests still pass or new harden test added"
+  ]
+}

@@ -40,6 +40,18 @@ def test_post_goal_calibration_path() -> None:
     # At least one step should have data or be ok
     assert any(step.get("ok") or step.get("data") for step in body["results"])
 
+    # Founder-demo success contract:
+    # After "Calibrate Q0" (Bring qubit 0 to ready), the device must report READY
+    # (readiness >= 0.82) and the agent_message must affirm the qubit is usable.
+    dev = client.get("/device/state")
+    assert dev.status_code == 200
+    dbody = dev.json()
+    assert dbody.get("is_ready") is True or float(dbody.get("readiness_score", 0.0)) >= 0.82
+
+    agent = (body.get("agent_message") or "").lower()
+    assert any(p in agent for p in ("ready", "usable for circuits", "meets the readiness")), \
+        f"agent_message did not affirm readiness: {body.get('agent_message')}"
+
 
 def test_post_goal_bell_path() -> None:
     r = client.post("/goals", json={"goal": "Run a Bell pair and report fidelity"})
