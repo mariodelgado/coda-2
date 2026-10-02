@@ -226,8 +226,8 @@ NVIDIA NIM is now a first-class provider. Both planner and narrator use the same
 ```bash
 export NVIDIA_NIM_API_KEY=nvapi-...
 export CONDUCTOR_LLM_PROVIDER=nvidia   # or: nim, nvidia-nim
-# optional model override (defaults to a known-good NIM Llama):
-# export CONDUCTOR_LLM_MODEL=meta/llama-3.1-8b-instruct
+# optional model override (current default):
+# export CONDUCTOR_LLM_MODEL=meta/llama-3.2-11b-vision-instruct
 make run-api
 ```
 
@@ -235,6 +235,11 @@ make run-api
 - Auth: `Authorization: Bearer $NVIDIA_NIM_API_KEY` (also accepts `NVIDIA_API_KEY`)
 - Auto-enables when the key is present (no need for `CONDUCTOR_ENABLE_LLM=1`).
 - Planner and narrator are both wired through the shared client.
+- Some catalog models return 410 Gone or 404 "not found for account" until enabled on the NVIDIA account. If the default (or chosen) model 410s/404s, set `CONDUCTOR_LLM_MODEL` to one that is enabled for your key. Known working examples for many accounts:
+  - `meta/llama-3.2-11b-vision-instruct` (current default)
+  - `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`
+  - `nvidia/nemotron-3-super-120b-a12b`
+  - `nvidia/nemotron-3.5-lightning-30b-a3b`
 
 #### Groq (OpenAI-compatible)
 

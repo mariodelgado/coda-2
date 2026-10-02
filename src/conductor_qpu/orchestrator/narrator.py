@@ -81,7 +81,7 @@ def _get_llm_config() -> tuple[tuple[str, str, str] | None, str | None]:
 
     if provider == "nvidia":
         api_key = nvidia_key
-        model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.1-8b-instruct"
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.2-11b-vision-instruct"
         base_url = "https://integrate.api.nvidia.com/v1"
     elif provider == "groq":
         api_key = groq_key
@@ -97,7 +97,7 @@ def _get_llm_config() -> tuple[tuple[str, str, str] | None, str | None]:
         if nvidia_key:
             provider = "nvidia"
             api_key = nvidia_key
-            model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.1-8b-instruct"
+            model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.2-11b-vision-instruct"
             base_url = "https://integrate.api.nvidia.com/v1"
         elif groq_key:
             provider = "groq"
@@ -114,7 +114,7 @@ def _get_llm_config() -> tuple[tuple[str, str, str] | None, str | None]:
 
     # At this point we have a provider+key+model
     if not model:
-        model = "meta/llama-3.1-8b-instruct" if provider == "nvidia" else "llama-3.3-70b-versatile"
+        model = "meta/llama-3.2-11b-vision-instruct" if provider == "nvidia" else "llama-3.3-70b-versatile"
     return (provider, model, api_key), base_url  # type: ignore[return-value]
 
 
