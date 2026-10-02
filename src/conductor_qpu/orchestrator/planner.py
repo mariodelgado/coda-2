@@ -123,30 +123,59 @@ def _extract_json_array(text: str) -> list[Any] | None:
 def _get_planner_llm_client() -> tuple[Any, str] | None:
     """Return (client, model) for an OpenAI-compatible planner LLM, or None.
 
-    Prefers Groq (free tier) when GROQ_API_KEY is present.
-    Falls back to OpenAI if CONDUCTOR_LLM_PROVIDER=openai or only OPENAI_API_KEY present.
-    Auto-enables if a key is present even without CONDUCTOR_ENABLE_LLM=1.
-    """
-    provider = (os.getenv("CONDUCTOR_LLM_PROVIDER") or "").lower().strip()
+    Providers (OpenAI-compatible):
+      - nvidia / nim / nvidia-nim: NVIDIA NIM (https://integrate.api.nvidia.com/v1)
+      - groq: Groq
+      - openai: OpenAI
 
+    Prefers NVIDIA NIM when NVIDIA_NIM_API_KEY (or NVIDIA_API_KEY) is present.
+    Falls back to Groq, then OpenAI.
+    Auto-enables if any supported key is present even without CONDUCTOR_ENABLE_LLM=1.
+    """
+    raw_provider = (os.getenv("CONDUCTOR_LLM_PROVIDER") or "").lower().strip()
+    # Normalize aliases
+    if raw_provider in ("nvidia", "nim", "nvidia-nim"):
+        provider = "nvidia"
+    else:
+        provider = raw_provider
+
+    nvidia_key = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY")
     groq_key = os.getenv("GROQ_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
     # Auto-enable logic
     enabled = os.getenv("CONDUCTOR_ENABLE_LLM", "0") in ("1", "true", "yes")
     if not enabled:
-        if groq_key or openai_key:
+        if nvidia_key or groq_key or openai_key:
             enabled = True
     if not enabled:
         return None
 
     if not provider:
-        provider = "groq" if groq_key else ("openai" if openai_key else "groq")
+        # Preference order: nvidia (if key), groq, openai
+        if nvidia_key:
+            provider = "nvidia"
+        elif groq_key:
+            provider = "groq"
+        elif openai_key:
+            provider = "openai"
+        else:
+            provider = "groq"
 
     try:
         from openai import OpenAI  # type: ignore
     except Exception:  # noqa: BLE001
         return None
+
+    if provider == "nvidia" and nvidia_key:
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.1-8b-instruct"
+        try:
+            client = OpenAI(
+                api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1"
+            )
+            return client, model
+        except Exception:  # noqa: BLE001
+            return None
 
     if provider == "groq" and groq_key:
         model = os.getenv("CONDUCTOR_LLM_MODEL") or "llama-3.3-70b-versatile"
@@ -164,7 +193,16 @@ def _get_planner_llm_client() -> tuple[Any, str] | None:
         except Exception:  # noqa: BLE001
             return None
 
-    # Cross fallback
+    # Cross fallbacks (respect any present keys)
+    if nvidia_key:
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.1-8b-instruct"
+        try:
+            client = OpenAI(
+                api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1"
+            )
+            return client, model
+        except Exception:  # noqa: BLE001
+            pass
     if groq_key:
         model = os.getenv("CONDUCTOR_LLM_MODEL") or "llama-3.3-70b-versatile"
         try:

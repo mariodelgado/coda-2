@@ -29,47 +29,93 @@ def _env_flag(name: str, default: str = "0") -> bool:
     return v in ("1", "true", "yes", "on")
 
 
-def _get_llm_config() -> tuple[str | None, str | None, str | None]:
-    """Return (provider, model, api_key) or (None, None, None) if not usable."""
+def _get_llm_config() -> tuple[tuple[str, str, str] | None, str | None]:
+    """Return ((provider, model, api_key), base_url_or_None) or (None, None) if not usable.
+
+    Supports:
+      - nvidia / nim / nvidia-nim (NVIDIA NIM)
+      - groq
+      - openai
+
+    Auto-enables when a supported key is present.
+    """
     if not _env_flag("CONDUCTOR_ENABLE_LLM", "0"):
-        # Auto-enable if a key is present (user convenience)
-        if os.getenv("GROQ_API_KEY"):
-            pass
-        elif os.getenv("OPENAI_API_KEY"):
+        # Auto-enable if any supported key is present
+        if (
+            os.getenv("NVIDIA_NIM_API_KEY")
+            or os.getenv("NVIDIA_API_KEY")
+            or os.getenv("GROQ_API_KEY")
+            or os.getenv("OPENAI_API_KEY")
+        ):
             pass
         else:
-            return (None, None, None)
+            return (None, None)
 
-    provider = (os.getenv("CONDUCTOR_LLM_PROVIDER") or "groq").lower().strip()
-    if provider not in ("groq", "openai"):
-        provider = "groq"
+    raw = (os.getenv("CONDUCTOR_LLM_PROVIDER") or "").lower().strip()
+    # Normalize provider aliases
+    if raw in ("nvidia", "nim", "nvidia-nim"):
+        provider = "nvidia"
+    elif raw:
+        provider = raw
+    else:
+        provider = ""
 
-    api_key = None
-    if provider == "groq":
-        api_key = os.getenv("GROQ_API_KEY")
+    nvidia_key = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+
+    if not provider:
+        # Preference: nvidia if key, then groq, then openai
+        if nvidia_key:
+            provider = "nvidia"
+        elif groq_key:
+            provider = "groq"
+        elif openai_key:
+            provider = "openai"
+        else:
+            provider = "groq"
+
+    api_key: str | None = None
+    model: str | None = None
+    base_url: str | None = None
+
+    if provider == "nvidia":
+        api_key = nvidia_key
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.1-8b-instruct"
+        base_url = "https://integrate.api.nvidia.com/v1"
+    elif provider == "groq":
+        api_key = groq_key
         model = os.getenv("CONDUCTOR_LLM_MODEL") or "llama-3.3-70b-versatile"
         base_url = "https://api.groq.com/openai/v1"
-    else:
-        api_key = os.getenv("OPENAI_API_KEY")
+    else:  # openai (or unknown -> treat as openai if key)
+        api_key = openai_key
         model = os.getenv("CONDUCTOR_LLM_MODEL") or "gpt-4o-mini"
-        base_url = None  # default OpenAI
+        base_url = None
 
     if not api_key:
-        # Try the other key if this provider key is missing
-        if provider == "groq" and os.getenv("OPENAI_API_KEY"):
-            provider = "openai"
-            api_key = os.getenv("OPENAI_API_KEY")
-            model = os.getenv("CONDUCTOR_LLM_MODEL") or "gpt-4o-mini"
-            base_url = None
-        elif provider == "openai" and os.getenv("GROQ_API_KEY"):
+        # Cross fallback to any available key
+        if nvidia_key:
+            provider = "nvidia"
+            api_key = nvidia_key
+            model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.1-8b-instruct"
+            base_url = "https://integrate.api.nvidia.com/v1"
+        elif groq_key:
             provider = "groq"
-            api_key = os.getenv("GROQ_API_KEY")
+            api_key = groq_key
             model = os.getenv("CONDUCTOR_LLM_MODEL") or "llama-3.3-70b-versatile"
             base_url = "https://api.groq.com/openai/v1"
+        elif openai_key:
+            provider = "openai"
+            api_key = openai_key
+            model = os.getenv("CONDUCTOR_LLM_MODEL") or "gpt-4o-mini"
+            base_url = None
         else:
-            return (None, None, None)
+            return (None, None)
 
-    return (provider, model, api_key), base_url if provider == "groq" else None  # type: ignore[return-value]
+    # At this point we have a provider+key+model
+    if not model:
+        model = "meta/llama-3.1-8b-instruct" if provider == "nvidia" else "llama-3.3-70b-versatile"
+    return (provider, model, api_key), base_url  # type: ignore[return-value]
 
 
 def _short_traces(traces: list[dict[str, Any]]) -> str:

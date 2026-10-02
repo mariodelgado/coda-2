@@ -25,10 +25,12 @@ def _res(ok: bool = True, data: dict | None = None) -> ToolResult:
 
 
 def test_narrator_always_returns_text_no_keys() -> None:
-    # Ensure we are in template-only mode
+    # Ensure we are in template-only mode (all providers)
     os.environ.pop("CONDUCTOR_ENABLE_LLM", None)
     os.environ.pop("GROQ_API_KEY", None)
     os.environ.pop("OPENAI_API_KEY", None)
+    os.environ.pop("NVIDIA_NIM_API_KEY", None)
+    os.environ.pop("NVIDIA_API_KEY", None)
 
     goal = "Bring qubit 0 to ready"
     traces = [_trace("calibrate_qubit", "fidelity=0.91")]
@@ -44,6 +46,8 @@ def test_narrator_bell_path_template() -> None:
     os.environ.pop("CONDUCTOR_ENABLE_LLM", None)
     os.environ.pop("GROQ_API_KEY", None)
     os.environ.pop("OPENAI_API_KEY", None)
+    os.environ.pop("NVIDIA_NIM_API_KEY", None)
+    os.environ.pop("NVIDIA_API_KEY", None)
 
     goal = "Run a Bell pair"
     traces = [_trace("run_bell_pair", "00/11=512/480")]
@@ -59,6 +63,8 @@ def test_narrator_state_path_template() -> None:
     os.environ.pop("CONDUCTOR_ENABLE_LLM", None)
     os.environ.pop("GROQ_API_KEY", None)
     os.environ.pop("OPENAI_API_KEY", None)
+    os.environ.pop("NVIDIA_NIM_API_KEY", None)
+    os.environ.pop("NVIDIA_API_KEY", None)
 
     goal = "device state"
     traces = [_trace("get_device_state", "ready=True")]
@@ -137,4 +143,46 @@ def test_narrator_mocked_llm_path_returns_text(monkeypatch: pytest.MonkeyPatch) 
         assert "READY" in msg or "0.91" in msg
     finally:
         # Clean up injected module so other tests are unaffected
+        sys.modules.pop("openai", None)
+
+
+def test_narrator_mocked_nvidia_nim_path_returns_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Simulate a successful LLM call to NVIDIA NIM by injecting a fake openai module."""
+    import sys
+    import types
+
+    # Force NVIDIA path
+    monkeypatch.setenv("CONDUCTOR_ENABLE_LLM", "1")
+    monkeypatch.setenv("CONDUCTOR_LLM_PROVIDER", "nvidia")
+    monkeypatch.setenv("NVIDIA_NIM_API_KEY", "nvapi-test")
+
+    class _FakeMsg:
+        content = "Q0 fidelity improved from 0.62 to 0.89; qubit now READY."
+
+    class _FakeChoice:
+        message = _FakeMsg()
+
+    class _FakeResp:
+        choices = [_FakeChoice()]
+
+    class _FakeCompletions:
+        def create(self, **kwargs):  # noqa: ANN001, ANN002
+            return _FakeResp()
+
+    class _FakeChat:
+        completions = _FakeCompletions()
+
+    class _FakeClient:
+        def __init__(self, *a, **k):  # noqa: ANN001, ANN002
+            self.chat = _FakeChat()
+
+    fake_openai = types.ModuleType("openai")
+    fake_openai.OpenAI = _FakeClient  # type: ignore[attr-defined]
+    sys.modules["openai"] = fake_openai
+
+    try:
+        msg = narrate("Bring qubit 0 to ready", [], [_res(True, {"fidelity": 0.89, "initial_fidelity": 0.62})], None)
+        assert isinstance(msg, str)
+        assert "READY" in msg or "0.89" in msg
+    finally:
         sys.modules.pop("openai", None)
