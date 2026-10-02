@@ -70,6 +70,8 @@ class GoalRequest(BaseModel):
 
 class GoalResponse(BaseModel):
     goal: str
+    user_message: str | None = None  # echo of the submitted goal for chat UIs
+    agent_message: str | None = None  # plain-English narration for the operator
     results: list[dict[str, Any]]
     traces: list[dict[str, Any]] = []
     metrics: dict[str, Any]
@@ -87,12 +89,32 @@ class BellRequest(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, Any]:
-    llm_on = os.getenv("CONDUCTOR_ENABLE_LLM", "0") in ("1", "true", "yes")
+    llm_on = os.getenv("CONDUCTOR_ENABLE_LLM", "0") in ("1", "true", "yes") or bool(
+        os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY")
+    )
+    provider = os.getenv("CONDUCTOR_LLM_PROVIDER") or (
+        "groq" if os.getenv("GROQ_API_KEY") else ("openai" if os.getenv("OPENAI_API_KEY") else None)
+    )
+    if not provider and llm_on:
+        provider = (
+            "groq"
+            if os.getenv("GROQ_API_KEY")
+            else ("openai" if os.getenv("OPENAI_API_KEY") else None)
+        )
+    model = os.getenv("CONDUCTOR_LLM_MODEL")
+    if not model:
+        model = (
+            "llama-3.3-70b-versatile"
+            if (provider or "").lower() == "groq"
+            else ("gpt-4o-mini" if provider else None)
+        )
     return {
         "status": "ok",
         "service": "conductor-qpu",
         "llm_planner": "on" if llm_on else "off",
-        "llm_model": os.getenv("CONDUCTOR_LLM_MODEL", "gpt-4o-mini") if llm_on else None,
+        "llm_narrator": "on" if llm_on else "off",
+        "llm_provider": provider,
+        "llm_model": model,
     }
 
 
@@ -120,22 +142,40 @@ def device_state() -> dict[str, Any]:
 
 @app.post("/goals")
 def post_goal(req: GoalRequest) -> GoalResponse:
-    results = _orchestrator.run_goal(req.goal)
-    out = []
-    for r in results:
-        out.append(
-            {
-                "ok": r.ok,
-                "data": r.data,
-                "latency_s": r.latency_s,
-                "error": r.error,
-            }
-        )
-        if r.latency_s:
-            _metrics.record_latency(r.latency_s)
-    traces = _orchestrator.get_last_traces()
+    # Capture a lightweight device snapshot for the narrator to reference
+    try:
+        dev = _backend.get_device_state()
+        device_snapshot = {
+            "is_ready": dev.is_ready,
+            "readiness_score": round(dev.readiness_score(), 4),
+            "readout_fidelity": {q: round(v, 4) for q, v in dev.readout_fidelity.items()},
+            "temperatures_mk": dev.temperatures_mk,
+        }
+    except Exception:  # noqa: BLE001
+        device_snapshot = None
+
+    full = _orchestrator.run_goal_full(req.goal, device_snapshot=device_snapshot)
+    out = full.get("results", [])
+    for r in out:
+        if r.get("latency_s"):
+            try:
+                _metrics.record_latency(float(r["latency_s"]))
+            except Exception:  # noqa: BLE001
+                pass
+    traces = full.get("traces", [])
     snap = _metrics.snapshot()
-    return GoalResponse(goal=req.goal, results=out, traces=traces, metrics=snap)
+    agent_msg = full.get("agent_message") or ""
+    # Guarantee non-empty narration for the UI contract
+    if not agent_msg or not str(agent_msg).strip():
+        agent_msg = "Completed the requested action. See traces for details."
+    return GoalResponse(
+        goal=req.goal,
+        user_message=req.goal,
+        agent_message=agent_msg,
+        results=out,
+        traces=traces,
+        metrics=snap,
+    )
 
 
 @app.get("/jobs/{job_id}")

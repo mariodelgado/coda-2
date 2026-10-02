@@ -60,6 +60,8 @@ export interface MetricsSnapshot {
 
 export interface GoalResponse {
   goal: string
+  user_message?: string | null
+  agent_message?: string | null
   results: ToolResult[]
   traces: ToolTrace[]
   metrics: MetricsSnapshot
