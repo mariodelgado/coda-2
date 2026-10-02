@@ -7,8 +7,11 @@ Design:
 - Optional LLM tool-calling is gated behind CONDUCTOR_ENABLE_LLM.
 
 Traces: every tool invocation is recorded as a ToolTrace with args, latency,
-and a short result summary. These are the real control-plane decisions shown
+    and a short result summary. These are the real control-plane decisions shown
 to operators and agents.
+
+After execution, an optional narrator produces a plain-English `agent_message`
+that turns physics/metrics into something an operator can act on.
 """
 
 from __future__ import annotations
@@ -27,6 +30,8 @@ from conductor_qpu.models.types import (
     JobType,
     QPUJob,
 )
+
+# Narrator import is lazy to avoid import cycles during minimal loads.
 
 
 @dataclass
@@ -330,6 +335,41 @@ class Orchestrator:
                 break
         return results
 
+    def run_goal_full(
+        self,
+        goal: str,
+        planner: Callable[[str], list[ToolCall]] | None = None,
+        device_snapshot: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Run a goal and return results + traces + a plain-English agent_message.
+
+        The agent_message is produced by the narrator (LLM if configured, else
+        deterministic high-quality template). It is never empty.
+        """
+        results = self.run_goal(goal, planner=planner)
+        traces = self.get_last_traces()
+        try:
+            from conductor_qpu.orchestrator.narrator import narrate
+
+            agent_message = narrate(goal, traces, results, device_snapshot=device_snapshot)
+        except Exception:  # noqa: BLE001
+            # Hard safety: never leave the caller without text
+            agent_message = _fallback_template_narrate(goal, traces, results)
+        return {
+            "goal": goal,
+            "results": [
+                {
+                    "ok": r.ok,
+                    "data": r.data,
+                    "latency_s": r.latency_s,
+                    "error": r.error,
+                }
+                for r in results
+            ],
+            "traces": traces,
+            "agent_message": agent_message or _fallback_template_narrate(goal, traces, results),
+        }
+
     # ---------------- Observability ----------------
 
     def get_metrics(self) -> dict[str, Any]:
@@ -353,3 +393,19 @@ class Orchestrator:
             "adapter": adapter_stats,
             "interface_latency_p50_hint": cal.get("avg_interface_latency_s", 0.0),
         }
+
+
+def _fallback_template_narrate(
+    goal: str, traces: list[dict[str, Any]], results: list[ToolResult]
+) -> str:
+    """Ultra-safe last-resort template so we never emit blank NL text."""
+    try:
+        from conductor_qpu.orchestrator.narrator import narrate as real_narrate
+
+        return real_narrate(goal, traces, results, None)
+    except Exception:  # noqa: BLE001
+        # Absolute last resort
+        if traces:
+            s = "; ".join(t.get("summary", t.get("tool", "")) for t in traces[-3:])
+            return f"Completed actions: {s}."
+        return "Goal completed."

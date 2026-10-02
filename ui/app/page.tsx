@@ -26,6 +26,8 @@ interface FidelityPoint { iter: number; fidelity: number }
 interface Turn {
   id: string
   goal: string
+  userMessage?: string
+  agentMessage?: string
   status: "running" | "succeeded" | "failed"
   traces: ToolTrace[]
   results: any[]
@@ -58,6 +60,15 @@ export default function ConductorQPUInstrument() {
   const [jobs, setJobs] = useState<Record<string, JobRecord>>({})
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const eventSourcesRef = useRef<Record<string, EventSource>>({})
+
+  // Transcript auto-scroll container
+  const transcriptRef = useRef<HTMLDivElement | null>(null)
+  const scrollTranscript = useCallback(() => {
+    const el = transcriptRef.current
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight + 400, behavior: "smooth" })
+    }
+  }, [])
 
   const updateApiBase = useCallback((base: string) => {
     const t = base.replace(/\/$/, "")
@@ -165,9 +176,12 @@ export default function ConductorQPUInstrument() {
     if (!goal) return
 
     const turnId = (globalThis.crypto?.randomUUID?.() || `t_${Date.now()}`) as string
+    // Immediately append the user turn so the transcript feels responsive
     const newTurn: Turn = {
       id: turnId,
       goal,
+      userMessage: goal,
+      agentMessage: undefined,
       status: "running",
       traces: [],
       results: [],
@@ -186,11 +200,14 @@ export default function ConductorQPUInstrument() {
       const resp = await api.postGoal(goal)
       const traces = resp.traces || []
       const { history, params, counts, threshold } = extractFromResults(resp.results || [])
+      const agentMsg = (resp as any).agent_message || (resp as any).agentMessage || undefined
 
       setTurns(prev => prev.map(t => {
         if (t.id !== turnId) return t
         return {
           ...t,
+          userMessage: (resp as any).user_message || t.userMessage || goal,
+          agentMessage: agentMsg,
           status: "succeeded",
           traces,
           results: resp.results || [],
@@ -268,6 +285,13 @@ export default function ConductorQPUInstrument() {
     return () => clearInterval(iv)
   }, [activeJobId, jobs, pollJobOnce])
 
+  // Auto-scroll transcript whenever turns grow or the latest turn gains an agent message
+  useEffect(() => {
+    // slight delay so DOM has painted the new bubble
+    const t = setTimeout(() => scrollTranscript(), 40)
+    return () => clearTimeout(t)
+  }, [turns.length, turns[turns.length - 1]?.agentMessage, scrollTranscript])
+
   const hasRunning = useMemo(() =>
     turns.some(t => t.status === "running") || Object.values(jobs).some(j => j.status === "running"),
   [turns, jobs])
@@ -275,7 +299,6 @@ export default function ConductorQPUInstrument() {
   const suggested = useMemo(() => [
     { label: "Calibrate Q0", goal: "Bring qubit 0 to ready" },
     { label: "Bell pair", goal: "Run a Bell pair and report fidelity" },
-    { label: "Bring ready", goal: "Bring qubit 0 to ready" },
   ], [])
 
   // Live readouts for top bar (instrument)
@@ -439,102 +462,83 @@ export default function ConductorQPUInstrument() {
           )}
         </div>
 
-        {/* Progressive blur dock — absolute, transparent base, overlays the stage.
-            Blur/tint strongest near composer (bottom), fades to transparent at top of dock. */}
-        <div className="dock">
-          <div className="constrained">
-            {/* Clip rows (ledger as clip list) */}
-            {ledger.length > 0 && (
-              <div className="clip-list">
-                {ledger.map((t) => {
-                  const isSel = t.id === selectedTurnId;
-                  return (
-                    <button key={t.id} onClick={() => setSelectedTurnId(t.id)} className={`clip-row w-full text-left ${isSel ? "selected" : ""}`}>
-                      <span className="time instrument-mono">{new Date(t.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</span>
-                      <span className="text-true shrink-0">{t.goal}</span>
-                      <span className="text-zinc-400 truncate">{lastSummary(t)}</span>
-                      {t.status === "running" && <span className="ml-auto text-applied">running</span>}
-                      {t.status === "failed" && <span className="ml-auto text-fail">failed</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Chips + centered native-style composer */}
-            <div className="mt-1 flex flex-col items-center gap-2">
-              <div className="flex flex-wrap justify-center gap-1.5">
-                {suggested.map((s, i) => (
-                  <button key={i} onClick={() => runSuggested(s.goal)} disabled={!connected || submitting} className="preset-chip">
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="composer-wrap w-full">
-                <div className="composer">
-                  <input
-                    className="instrument-mono"
-                    placeholder="Type a goal… or pick above"
-                    value={goalInput}
-                    onChange={(e) => setGoalInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !submitting) void submitGoal(goalInput) }}
-                    disabled={submitting || !connected}
-                  />
-                  {hasRunning ? (
-                    <Button variant="outline" size="sm" className="h-7 border-white/10" onClick={() => { void stopActive() }}>
-                      <Square className="h-3 w-3 mr-1" /> stop
-                    </Button>
-                  ) : (
-                    <button onClick={() => { void submitGoal(goalInput) }} disabled={submitting || !goalInput.trim() || !connected} className="rounded-full p-1.5 hover:bg-white/5 disabled:opacity-40" aria-label="send">
-                      <Send className="h-4 w-4" />
-                    </button>
-                  )}
-                  <button onClick={() => setCommandOpen(true)} className="ml-1 text-[10px] px-1.5 py-0.5 rounded border hairline text-zinc-500 hover:text-zinc-300" title="⌘K">⌘K</button>
-                </div>
-              </div>
-            </div>
-
-            {/* Slim details (still in dock, never steals stage) */}
-            <AnimatePresence>
-              {selectedTurn && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.12, ease: easeOut }} className="details mt-2 rounded p-2 overflow-hidden">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="text-zinc-400">{selectedTurn.goal}</div>
-                    <button className="text-[10px] text-zinc-500" onClick={() => setSelectedTurnId(null)}>close</button>
+        {/* Progressive blur dock — transcript on top, chips, composer flush at absolute bottom.
+            The stage extends under so blur has real content. Composer is lowest UI element. */}
+        <div className="dock chat-dock">
+          <div className="constrained chat-constrained">
+            {/* Scrollable conversation transcript (top of dock, grows, scrolls) */}
+            <div ref={transcriptRef} className="chat-transcript">
+              {turns.length === 0 && (
+                <div className="chat-empty text-zinc-500">No messages yet. Try “Calibrate Q0” or type a goal below.</div>
+              )}
+              {turns.map((t) => (
+                <div key={t.id} className="chat-turn">
+                  {/* User message */}
+                  <div className="chat-user">
+                    <span className="chat-label">you</span>
+                    <span className="chat-text">{t.userMessage || t.goal}</span>
                   </div>
-
-                  {selectedTurn.fidelityHistory.length > 0 && (
-                    <div className="h-[84px] -mx-1 mb-2">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={selectedTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: -4 }}>
-                          <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
-                          <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
-                          <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
-                          <ReferenceLine y={selectedTurn.calThreshold} stroke="#FF9500" strokeDasharray="2 2" />
-                          <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={{ r: 1 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-
-                  {selectedTurn.traces.length > 0 && (
-                    <div className="instrument-mono text-[10px] text-zinc-400 space-y-px max-h-[58px] overflow-auto">
-                      {selectedTurn.traces.slice(-5).map((tr, i) => (
-                        <div key={i}>{new Date(tr.ts * 1000).toLocaleTimeString()} · {tr.tool} · {tr.summary}</div>
+                  {/* Agent NL reply — primary content */}
+                  <div className="chat-agent">
+                    <span className="chat-label">agent</span>
+                    {t.status === "running" && (
+                      <span className="chat-text text-applied">running…</span>
+                    )}
+                    {t.status === "failed" && (
+                      <span className="chat-text text-fail">{t.error || "failed"}</span>
+                    )}
+                    {t.status !== "running" && t.agentMessage && (
+                      <span className="chat-text chat-nl">{t.agentMessage}</span>
+                    )}
+                    {t.status !== "running" && !t.agentMessage && !t.error && (
+                      <span className="chat-text text-zinc-500">completed</span>
+                    )}
+                  </div>
+                  {/* Optional micro traces line (collapsed; not the primary view) */}
+                  {t.traces && t.traces.length > 0 && (
+                    <div className="chat-traces">
+                      {t.traces.slice(-3).map((tr, i) => (
+                        <span key={i} className="chat-trace-pill">{tr.tool}</span>
                       ))}
                     </div>
                   )}
+                </div>
+              ))}
+            </div>
 
-                  {selectedTurn.bellCounts && (
-                    <div className="instrument-mono text-true text-[10px] mt-1">{JSON.stringify(selectedTurn.bellCounts)}</div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Soft suggestion chips (above composer) */}
+            <div className="chat-chips">
+              {suggested.map((s, i) => (
+                <button key={i} onClick={() => runSuggested(s.goal)} disabled={!connected || submitting} className="preset-chip">
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Composer flush to the very bottom of the dock/viewport */}
+            <div className="chat-composer">
+              <div className="composer">
+                <input
+                  className="instrument-mono"
+                  placeholder="Type a goal… or pick above"
+                  value={goalInput}
+                  onChange={(e) => setGoalInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !submitting) void submitGoal(goalInput) }}
+                  disabled={submitting || !connected}
+                />
+                {hasRunning ? (
+                  <Button variant="outline" size="sm" className="h-7 border-white/10" onClick={() => { void stopActive() }}>
+                    <Square className="h-3 w-3 mr-1" /> stop
+                  </Button>
+                ) : (
+                  <button onClick={() => { void submitGoal(goalInput) }} disabled={submitting || !goalInput.trim() || !connected} className="rounded-full p-1.5 hover:bg-white/5 disabled:opacity-40" aria-label="send">
+                    <Send className="h-4 w-4" />
+                  </button>
+                )}
+                <button onClick={() => setCommandOpen(true)} className="ml-1 text-[10px] px-1.5 py-0.5 rounded border hairline text-zinc-500 hover:text-zinc-300" title="⌘K">⌘K</button>
+              </div>
+            </div>
           </div>
-
-          <div className="mt-auto pt-0.5 text-[9px] text-zinc-600 text-center">Real control plane. Traces only. No LLM.</div>
         </div>
       </div>
     </div>

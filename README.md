@@ -213,21 +213,42 @@ Open http://localhost:3000. The instrument appears immediately.
 
 ---
 
-## LLM planner (optional)
+## LLM planner + NL narrator (optional, free path available)
 
-Default planner is deterministic and offline. To use the real OpenAI path:
+Default planner and narrator are deterministic and offline. Natural-language narration is **always produced** for every completed turn (LLM or high-quality template).
+
+### Free LLM path (recommended for demos)
+
+Use Groq's OpenAI-compatible API (free tier). Set:
 
 ```bash
 export CONDUCTOR_ENABLE_LLM=1
-export CONDUCTOR_LLM_MODEL=gpt-4o-mini   # or gpt-4o, etc.
+export GROQ_API_KEY=gsk_...
+# optional overrides:
+# export CONDUCTOR_LLM_PROVIDER=groq
+# export CONDUCTOR_LLM_MODEL=llama-3.3-70b-versatile
+make run-api
+```
+
+A stable free model such as `llama-3.3-70b-versatile` or `llama-3.1-8b-instant` is used by default when `GROQ_API_KEY` is present.
+
+### Alternate: OpenAI
+
+```bash
+export CONDUCTOR_ENABLE_LLM=1
+export CONDUCTOR_LLM_PROVIDER=openai
+export CONDUCTOR_LLM_MODEL=gpt-4o-mini
 export OPENAI_API_KEY=sk-...
 make run-api
 ```
 
 Behavior:
-- Planner attempts an LLM call and robustly parses JSON (strips ``` fences and surrounding prose).
-- On any failure (auth, network, parse, unknown tool) it falls back to the deterministic `plan_from_goal`.
-- UI does not require secrets; the server advertises LLM mode via GET /health (`llm_planner` and `llm_model`).
+- Two LLM jobs:
+  1. **Planner**: maps NL goal → tool plan (falls back to deterministic `plan_from_goal` on any error).
+  2. **Narrator** (new): after tools run, emits a short plain-English `agent_message` that explains what happened in operator terms (physics/metrics → understandable).
+- If no API key (or LLM disabled): a deterministic template narrator guarantees every turn still has an `agent_message`. Templates are factual English, never blank.
+- API responses include `user_message` and `agent_message` so chat UIs can render a real transcript.
+- Server advertises LLM status on `GET /health` (`llm_planner`, `llm_narrator`, `llm_provider`, `llm_model`).
 
 Founder-demo targets:
 

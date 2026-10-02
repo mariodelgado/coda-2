@@ -1,13 +1,20 @@
 """Deterministic goal planner.
 
 Converts simple natural-language goals into a sequence of ToolCalls.
-No LLM required. Works offline. If CONDUCTOR_ENABLE_LLM=1 and openai
-is importable, an optional LLM planner can be swapped in (best-effort).
+No LLM required. Works offline. If CONDUCTOR_ENABLE_LLM=1 and a provider key
+is present, an optional LLM planner can be swapped in (best-effort).
 
-LLM path (when enabled):
-- Uses CONDUCTOR_LLM_MODEL or gpt-4o-mini.
-- Robust JSON extraction (strips ``` fences and surrounding prose).
-- On any parse/LLM failure, falls back to plan_from_goal.
+Supported providers (OpenAI-compatible):
+- groq (default when GROQ_API_KEY present): https://api.groq.com/openai/v1
+- openai: official OpenAI
+
+Env:
+  CONDUCTOR_ENABLE_LLM=1 (or auto when a key is present)
+  CONDUCTOR_LLM_PROVIDER=groq|openai
+  CONDUCTOR_LLM_MODEL (defaults to a free/stable Groq model or gpt-4o-mini)
+  GROQ_API_KEY or OPENAI_API_KEY
+
+On any failure the deterministic plan_from_goal is used.
 """
 
 from __future__ import annotations
@@ -113,21 +120,79 @@ def _extract_json_array(text: str) -> list[Any] | None:
     return None
 
 
+def _get_planner_llm_client() -> tuple[Any, str] | None:
+    """Return (client, model) for an OpenAI-compatible planner LLM, or None.
+
+    Prefers Groq (free tier) when GROQ_API_KEY is present.
+    Falls back to OpenAI if CONDUCTOR_LLM_PROVIDER=openai or only OPENAI_API_KEY present.
+    Auto-enables if a key is present even without CONDUCTOR_ENABLE_LLM=1.
+    """
+    provider = (os.getenv("CONDUCTOR_LLM_PROVIDER") or "").lower().strip()
+
+    groq_key = os.getenv("GROQ_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+
+    # Auto-enable logic
+    enabled = os.getenv("CONDUCTOR_ENABLE_LLM", "0") in ("1", "true", "yes")
+    if not enabled:
+        if groq_key or openai_key:
+            enabled = True
+    if not enabled:
+        return None
+
+    if not provider:
+        provider = "groq" if groq_key else ("openai" if openai_key else "groq")
+
+    try:
+        from openai import OpenAI  # type: ignore
+    except Exception:  # noqa: BLE001
+        return None
+
+    if provider == "groq" and groq_key:
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "llama-3.3-70b-versatile"
+        try:
+            client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+            return client, model
+        except Exception:  # noqa: BLE001
+            return None
+
+    if provider == "openai" and openai_key:
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "gpt-4o-mini"
+        try:
+            client = OpenAI(api_key=openai_key)
+            return client, model
+        except Exception:  # noqa: BLE001
+            return None
+
+    # Cross fallback
+    if groq_key:
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "llama-3.3-70b-versatile"
+        try:
+            client = OpenAI(api_key=groq_key, base_url="https://api.groq.com/openai/v1")
+            return client, model
+        except Exception:  # noqa: BLE001
+            pass
+    if openai_key:
+        model = os.getenv("CONDUCTOR_LLM_MODEL") or "gpt-4o-mini"
+        try:
+            client = OpenAI(api_key=openai_key)
+            return client, model
+        except Exception:  # noqa: BLE001
+            pass
+    return None
+
+
 def maybe_llm_plan(goal: str) -> list[ToolCall] | None:
-    """Optional LLM planner. Only used when env var is set.
+    """Optional LLM planner. Uses Groq by default when a free key is present.
 
     Returns None if not enabled or unavailable. On any error (network, parse,
     schema) it falls back to None so callers use the deterministic planner.
     Never raises to callers.
     """
-    if os.getenv("CONDUCTOR_ENABLE_LLM", "0") not in ("1", "true", "yes"):
+    pair = _get_planner_llm_client()
+    if not pair:
         return None
-    try:
-        import openai  # type: ignore
-    except Exception:  # noqa: BLE001
-        return None
-
-    model = os.getenv("CONDUCTOR_LLM_MODEL", "gpt-4o-mini")
+    client, model = pair
 
     # Constrained prompt: ask for pure JSON only.
     sys = (
@@ -141,7 +206,6 @@ def maybe_llm_plan(goal: str) -> list[ToolCall] | None:
     )
 
     try:
-        client = openai.OpenAI()
         resp = client.chat.completions.create(
             model=model,
             messages=[
@@ -174,7 +238,7 @@ def maybe_llm_plan(goal: str) -> list[ToolCall] | None:
 def plan(goal: str) -> list[ToolCall]:
     """Public entry: tries LLM if enabled, else deterministic planner.
 
-    When CONDUCTOR_ENABLE_LLM=1 and OpenAI is configured, the LLM path is used.
+    Groq (llama) is the preferred free path when GROQ_API_KEY is set.
     On any failure the deterministic plan_from_goal is used (no silent bad plans).
     """
     llm = maybe_llm_plan(goal)
