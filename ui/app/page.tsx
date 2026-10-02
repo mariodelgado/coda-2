@@ -18,6 +18,7 @@ import { useControlPlaneStore } from "@/lib/store"
 import { CommandPalette, defaultCommandIcons, type CommandAction } from "@/components/command/command-palette"
 import { CalibrationSurfaceLazy } from "@/components/viz/calibration-surface-lazy"
 import { Device3DLazy } from "@/components/viz/device-3d-lazy"
+import { StageStateChip, getStageMachineState, type StageMachineState } from "@/components/stage/stage-state-chip"
 
 const easeOut = [0.23, 1, 0.32, 1] as const
 
@@ -360,6 +361,64 @@ export default function ConductorQPUInstrument() {
 
   const ledger = useMemo(() => [...turns].reverse().slice(0, 10), [turns])
 
+  // Active job + turn status for state machine
+  const activeJob = activeJobId ? jobs[activeJobId] : null
+  const hasActiveJob = !!activeJob && (activeJob.status === "queued" || activeJob.status === "running")
+  const activeJobStatus = activeJob?.status ?? null
+  const activeTurnRunning = !!activeTurn && activeTurn.status === "running"
+
+  // Recent failure detection (for brief FAILED state)
+  const lastJobFailedRecently = React.useMemo(() => {
+    if (activeJob && activeJob.status === "failed") return true
+    const recent = Object.values(jobs).find(j => j.status === "failed")
+    return !!recent
+  }, [jobs, activeJob])
+
+  const lastTurnFailedRecently = React.useMemo(() => {
+    const recentFailed = turns.slice(-3).some(t => t.status === "failed")
+    return recentFailed
+  }, [turns])
+
+  // Lightweight transition hint e.g. "DRIFT → READY" after a successful cal when device reports ready
+  const transitionedHint = React.useMemo(() => {
+    if (!connected || !isReady) return undefined
+    const lastOk = [...turns].reverse().find(t => t.status === "succeeded" && t.fidelityHistory.length > 0)
+    if (!lastOk) return undefined
+    // Only surface a hint for a short window after the successful turn (use recency)
+    const ageMs = Date.now() - (lastOk.createdAt || 0)
+    if (ageMs > 45000) return undefined
+    // If we were previously not-ready (we don't track prior, so show a compact "CAL → READY" style if cal-like)
+    return "CAL → READY"
+  }, [turns, isReady, connected])
+
+  // Derive single stage machine state for the bottom-right chip (no scattered conditionals in JSX)
+  const activeTurnGoal = activeTurn?.goal || ""
+  const stageMachine: StageMachineState = React.useMemo(
+    () =>
+      getStageMachineState({
+        connected,
+        isReady,
+        hasActiveJob,
+        activeJobStatus: activeJobStatus as any,
+        activeTurnRunning,
+        activeTurnGoal,
+        lastJobFailedRecently,
+        lastTurnFailedRecently,
+        transitionedHint,
+      }),
+    [
+      connected,
+      isReady,
+      hasActiveJob,
+      activeJobStatus,
+      activeTurnRunning,
+      activeTurnGoal,
+      lastJobFailedRecently,
+      lastTurnFailedRecently,
+      transitionedHint,
+    ]
+  )
+
   const lastSummary = (t: Turn) => {
     if (t.error) return t.error
     if (t.bellCounts) return Object.entries(t.bellCounts).map(([k,v]) => `${k}=${v}`).join(" ")
@@ -471,21 +530,24 @@ export default function ConductorQPUInstrument() {
             />
           )}
 
-          {/* HUD label stays in the upper visible stage area */}
-          <div className="absolute top-2 right-2 stage-hud text-zinc-500 pointer-events-none">
-            {stageTab === "drift" ? "param drift · Δfreq × Δamp" : "hardware · cryo stage"}
-          </div>
+          {/* HUD label — only for drift tab. On device tab, Device3D owns its own top-right badge to avoid collision. */}
+          {stageTab === "drift" && (
+            <div className="absolute top-2 right-2 stage-hud text-zinc-500 pointer-events-none">
+              param drift · Δfreq × Δamp
+            </div>
+          )}
 
-          {/* Fidelity climb HUD — in the visible upper stage (above the progressive dock overlay) */}
+          {/* Fidelity climb HUD — bumped upward and right to keep bottom-right free for state chip.
+              Only shown during active calibrate/turn so bottom-right area stays clear for state machine. */}
           {activeTurn && activeTurn.fidelityHistory.length > 0 && (
-            <div className="absolute bottom-[38%] right-3 w-[280px] hud rounded px-2 py-1 text-[10px]">
+            <div className="absolute top-12 right-3 w-[260px] hud rounded px-2 py-1 text-[10px] z-20">
               <div className="flex items-baseline justify-between mb-0.5 px-1">
                 <div className="text-zinc-400">fidelity climb</div>
                 <div className="instrument-mono" style={{color: 'var(--success)'}}>
                   {latestFidelity?.toFixed(4)} / {threshold}
                 </div>
               </div>
-              <div className="h-[64px] -mx-1">
+              <div className="h-[56px] -mx-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={activeTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
@@ -498,6 +560,12 @@ export default function ConductorQPUInstrument() {
               </div>
             </div>
           )}
+
+          {/* State machine status chip — bottom-right of the stage, above progressive blur dock.
+              Single derived state; updates from connected / is_ready / active jobs / turns. */}
+          <div className="absolute bottom-3 right-3 z-30">
+            <StageStateChip state={stageMachine} />
+          </div>
         </div>
 
         {/* Progressive blur dock — transcript on top, chips, composer flush at absolute bottom.
