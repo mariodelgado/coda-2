@@ -149,25 +149,28 @@ body {
   background: #000000;
 }
 
-/* Overlaid dock — 35% from bottom, fully transparent base.
-   Strongest blur + tint at bottom (near composer), fades to none at top of dock. */
+/* Overlaid dock — compact band at bottom, fully transparent base.
+   Strongest blur + tint at bottom (near composer), fades to none at top of dock.
+   Transcript must live inside this band, directly above chips/composer. */
 .dock {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 35%;
-  min-height: 180px;
+  /* Tighter dock band so transcript sits visually just above chips/composer, not mid-stage */
+  height: clamp(220px, 26vh, 340px);
+  min-height: 220px;
   z-index: 20;
   display: flex;
   flex-direction: column;
-  padding: 8px 0 4px;
+  padding: 6px 0 4px;
   overflow: hidden;
   background: transparent; /* critical: nothing solid here */
   /* No hard top border — the progressive layers provide the transition */
 }
 
-/* Progressive heavy blur layer: strongest + most opaque at the very bottom */
+/* Progressive heavy blur layer: strongest + most opaque at the very bottom.
+   Extends material upward to cover the full dock band so transcript sits inside frosted area. */
 .dock::before {
   content: "";
   position: absolute;
@@ -175,30 +178,32 @@ body {
   z-index: -2;
   background: linear-gradient(
     to top,
-    rgba(20, 20, 24, 0.92) 0%,
-    rgba(20, 20, 24, 0.78) 18%,
-    rgba(20, 20, 24, 0.44) 36%,
-    rgba(20, 20, 24, 0.16) 52%,
-    rgba(20, 20, 24, 0.04) 68%,
-    transparent 82%
+    rgba(20, 20, 24, 0.96) 0%,
+    rgba(20, 20, 24, 0.90) 12%,
+    rgba(20, 20, 24, 0.72) 26%,
+    rgba(20, 20, 24, 0.50) 42%,
+    rgba(20, 20, 24, 0.28) 58%,
+    rgba(20, 20, 24, 0.12) 74%,
+    rgba(20, 20, 24, 0.04) 86%,
+    transparent 94%
   );
   backdrop-filter: blur(26px) saturate(170%);
   -webkit-backdrop-filter: blur(26px) saturate(170%);
-  /* Rounded top corners for iMovie dock feel — only the lower part is heavily material */
+  /* Rounded top corners for iMovie dock feel — material reaches the top of the dock band */
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
-  /* Mask confines the heavy material to bottom ~half of the dock */
+  /* Mask now extends heavy material to nearly the full dock height */
   mask-image: linear-gradient(
     to top,
     black 0%,
-    black 44%,
-    transparent 82%
+    black 88%,
+    transparent 96%
   );
   -webkit-mask-image: linear-gradient(
     to top,
     black 0%,
-    black 44%,
-    transparent 82%
+    black 88%,
+    transparent 96%
   );
 }
 
@@ -210,30 +215,30 @@ body {
   z-index: -1;
   background: linear-gradient(
     to top,
-    transparent 4%,
-    rgba(20, 20, 24, 0.22) 22%,
-    rgba(20, 20, 24, 0.08) 42%,
-    rgba(20, 20, 24, 0.02) 60%,
-    transparent 80%
+    transparent 2%,
+    rgba(20, 20, 24, 0.18) 14%,
+    rgba(20, 20, 24, 0.10) 30%,
+    rgba(20, 20, 24, 0.04) 48%,
+    transparent 70%
   );
   backdrop-filter: blur(8px) saturate(115%);
   -webkit-backdrop-filter: blur(8px) saturate(115%);
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
-  /* This layer bridges mid-dock and then disappears toward the top */
+  /* Bridge layer covers more of the dock band for a continuous frosted field */
   mask-image: linear-gradient(
     to top,
-    transparent 2%,
-    black 18%,
-    black 58%,
-    transparent 82%
+    transparent 1%,
+    black 12%,
+    black 78%,
+    transparent 94%
   );
   -webkit-mask-image: linear-gradient(
     to top,
-    transparent 2%,
-    black 18%,
-    black 58%,
-    transparent 82%
+    transparent 1%,
+    black 12%,
+    black 78%,
+    transparent 94%
   );
 }
 
@@ -416,7 +421,9 @@ button:focus-visible {
   flex-direction: column;
 }
 
-/* Scrollable transcript — grows and scrolls; sits above chips/composer */
+/* Scrollable transcript — grows and scrolls; fills space above chips/composer inside the dock band.
+   Content is bottom-aligned so bubbles sit tightly just above the chips (like a typical chat).
+   When overflowing, user scrolls the pane; latest exchange remains near the input. */
 .chat-transcript {
   flex: 1 1 auto;
   min-height: 0;
@@ -427,6 +434,8 @@ button:focus-visible {
   gap: 10px;
   font-size: 13px;
   line-height: 1.35;
+  /* Anchor conversation near the bottom of the transcript area (tight to chips) */
+  justify-content: flex-end;
 }
 
 /* Empty state */
@@ -484,9 +493,10 @@ button:focus-visible {
   background: rgba(255,255,255,0.02);
 }
 
-/* Chips row above composer */
+/* Chips row above composer (never grows; sits between transcript and composer) */
 .chat-chips {
   display: flex;
+  flex: 0 0 auto;
   flex-wrap: wrap;
   gap: 6px;
   padding: 4px 4px 6px;
