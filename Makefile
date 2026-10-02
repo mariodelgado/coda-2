@@ -67,7 +67,7 @@ clean:
 	cd ui && rm -rf .next out node_modules/.cache 2>/dev/null || true
 
 run-api:
-	@echo "Starting FastAPI on :8000 (CORS allows http://localhost:3000)"
+	@echo "Starting FastAPI on :8000 (CORS allows :3000; private-network header for Chromium)"
 	$(PYTHON) -m conductor_qpu.api
 
 run-ui:
@@ -75,7 +75,10 @@ run-ui:
 	cd ui && npm run build && npm run start
 
 run-ui-dev:
-	@echo "Starting Next.js dev server on :3000 (point NEXT_PUBLIC_API_BASE if needed)"
+	@echo "Starting Next.js dev server on :3000"
+	@echo "  - Same-origin proxy: UI calls /qpu/* are rewritten to http://127.0.0.1:8000/*"
+	@echo "  - Default NEXT_PUBLIC_API_BASE is '/qpu' (same-origin). No manual env needed."
+	@echo "  - LIVE pill and Calibrate Q0 chips will work once API is reachable."
 	cd ui && npm run dev
 
 founder-demo:

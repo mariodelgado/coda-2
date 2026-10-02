@@ -42,6 +42,7 @@ except Exception:  # noqa: BLE001
 app = FastAPI(title="Conductor QPU", version="0.1.0", docs_url="/docs")
 
 # CORS for the Next.js UI (dev on :3000, prod builds may be same-origin or behind proxy)
+# allow_headers=["*"] covers Access-Control-Request-Private-Network in preflight.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -53,7 +54,24 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
+
+
+# Ensure Chromium private-network preflights succeed for local dev.
+# CORSMiddleware short-circuits OPTIONS; this small ASGI middleware injects the
+# header on responses that already carry ACAO (or for local origins).
+@app.middleware("http")
+async def add_private_network_header(request, call_next):  # type: ignore[no-untyped-def]
+    response = await call_next(request)
+    origin = (request.headers.get("origin") or "").lower()
+    is_local = origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1")
+    # Always allow for local dev; harmless for non-private contexts.
+    if is_local or response.headers.get("access-control-allow-origin"):
+        # Set on every response (including preflight 204/200) so the browser sees it
+        # during the private-network preflight sequence.
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
+    return response
 
 # Backend selection via env (CONDUCTOR_QPU_BACKEND=stub|sim)
 # This is the single seam a real hardware driver plugs into.

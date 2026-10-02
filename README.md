@@ -197,6 +197,18 @@ make run-ui-dev              # Next.js on :3000
 
 Open http://localhost:3000. The instrument appears immediately.
 
+### Connection and chat chips (no manual env gymnastics)
+
+- The Next.js dev server rewrites `/qpu/*` → `http://127.0.0.1:8000/*`.
+- `ui/lib/api.ts` defaults `NEXT_PUBLIC_API_BASE` to `/qpu` (same-origin) when unset.
+- Result: opening the UI against a running API shows **LIVE**, enables **Calibrate Q0** / composer, and produces a transcript turn with a non-empty `agent_message`.
+- The toolbar **refresh** re-runs health (recovering from a transient first-fetch failure) then device/metrics.
+- FastAPI emits `Access-Control-Allow-Private-Network: true` for local origins so Chromium private-network preflights succeed for direct `:8000` usage too.
+
+If you ever need to point elsewhere, set `NEXT_PUBLIC_API_BASE` explicitly (e.g. a full origin).
+
+Hard refresh the UI after starting the API if the first health check raced with API startup.
+
 ### See calibration live
 
 1. The **stage** (top) shows the current device view.
