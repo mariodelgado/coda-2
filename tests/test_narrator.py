@@ -181,8 +181,131 @@ def test_narrator_mocked_nvidia_nim_path_returns_text(monkeypatch: pytest.Monkey
     sys.modules["openai"] = fake_openai
 
     try:
-        msg = narrate("Bring qubit 0 to ready", [], [_res(True, {"fidelity": 0.89, "initial_fidelity": 0.62})], None)
+        msg = narrate(
+            "Bring qubit 0 to ready",
+            [],
+            [_res(True, {"fidelity": 0.89, "initial_fidelity": 0.62})],
+            None,
+        )
         assert isinstance(msg, str)
         assert "READY" in msg or "0.89" in msg
     finally:
         sys.modules.pop("openai", None)
+
+
+def test_narrator_honors_is_ready_true_authoritative(monkeypatch: pytest.MonkeyPatch) -> None:
+    """When device_snapshot.is_ready is true, narration MUST affirm READY/usable.
+
+    Even if an LLM path is configured and the LLM would contradict, the guard
+    ensures an affirmative plain-English READY message for calibrate goals.
+    """
+    import sys
+    import types
+
+    # Force an LLM narrator path (NVIDIA NIM style) that tries to deny readiness.
+    monkeypatch.setenv("CONDUCTOR_ENABLE_LLM", "1")
+    monkeypatch.setenv("CONDUCTOR_LLM_PROVIDER", "nvidia")
+    monkeypatch.setenv("NVIDIA_NIM_API_KEY", "nvapi-test")
+
+    class _DenyingMsg:
+        # Intentionally contradictory LLM output (as observed in the bug report)
+        content = "Q0 fidelity is still short of the READY threshold; another pass is needed."
+
+    class _FakeChoice:
+        message = _DenyingMsg()
+
+    class _FakeResp:
+        choices = [_FakeChoice()]
+
+    class _FakeCompletions:
+        def create(self, **kwargs):  # noqa: ANN001, ANN002
+            return _FakeResp()
+
+    class _FakeChat:
+        completions = _FakeCompletions()
+
+    class _FakeClient:
+        def __init__(self, *a, **k):  # noqa: ANN001, ANN002
+            self.chat = _FakeChat()
+
+    fake_openai = types.ModuleType("openai")
+    fake_openai.OpenAI = _FakeClient  # type: ignore[attr-defined]
+    sys.modules["openai"] = fake_openai
+
+    try:
+        # Post-goal authoritative snapshot: device itself says ready with high fidelity.
+        snap = {
+            "is_ready": True,
+            "readiness_score": 0.93,
+            "readout_fidelity": {"0": 0.93, "1": 0.91},
+        }
+        msg = narrate(
+            "Calibrate qubit 0 to ready",
+            [_trace("calibrate_qubit", "fidelity=0.71")],  # tool may report below its 0.88
+            [_res(False, {"fidelity": 0.71, "initial_fidelity": 0.55, "threshold": 0.88})],
+            snap,
+        )
+        assert isinstance(msg, str)
+        low = msg.lower()
+        # Must affirm readiness per device snapshot, not echo the tool's ok=false or LLM denial.
+        assert any(w in low for w in ["ready", "usable for circuits", "meets the readiness"])
+        # Must not claim "not ready" or "another pass needed" when device is authoritative ready.
+        assert "not ready" not in low and "another pass" not in low
+    finally:
+        sys.modules.pop("openai", None)
+
+
+def test_narrator_does_not_claim_ready_when_is_ready_false() -> None:
+    """When device_snapshot.is_ready is false, narration must not claim READY."""
+    # Ensure template path
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    snap = {
+        "is_ready": False,
+        "readiness_score": 0.61,
+        "readout_fidelity": {"0": 0.61},
+    }
+    msg = narrate(
+        "Bring qubit 0 to ready",
+        [_trace("calibrate_qubit", "fidelity=0.61")],
+        [_res(False, {"fidelity": 0.61, "initial_fidelity": 0.50, "threshold": 0.88})],
+        snap,
+    )
+    assert isinstance(msg, str)
+    low = msg.lower()
+    # Must clearly indicate not ready / needs another pass.
+    assert any(
+        w in low for w in ["not yet ready", "not ready", "another calibration", "another pass"]
+    )
+    # Must not claim the device IS currently ready or usable now.
+    # Acceptable: future conditional phrasing like "before the qubit can be used".
+    assert "device reports ready" not in low
+    assert "meets the readiness predicate and is usable" not in low
+    assert "is usable for circuits" not in low  # exact positive claim
+    # Never claim the positive "ready for circuits" outcome when device snapshot says false.
+    assert "ready for circuits" not in low
+
+
+def test_narrator_is_ready_true_template_path_affirms() -> None:
+    """Template path with is_ready=true snapshot produces affirmative language."""
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    snap = {"is_ready": True, "readiness_score": 0.90, "readout_fidelity": {"0": 0.90}}
+    msg = narrate("Calibrate qubit 0", [], [_res(True, {"fidelity": 0.71})], snap)
+    assert isinstance(msg, str)
+    low = msg.lower()
+    assert any(w in low for w in ["ready", "usable for circuits", "meets the readiness"])

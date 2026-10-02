@@ -1,35 +1,21 @@
-# AI-to-QPU Spike Fixes - Task List
+# Fix: founder-demo Calibrate → READY path unreliable for UI transcript
 
-## Backend
-- [ ] Create narrator module: deterministic template + optional Groq/OpenAI LLM explainer
-- [ ] Extend planner.py to support Groq (OpenAI compat) in addition to OpenAI
-- [ ] Extend orchestrator to produce `agent_message` (narrate after run_goal)
-- [ ] Update API server: GoalResponse includes `user_message`, `agent_message`; /health advertises provider/model
-- [ ] Update /goals and any SSE payloads
-- [ ] Handle env: CONDUCTOR_ENABLE_LLM, GROQ_API_KEY, CONDUCTOR_LLM_PROVIDER, CONDUCTOR_LLM_MODEL
-- [ ] Always produce non-empty agent_message (template fallback)
+## Current status
+- Branch: cursor/fix-calibrate-ready-narration-9912
+- Pre-edit analysis complete: snapshot timing, narrator template vs LLM, 0.88 vs 0.82 mismatch.
 
-## Frontend
-- [ ] Re-architect dock: scrollable transcript (user+agent), chips, composer at absolute bottom
-- [ ] Update Turn/GoalResponse handling to use agent_message for NL display
-- [ ] Immediate append of user message; agent NL on completion
-- [ ] Auto-scroll transcript to bottom
-- [ ] Remove ledger-under-composer; ensure composer is lowest
-- [ ] Preserve 65/35, iOS palette, progressive blur, no purple
+## Tasks
+- [x] Identified root causes (pre-goal snapshot, narrator not authoritative on device.is_ready, calibrate ok=0.88)
+- [ ] Edit orchestrator.run_goal_full to capture POST-goal fresh device snapshot from adapter
+- [ ] Strengthen narrator.py:
+  - _template_narrate: honor device_snapshot.is_ready as ground truth for calibrate goals
+  - _call_llm_narrate: strengthen system prompt to treat device.is_ready as authoritative
+  - narrate(): add post-LLM guard that falls back to template if LLM contradicts is_ready=true
+- [ ] Add focused tests in test_narrator.py for is_ready=true (must affirm) and is_ready=false (must not claim)
+- [ ] Run full verification: pytest, lint, format; manual simulation of is_ready path
+- [ ] Commit, push, open PR via ManagePullRequest
 
-## Tests & Quality
-- [ ] Add narrator tests (template path + mock LLM)
-- [ ] Ensure all existing pytest pass
-- [ ] `cd ui && npm run build` clean
-- [ ] Update README (Groq as default free path, NL always on)
-
-## Git/PR
-- [ ] Create branch cursor/nl-narration-dock-llm-groq-5f46
-- [ ] Commit logically
-- [ ] Push and open PR via ManagePullRequest
-- [ ] Include summary + layout/screenshot notes
-
-## Verification
-- [ ] No keys: "Calibrate Q0" shows user line + NL agent explanation; composer bottom-most
-- [ ] With GROQ_API_KEY: uses Groq, safe fallback
-- [ ] PR opened against main
+## Notes
+- Keep changes small and reviewable.
+- No secrets.
+- Product language stays "Conductor QPU" etc.
