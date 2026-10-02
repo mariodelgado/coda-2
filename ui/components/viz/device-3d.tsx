@@ -39,13 +39,11 @@ function Qubit({
   fidelity,
   detuneF,
   detuneA,
-  isReady,
 }: {
   index: number
   fidelity: number
   detuneF: number
   detuneA: number
-  isReady: boolean
 }) {
   const groupRef = React.useRef<THREE.Group>(null)
 
@@ -195,8 +193,8 @@ export function Device3D({ device, detuning, applied, className }: Device3DProps
 
           <CryoStage />
           <CouplingResonator />
-          <Qubit index={0} fidelity={q0} detuneF={df0} detuneA={da0} isReady={ready} />
-          <Qubit index={1} fidelity={q1} detuneF={df1} detuneA={da1} isReady={ready} />
+          <Qubit index={0} fidelity={q0} detuneF={df0} detuneA={da0} />
+          <Qubit index={1} fidelity={q1} detuneF={df1} detuneA={da1} />
 
           {/* Very subtle grid for stage depth */}
           <gridHelper args={[4.2, 9, "#111113", "#0a0a0b"]} position={[0, -0.28, 0]} />
