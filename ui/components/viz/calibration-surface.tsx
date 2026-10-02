@@ -16,7 +16,6 @@ import * as React from "react"
 import { Canvas, useFrame } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
 import * as THREE from "three"
-import { useControls } from "leva"
 import { cn } from "@/lib/utils"
 
 export interface CalibrationSurfaceProps {
@@ -225,10 +224,9 @@ export function CalibrationSurface({
   className,
 }: CalibrationSurfaceProps) {
   const [mode, setMode] = React.useState<GpuMode>("checking")
-  const { wireframe, surfaceGain } = useControls("Drift surface", {
-    wireframe: false,
-    surfaceGain: { value: 1.6, min: 0.8, max: 2.4, step: 0.1 },
-  }, { collapsed: true })
+  // No Leva debug panel in production/demo. Fixed sane defaults for the drift surface.
+  const wireframe = false
+  const surfaceGain = 1.6
   const latestFidelity = React.useMemo(() => {
     if (fidelityHistory.length) return fidelityHistory[fidelityHistory.length - 1].fidelity
     if (readoutFidelity) {

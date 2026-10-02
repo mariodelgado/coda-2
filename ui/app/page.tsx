@@ -362,53 +362,56 @@ export default function ConductorQPUInstrument() {
         </div>
       </div>
 
-      {/* Main content: 65/35 split with bezel + material dock */}
-      <div className="main-split">
-        {/* HERO 65% — viewer bezel */}
-        <div className="hero">
-          <div className="viewer-bezel h-full">
-            {backendDown && (
-              <div className="absolute top-2 left-2 z-40 text-[10px] px-2 py-px rounded bg-red-950/80 text-red-300 border border-red-900/40">
-                Cannot reach backend — <span className="font-mono">make run-api</span>
-              </div>
-            )}
+      {/* Content area: full-bleed WebGPU stage (absolute inset-0) with progressive-blur dock overlaid at bottom.
+          The stage extends *under* the dock so backdrop-filter has real content to blur.
+          Dock itself is transparent; graduated blur comes from ::before/::after + mask-image. */}
+      <div className="content-area">
+        {/* Full-bleed stage — the WebGPU viz bleeds under the dock */}
+        <div className="stage">
+          {backendDown && (
+            <div className="absolute top-2 left-2 z-40 text-[10px] px-2 py-px rounded bg-red-950/80 text-red-300 border border-red-900/40">
+              Cannot reach backend — <span className="font-mono">make run-api</span>
+            </div>
+          )}
 
-            <CalibrationSurfaceLazy
-              detuning={detuning}
-              applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
-              fidelityHistory={surfaceHistory}
-              readinessScore={device?.readiness_score ?? 0.7}
-              readoutFidelity={device?.readout_fidelity ?? null}
-              className="absolute inset-0"
-            />
+          <CalibrationSurfaceLazy
+            detuning={detuning}
+            applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
+            fidelityHistory={surfaceHistory}
+            readinessScore={device?.readiness_score ?? 0.7}
+            readoutFidelity={device?.readout_fidelity ?? null}
+            className="absolute inset-0"
+          />
 
-            <div className="absolute top-2 left-2 stage-hud text-zinc-500 pointer-events-none">param drift · Δfreq × Δamp</div>
+          {/* HUD label stays in the upper visible stage area */}
+          <div className="absolute top-2 left-2 stage-hud text-zinc-500 pointer-events-none">param drift · Δfreq × Δamp</div>
 
-            {activeTurn && activeTurn.fidelityHistory.length > 0 && (
-              <div className="absolute bottom-2 right-2 w-[280px] hud rounded px-2 py-1 text-[10px]">
-                <div className="flex items-baseline justify-between mb-0.5 px-1">
-                  <div className="text-zinc-400">fidelity climb</div>
-                  <div className="instrument-mono" style={{color: 'var(--success)'}}>
-                    {latestFidelity?.toFixed(4)} / {threshold}
-                  </div>
-                </div>
-                <div className="h-[64px] -mx-1">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={activeTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
-                      <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
-                      <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
-                      <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
-                      <ReferenceLine y={threshold} stroke="#FF9500" strokeDasharray="2 2" />
-                      <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
+          {/* Fidelity climb HUD — in the visible upper stage (above the progressive dock overlay) */}
+          {activeTurn && activeTurn.fidelityHistory.length > 0 && (
+            <div className="absolute bottom-[38%] right-3 w-[280px] hud rounded px-2 py-1 text-[10px]">
+              <div className="flex items-baseline justify-between mb-0.5 px-1">
+                <div className="text-zinc-400">fidelity climb</div>
+                <div className="instrument-mono" style={{color: 'var(--success)'}}>
+                  {latestFidelity?.toFixed(4)} / {threshold}
                 </div>
               </div>
-            )}
-          </div>
+              <div className="h-[64px] -mx-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={activeTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
+                    <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
+                    <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
+                    <ReferenceLine y={threshold} stroke="#FF9500" strokeDasharray="2 2" />
+                    <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* BOTTOM 35% — material dock (iMovie library) */}
+        {/* Progressive blur dock — absolute, transparent base, overlays the stage.
+            Blur/tint strongest near composer (bottom), fades to transparent at top of dock. */}
         <div className="dock">
           <div className="constrained">
             {/* Clip rows (ledger as clip list) */}

@@ -93,62 +93,81 @@ body {
 .traffic-dot.min { background: #febc2e; }
 .traffic-dot.max { background: #28c840; }
 
-/* Viewer bezel — iMovie preview pane feel */
+/* Viewer bezel — iMovie preview pane feel (now a transparent frame overlay; canvas lives behind) */
 .viewer-bezel {
   position: relative;
   width: 100%;
   height: 100%;
-  background: #000000;
+  background: transparent;
   border-radius: 10px;
   border: 1px solid rgba(255,255,255,0.08);
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.06),
     0 12px 32px rgba(0,0,0,0.65),
     0 2px 8px rgba(0,0,0,0.45);
-  overflow: hidden;
+  /* frame overlay must not clip or paint over the full-bleed stage */
+  overflow: visible;
 }
 
-/* Main split container under toolbar */
-.main-split {
+/* Content area below toolbar: relative container for full-bleed stage + overlaid dock.
+   The WebGPU canvas lives at absolute inset-0 so it extends under the dock.
+   The dock is absolute at bottom (35%) with transparent base + progressive backdrop blur layers. */
+.content-area {
+  position: relative;
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  overflow: hidden;
+  background: #000000;
 }
 
-/* Hero area (65%) — inset so bezel doesn't touch window edges */
+/* Legacy .hero / .main-split kept for reference but no longer drive the 65/35 split.
+   The split is now achieved by absolute positioning (stage full + dock 35% from bottom). */
+.main-split {
+  display: none;
+}
 .hero {
-  flex: 0 0 65%;
-  min-height: 260px;
-  padding: 14px 18px 10px;
-  background: transparent;
+  display: none;
 }
 
-.hero-inner {
-  height: 100%;
+/* Content area: full-bleed stage + overlaid progressive dock.
+   The WebGPU canvas lives at absolute inset-0 and extends UNDER the dock.
+   The dock is absolute at the bottom (~35%), base is fully transparent.
+   Progressive blur is provided by stacked ::before/::after with backdrop-filter + mask gradients. */
+.content-area {
   position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background: #000000;
 }
 
-/* Bottom dock (35%) — progressive / graduated blur.
-   Strongest (more opaque + more blur) near the composer at the bottom.
-   Fades upward toward transparent so the WebGPU viz shows through at the top of the dock.
-   Chromium-friendly: stacked semi-transparent layers + backdrop-filter + mask-image gradients.
-   Not a solid panel — the upper portion of the 35% zone is nearly see-through. */
+/* Full-bleed stage (WebGPU viz lives here and bleeds under the dock) */
+.stage {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000000;
+}
+
+/* Overlaid dock — 35% from bottom, fully transparent base.
+   Strongest blur + tint at bottom (near composer), fades to none at top of dock. */
 .dock {
-  flex: 0 0 35%;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 35%;
+  min-height: 180px;
+  z-index: 20;
   display: flex;
   flex-direction: column;
-  position: relative;
-  /* Subtle top hairline for separation; the progressive bg fades so this doesn't create a "bar" */
-  border-top: 1px solid rgba(84, 84, 88, 0.38);
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
   padding: 8px 0 4px;
   overflow: hidden;
-  background: transparent;
+  background: transparent; /* critical: nothing solid here */
+  /* No hard top border — the progressive layers provide the transition */
 }
 
-/* Primary heavy blur layer — strongest at very bottom (composer area), falls off quickly upward */
+/* Progressive heavy blur layer: strongest + most opaque at the very bottom */
 .dock::before {
   content: "";
   position: absolute;
@@ -156,33 +175,34 @@ body {
   z-index: -2;
   background: linear-gradient(
     to top,
-    rgba(28, 28, 30, 0.94) 0%,
-    rgba(28, 28, 30, 0.82) 16%,
-    rgba(28, 28, 30, 0.48) 34%,
-    rgba(28, 28, 30, 0.18) 50%,
-    rgba(28, 28, 30, 0.04) 66%,
+    rgba(20, 20, 24, 0.92) 0%,
+    rgba(20, 20, 24, 0.78) 18%,
+    rgba(20, 20, 24, 0.44) 36%,
+    rgba(20, 20, 24, 0.16) 52%,
+    rgba(20, 20, 24, 0.04) 68%,
     transparent 82%
   );
-  backdrop-filter: blur(28px) saturate(175%);
-  -webkit-backdrop-filter: blur(28px) saturate(175%);
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-  /* Confine the heavy material almost entirely to the lower ~half of the dock */
+  backdrop-filter: blur(26px) saturate(170%);
+  -webkit-backdrop-filter: blur(26px) saturate(170%);
+  /* Rounded top corners for iMovie dock feel — only the lower part is heavily material */
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  /* Mask confines the heavy material to bottom ~half of the dock */
   mask-image: linear-gradient(
     to top,
     black 0%,
-    black 42%,
-    transparent 80%
+    black 44%,
+    transparent 82%
   );
   -webkit-mask-image: linear-gradient(
     to top,
     black 0%,
-    black 42%,
-    transparent 80%
+    black 44%,
+    transparent 82%
   );
 }
 
-/* Secondary lighter blur layer — fills the transition band and smooths the handoff to full transparency */
+/* Secondary lighter blur layer for smooth graduation upward to full transparency */
 .dock::after {
   content: "";
   position: absolute;
@@ -190,29 +210,29 @@ body {
   z-index: -1;
   background: linear-gradient(
     to top,
-    transparent 6%,
-    rgba(28, 28, 30, 0.26) 24%,
-    rgba(28, 28, 30, 0.10) 44%,
-    rgba(28, 28, 30, 0.02) 62%,
-    transparent 82%
+    transparent 4%,
+    rgba(20, 20, 24, 0.22) 22%,
+    rgba(20, 20, 24, 0.08) 42%,
+    rgba(20, 20, 24, 0.02) 60%,
+    transparent 80%
   );
-  backdrop-filter: blur(9px) saturate(120%);
-  -webkit-backdrop-filter: blur(9px) saturate(120%);
-  border-top-left-radius: inherit;
-  border-top-right-radius: inherit;
-  /* This layer lives mostly in the mid-upper dock to create continuous graduation, then disappears */
+  backdrop-filter: blur(8px) saturate(115%);
+  -webkit-backdrop-filter: blur(8px) saturate(115%);
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  /* This layer bridges mid-dock and then disappears toward the top */
   mask-image: linear-gradient(
     to top,
-    transparent 4%,
-    black 20%,
-    black 56%,
+    transparent 2%,
+    black 18%,
+    black 58%,
     transparent 82%
   );
   -webkit-mask-image: linear-gradient(
     to top,
-    transparent 4%,
-    black 20%,
-    black 56%,
+    transparent 2%,
+    black 18%,
+    black 58%,
     transparent 82%
   );
 }
@@ -227,13 +247,14 @@ body {
   padding-right: 12px;
 }
 
-/* Clip rows (iMovie library list style) */
+/* Clip rows (iMovie library list style) — extremely translucent so progressive dock blur shows through */
 .clip-list {
   max-height: 106px;
   overflow-y: auto;
   font-size: 11px;
   line-height: 1.2;
   margin-bottom: 4px;
+  background: transparent;
 }
 .clip-row {
   padding: 3px 10px;
@@ -242,15 +263,17 @@ body {
   align-items: baseline;
   color: var(--secondary-label);
   border-bottom: 1px solid transparent;
+  background: transparent;
 }
 .clip-row:nth-child(odd) {
-  background: rgba(255,255,255,0.008);
+  background: rgba(255,255,255,0.012);
 }
 .clip-row:hover {
-  background: rgba(255,255,255,0.022);
+  background: rgba(255,255,255,0.028);
 }
 .clip-row.selected {
-  background: rgba(0, 122, 255, 0.12);
+  /* very light selection tint so the graduated blur underneath remains visible */
+  background: rgba(0, 122, 255, 0.07);
   color: var(--label);
 }
 .clip-row .time {
@@ -274,7 +297,7 @@ body {
   color: #e4e4e7;
 }
 
-/* Centered premium composer */
+/* Centered premium composer — glassy, lets progressive dock blur show through */
 .composer-wrap {
   display: flex;
   justify-content: center;
@@ -282,13 +305,17 @@ body {
 .composer {
   width: 100%;
   max-width: 42rem;
-  background: rgba(10, 10, 15, 0.92);
-  border: 1px solid var(--hairline);
+  /* Very translucent so the graduated blur underneath is visible; still readable */
+  background: rgba(12, 12, 16, 0.28);
+  border: 1px solid rgba(84, 84, 88, 0.55);
   border-radius: 999px;
   padding: 6px 10px 6px 18px;
   display: flex;
   align-items: center;
   gap: 8px;
+  /* mild inner blur to sit on the progressive dock */
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
 }
 .composer input {
   flex: 1;
@@ -301,12 +328,14 @@ body {
   color: #52525b;
 }
 
-/* Stage / viz container */
+/* Stage / viz container — full bleed under the overlaid dock */
 .stage {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: #000000;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #000000; /* under the three canvas; canvas draws the grid */
+  border-radius: 10px; /* soft frame for iMovie viewer feel above the dock */
+  overflow: hidden;
 }
 
 /* Small fidelity HUD on hero */
@@ -336,11 +365,14 @@ body {
   border-color: var(--hairline);
 }
 
-/* Details rail panel */
+/* Details rail panel — glass so progressive dock blur is visible underneath */
 .details {
   font-size: 11px;
-  background: rgba(10,10,15,0.9);
-  border: 1px solid var(--hairline);
+  background: rgba(12, 12, 16, 0.32);
+  border: 1px solid rgba(84, 84, 88, 0.45);
+  /* let the graduated blur show through while keeping text readable */
+  backdrop-filter: blur(4px) saturate(110%);
+  -webkit-backdrop-filter: blur(4px) saturate(110%);
 }
 
 /* Quiet focus */
