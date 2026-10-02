@@ -89,25 +89,42 @@ class BellRequest(BaseModel):
 
 @app.get("/health")
 def health() -> dict[str, Any]:
+    nvidia_key = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+
     llm_on = os.getenv("CONDUCTOR_ENABLE_LLM", "0") in ("1", "true", "yes") or bool(
-        os.getenv("GROQ_API_KEY") or os.getenv("OPENAI_API_KEY")
+        nvidia_key or groq_key or openai_key
     )
-    provider = os.getenv("CONDUCTOR_LLM_PROVIDER") or (
-        "groq" if os.getenv("GROQ_API_KEY") else ("openai" if os.getenv("OPENAI_API_KEY") else None)
-    )
+
+    raw_provider = os.getenv("CONDUCTOR_LLM_PROVIDER") or ""
+    # normalize aliases for health output
+    if raw_provider.lower() in ("nvidia", "nim", "nvidia-nim"):
+        provider = "nvidia"
+    elif raw_provider:
+        provider = raw_provider.lower()
+    else:
+        provider = None
+
     if not provider and llm_on:
-        provider = (
-            "groq"
-            if os.getenv("GROQ_API_KEY")
-            else ("openai" if os.getenv("OPENAI_API_KEY") else None)
-        )
+        if nvidia_key:
+            provider = "nvidia"
+        elif groq_key:
+            provider = "groq"
+        elif openai_key:
+            provider = "openai"
+
     model = os.getenv("CONDUCTOR_LLM_MODEL")
     if not model:
-        model = (
-            "llama-3.3-70b-versatile"
-            if (provider or "").lower() == "groq"
-            else ("gpt-4o-mini" if provider else None)
-        )
+        if (provider or "").lower() == "nvidia":
+            model = "meta/llama-3.1-8b-instruct"
+        elif (provider or "").lower() == "groq":
+            model = "llama-3.3-70b-versatile"
+        elif provider:
+            model = "gpt-4o-mini"
+        else:
+            model = None
+
     return {
         "status": "ok",
         "service": "conductor-qpu",

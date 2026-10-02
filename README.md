@@ -217,22 +217,43 @@ Open http://localhost:3000. The instrument appears immediately.
 
 Default planner and narrator are deterministic and offline. Natural-language narration is **always produced** for every completed turn (LLM or high-quality template).
 
-### Free LLM path (recommended for demos)
+### Free / self-hosted LLM paths
 
-Use Groq's OpenAI-compatible API (free tier). Set:
+#### NVIDIA NIM (OpenAI-compatible)
+
+NVIDIA NIM is now a first-class provider. Both planner and narrator use the same OpenAI-compatible chat completions path.
 
 ```bash
-export CONDUCTOR_ENABLE_LLM=1
+export NVIDIA_NIM_API_KEY=nvapi-...
+export CONDUCTOR_LLM_PROVIDER=nvidia   # or: nim, nvidia-nim
+# optional model override (defaults to a known-good NIM Llama):
+# export CONDUCTOR_LLM_MODEL=meta/llama-3.1-8b-instruct
+make run-api
+```
+
+- Base URL: `https://integrate.api.nvidia.com/v1`
+- Auth: `Authorization: Bearer $NVIDIA_NIM_API_KEY` (also accepts `NVIDIA_API_KEY`)
+- Auto-enables when the key is present (no need for `CONDUCTOR_ENABLE_LLM=1`).
+- Planner and narrator are both wired through the shared client.
+
+#### Groq (OpenAI-compatible)
+
+```bash
 export GROQ_API_KEY=gsk_...
-# optional overrides:
+# optional:
 # export CONDUCTOR_LLM_PROVIDER=groq
 # export CONDUCTOR_LLM_MODEL=llama-3.3-70b-versatile
 make run-api
 ```
 
-A stable free model such as `llama-3.3-70b-versatile` or `llama-3.1-8b-instant` is used by default when `GROQ_API_KEY` is present.
+#### OpenAI
 
-### Alternate: OpenAI
+```bash
+export CONDUCTOR_LLM_PROVIDER=openai
+export CONDUCTOR_LLM_MODEL=gpt-4o-mini
+export OPENAI_API_KEY=sk-...
+make run-api
+```
 
 ```bash
 export CONDUCTOR_ENABLE_LLM=1
