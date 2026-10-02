@@ -257,13 +257,33 @@ export default function ConductorQPUInstrument() {
   }, [jobs, cancelJob])
 
   // Bootstrap + polling
+  // Retry health a few times on mount to ride out brief startup races or Chromium private-network preflight timing.
   useEffect(() => {
-    void checkConnection().then(ok => {
+    let cancelled = false
+    const maxAttempts = 4
+    const delays = [0, 250, 500, 750]
+
+    const attempt = async (i: number): Promise<boolean> => {
+      if (cancelled) return false
+      const ok = await checkConnection()
       if (ok) {
-        void refreshDevice()
-        void refreshMetrics()
+        if (!cancelled) {
+          void refreshDevice()
+          void refreshMetrics()
+        }
+        return true
       }
-    })
+      if (i < maxAttempts - 1) {
+        await new Promise((r) => setTimeout(r, delays[Math.min(i, delays.length - 1)]))
+        return attempt(i + 1)
+      }
+      return false
+    }
+
+    void attempt(0)
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -352,7 +372,7 @@ export default function ConductorQPUInstrument() {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#000000] text-white flex flex-col">
-      <CommandPalette actions={commandActions} disabled={!connected && backendDown} />
+      <CommandPalette actions={commandActions} disabled={!connected} />
 
       {/* Frosted macOS / iMovie toolbar */}
       <div className="toolbar relative">
@@ -365,7 +385,13 @@ export default function ConductorQPUInstrument() {
 
         <div className="flex items-center gap-2 font-medium pl-4">
           <span className="font-sans tracking-[-0.2px]">Conductor QPU</span>
-          <span className="px-1.5 py-px rounded text-[10px] text-black font-mono tracking-[0.5px]" style={{background: 'var(--success)'}}>LIVE</span>
+          <span
+            className={`px-1.5 py-px rounded text-[10px] text-black font-mono tracking-[0.5px] ${connected ? "" : "opacity-60"}`}
+            style={{ background: connected ? "var(--success)" : "#6b7280" }}
+            title={connected ? "Connected to control plane" : "Not connected to control plane"}
+          >
+            {connected ? "LIVE" : "OFFLINE"}
+          </span>
           <span className={isReady ? "text-success" : "text-applied"}>
             {isReady ? "READY" : "CAL NEEDED"}
           </span>
@@ -381,7 +407,19 @@ export default function ConductorQPUInstrument() {
           <button onClick={() => setCommandOpen(true)} className="rounded border hairline px-1.5 py-px hover:bg-white/5" title="⌘K">
             <CommandIcon className="h-3 w-3" />
           </button>
-          <button onClick={() => { void refreshDevice(); void refreshMetrics() }} className="rounded border hairline px-1.5 py-px hover:bg-white/5">
+          <button
+            onClick={() => {
+              // Re-check connection first (recover from an initial failed health check), then refresh data if ok
+              void checkConnection().then((ok) => {
+                if (ok) {
+                  void refreshDevice()
+                  void refreshMetrics()
+                }
+              })
+            }}
+            className="rounded border hairline px-1.5 py-px hover:bg-white/5"
+            title="Re-check connection and refresh device/metrics"
+          >
             refresh
           </button>
         </div>

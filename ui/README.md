@@ -39,7 +39,18 @@ Production check:
 cd ui && npm run build && npm start
 ```
 
-Optional: `NEXT_PUBLIC_API_BASE=http://localhost:8000`
+### Same-origin default (no env gymnastics)
+
+- Dev server rewrites `/qpu/*` → `http://127.0.0.1:8000/*` (see `next.config.ts`).
+- `lib/api.ts` defaults to `/qpu` (same-origin) when `NEXT_PUBLIC_API_BASE` is unset.
+- Toolbar shows **LIVE** / **OFFLINE** based on real `/health` connectivity.
+- Toolbar refresh re-checks connection first (so a failed first health can recover).
+- On mount we retry health a few times to absorb startup races / Chromium private-network timing.
+- FastAPI emits `Access-Control-Allow-Private-Network: true` for local origins.
+
+Only set `NEXT_PUBLIC_API_BASE` if you run the API on a different origin/port intentionally.
+
+Optional (explicit): `NEXT_PUBLIC_API_BASE=http://localhost:8000` (still works; no rewrite needed).
 
 ## Key files
 

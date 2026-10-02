@@ -78,7 +78,11 @@ export interface DetuningResponse {
   }
 }
 
-let _base = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000"
+// Default to a same-origin prefix so the Next dev server can proxy to the control plane.
+// In dev, next.config rewrites /qpu/* → http://127.0.0.1:8000/*.
+// If you run the UI against a remote or differently-port API, set NEXT_PUBLIC_API_BASE explicitly
+// (e.g. NEXT_PUBLIC_API_BASE=http://localhost:8000 or a full origin).
+let _base = process.env.NEXT_PUBLIC_API_BASE || "/qpu"
 
 export function setApiBase(base: string) {
   _base = base.replace(/\/$/, "")
