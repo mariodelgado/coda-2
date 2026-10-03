@@ -158,6 +158,14 @@ function Scene({
   wireframe: boolean
   surfaceGain: number
 }) {
+  // Framing lift: raises the surface + markers + grid as a unit so the drift visualization
+  // sits higher in the viewport (less sky above, more headroom above the dock).
+  // Combined with an OrbitControls target slightly below the geometric center, this biases
+  // the subject upward in the 2D frame without CSS transforms.
+  const subjectLiftY = 0.40
+  // Orbit target Y is biased a bit lower than lift center to push viz content higher on screen.
+  const orbitTarget: [number, number, number] = [0, 0.10, 0]
+
   return (
     <>
       <color attach="background" args={["#000000"]} />
@@ -165,10 +173,18 @@ function Scene({
       <directionalLight position={[4.5, 7.5, 3.5]} intensity={1.55} />
       <directionalLight position={[-5, 2.5, -6]} intensity={0.55} color="#a5b4fc" />
       <pointLight position={[0.5, 4.2, 1.5]} intensity={0.7} color="#ffffff" />
-      <FidelitySurface detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} />
-      <Markers detuning={detuning} />
-      <gridHelper args={[3, 12, "#1f2937", "#111113"]} position={[0, -0.35, 0]} />
-      <OrbitControls enablePan={false} minDistance={2.1} maxDistance={5.8} maxPolarAngle={Math.PI / 2.05} />
+      <group position={[0, subjectLiftY, 0]}>
+        <FidelitySurface detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} />
+        <Markers detuning={detuning} />
+        <gridHelper args={[3, 12, "#1f2937", "#111113"]} position={[0, -0.35, 0]} />
+      </group>
+      <OrbitControls
+        enablePan={false}
+        target={orbitTarget}
+        minDistance={2.1}
+        maxDistance={6.4}
+        maxPolarAngle={Math.PI / 2.05}
+      />
     </>
   )
 }
@@ -254,7 +270,7 @@ export function CalibrationSurface({
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
       <Canvas
         dpr={[1, 1.75]}
-        camera={{ position: [2.25, 2.15, 3.15], fov: 52, near: 0.1, far: 40 }}
+        camera={{ position: [2.72, 2.60, 3.82], fov: 52, near: 0.1, far: 40 }}
         gl={glFactory as unknown as React.ComponentProps<typeof Canvas>["gl"]}
       >
         <React.Suspense fallback={null}>
