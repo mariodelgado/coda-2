@@ -51,7 +51,8 @@ export default function ConductorQPUInstrument() {
   const [detuning, setDetuning] = useState<Record<string, number> | null>(null)
   const [appliedParams, setAppliedParams] = useState<any>(null)
   const [metrics, setMetrics] = useState<any>(null)
-  const [stageTab, setStageTab] = useState<"drift" | "device">("drift")
+  // Combined stage (default): device is primary full-bleed; drift is a live frosted inset.
+  const [showDriftInset, setShowDriftInset] = useState(true)
 
   const [turns, setTurns] = useState<Turn[]>([])
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null)
@@ -361,39 +362,22 @@ export default function ConductorQPUInstrument() {
 
   const ledger = useMemo(() => [...turns].reverse().slice(0, 10), [turns])
 
-  // Active job + turn status for state machine
-  const activeJob = activeJobId ? jobs[activeJobId] : null
-  const hasActiveJob = !!activeJob && (activeJob.status === "queued" || activeJob.status === "running")
-  const activeJobStatus = activeJob?.status ?? null
+  // Stage machine state (bottom-right chip) — derives from live device + jobs + turns
+  const hasActiveJob = !!activeJobId && ["queued", "running"].includes(jobs[activeJobId]?.status || "")
+  const activeJobStatus = activeJobId ? (jobs[activeJobId]?.status || null) : null
   const activeTurnRunning = !!activeTurn && activeTurn.status === "running"
-
-  // Recent failure detection (for brief FAILED state)
-  const lastJobFailedRecently = React.useMemo(() => {
-    if (activeJob && activeJob.status === "failed") return true
-    const recent = Object.values(jobs).find(j => j.status === "failed")
-    return !!recent
-  }, [jobs, activeJob])
-
-  const lastTurnFailedRecently = React.useMemo(() => {
-    const recentFailed = turns.slice(-3).some(t => t.status === "failed")
-    return recentFailed
-  }, [turns])
-
-  // Lightweight transition hint e.g. "DRIFT → READY" after a successful cal when device reports ready
+  const activeTurnGoal = activeTurn?.goal
+  const lastJobFailedRecently = Object.values(jobs).some(j => j.status === "failed")
+  const lastTurnFailedRecently = turns.some(t => t.status === "failed")
   const transitionedHint = React.useMemo(() => {
-    if (!connected || !isReady) return undefined
-    const lastOk = [...turns].reverse().find(t => t.status === "succeeded" && t.fidelityHistory.length > 0)
-    if (!lastOk) return undefined
-    // Only surface a hint for a short window after the successful turn (use recency)
-    const ageMs = Date.now() - (lastOk.createdAt || 0)
-    if (ageMs > 45000) return undefined
-    // If we were previously not-ready (we don't track prior, so show a compact "CAL → READY" style if cal-like)
-    return "CAL → READY"
-  }, [turns, isReady, connected])
+    if (activeTurn && activeTurn.status === "succeeded" && activeTurn.fidelityHistory.length) {
+      const f = activeTurn.fidelityHistory[activeTurn.fidelityHistory.length - 1].fidelity
+      if (f >= (activeTurn.calThreshold ?? 0.88)) return "→ ready"
+    }
+    return undefined
+  }, [activeTurn])
 
-  // Derive single stage machine state for the bottom-right chip (no scattered conditionals in JSX)
-  const activeTurnGoal = activeTurn?.goal || ""
-  const stageMachine: StageMachineState = React.useMemo(
+  const stageMachine = React.useMemo(
     () =>
       getStageMachineState({
         connected,
@@ -416,7 +400,7 @@ export default function ConductorQPUInstrument() {
       lastJobFailedRecently,
       lastTurnFailedRecently,
       transitionedHint,
-    ]
+    ],
   )
 
   const lastSummary = (t: Turn) => {
@@ -433,16 +417,9 @@ export default function ConductorQPUInstrument() {
     <div className="h-screen w-screen overflow-hidden bg-[#000000] text-white flex flex-col">
       <CommandPalette actions={commandActions} disabled={!connected} />
 
-      {/* Frosted macOS / iMovie toolbar */}
+      {/* Frosted instrument toolbar (no window chrome) */}
       <div className="toolbar relative">
-        {/* Traffic lights */}
-        <div className="traffic">
-          <div className="traffic-dot close" />
-          <div className="traffic-dot min" />
-          <div className="traffic-dot max" />
-        </div>
-
-        <div className="flex items-center gap-2 font-medium pl-4">
+        <div className="flex items-center gap-2 font-medium">
           <span className="font-sans tracking-[-0.2px]">Conductor QPU</span>
           <span
             className={`px-1.5 py-px rounded text-[10px] text-black font-mono tracking-[0.5px] ${connected ? "" : "opacity-60"}`}
@@ -491,63 +468,80 @@ export default function ConductorQPUInstrument() {
         {/* Full-bleed stage — the WebGPU viz bleeds under the dock */}
         <div className="stage">
           {backendDown && (
-            <div className="absolute top-2 left-2 z-40 text-[10px] px-2 py-px rounded bg-red-950/80 text-red-300 border border-red-900/40">
-              Cannot reach backend — <span className="font-mono">make run-api</span>
+            <div className="absolute top-2 left-2 z-40 text-[9px] px-2 py-px rounded-full border border-white/10 bg-black/70 backdrop-blur text-[#FF3B30] font-mono tracking-[0.3px]">
+              OFFLINE — make run-api
             </div>
           )}
 
-          {/* Stage tabs: clearest founder-demo layout (drift landscape vs hardware 3D) */}
-          <div className="absolute top-1.5 left-1.5 z-30 flex rounded border border-white/10 bg-black/70 backdrop-blur">
+          {/* Combined stage (default): Device 3D is primary full-bleed background.
+              Drift landscape renders as a live frosted inset panel (left third / top-left).
+              Positioned to avoid overlapping the fidelity climb (right mid) and device
+              HUD badges (top-right) and bottom-left applied/true legend. No tab switch required. */}
+          <Device3DLazy
+            device={device}
+            detuning={detuning}
+            applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
+            className="absolute inset-0"
+          />
+
+          {/* Drift inset — frosted glass instrument panel (live Δf × Δa landscape).
+              Sized to sit cleanly in left third; 3D device remains the hero.
+              Title + live mono readouts; subtle glass treatment, no collision with other HUD. */}
+          {showDriftInset && (
+            <div className="absolute top-2 left-2 z-30 w-[288px] h-[188px] rounded-xl overflow-hidden border border-white/10 bg-black/60 backdrop-blur-2xl shadow-xl ring-1 ring-inset ring-white/5">
+              <CalibrationSurfaceLazy
+                detuning={detuning}
+                applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
+                fidelityHistory={surfaceHistory}
+                readinessScore={device?.readiness_score ?? 0.7}
+                readoutFidelity={device?.readout_fidelity ?? null}
+              />
+              {/* Glass instrument header */}
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-black/50 to-transparent" />
+              <div className="pointer-events-none absolute top-1 left-2 text-[9px] font-mono tracking-[0.3px] text-zinc-300/90">
+                param drift · Δf × Δa
+              </div>
+              {/* Live mono readouts (compact) */}
+              <div className="pointer-events-none absolute top-1 right-8 text-[9px] font-mono text-zinc-400 tabular-nums">
+                {detuning ? (
+                  <>Δf {Number(detuning.frequency_error || 0).toFixed(3)} · Δa {Number(detuning.amplitude_error || 0).toFixed(3)}</>
+                ) : null}
+              </div>
+              {/* Close affordance */}
+              <button
+                onClick={() => setShowDriftInset(false)}
+                className="absolute top-1 right-1 z-40 text-[9px] leading-none px-1 py-px rounded border border-white/15 bg-black/50 text-zinc-400 hover:text-white hover:bg-white/10 font-mono"
+                title="Hide drift inset"
+              >
+                ×
+              </button>
+            </div>
+          )}
+
+          {/* Restore affordance when inset is hidden (subtle; combined remains the default) */}
+          {!showDriftInset && (
             <button
-              onClick={() => setStageTab("drift")}
-              className={`px-2 py-0.5 text-[10px] font-mono rounded-l ${stageTab === "drift" ? "bg-white/10 text-white" : "text-zinc-400 hover:text-zinc-200"}`}
+              onClick={() => setShowDriftInset(true)}
+              className="absolute top-2 left-2 z-30 text-[9px] px-1.5 py-px rounded border border-white/15 bg-black/60 backdrop-blur text-zinc-400 hover:text-white hover:bg-white/10 font-mono"
+              title="Show drift inset"
             >
               drift
             </button>
-            <button
-              onClick={() => setStageTab("device")}
-              className={`px-2 py-0.5 text-[10px] font-mono border-l border-white/10 rounded-r ${stageTab === "device" ? "bg-white/10 text-white" : "text-zinc-400 hover:text-zinc-200"}`}
-            >
-              device
-            </button>
-          </div>
-
-          {stageTab === "drift" ? (
-            <CalibrationSurfaceLazy
-              detuning={detuning}
-              applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
-              fidelityHistory={surfaceHistory}
-              readinessScore={device?.readiness_score ?? 0.7}
-              readoutFidelity={device?.readout_fidelity ?? null}
-              className="absolute inset-0"
-            />
-          ) : (
-            <Device3DLazy
-              device={device}
-              detuning={detuning}
-              applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
-              className="absolute inset-0"
-            />
           )}
 
-          {/* HUD label — only for drift tab. On device tab, Device3D owns its own top-right badge to avoid collision. */}
-          {stageTab === "drift" && (
-            <div className="absolute top-2 right-2 stage-hud text-zinc-500 pointer-events-none">
-              param drift · Δfreq × Δamp
-            </div>
-          )}
+          {/* No top-right stage label here — Device3D renders its own "cryo stage" + READY·mK badge.
+              Drift inset carries its own title. Keeps visual hierarchy clean during CALIBRATING/READY. */}
 
-          {/* Fidelity climb HUD — bumped upward and right to keep bottom-right free for state chip.
-              Only shown during active calibrate/turn so bottom-right area stays clear for state machine. */}
+          {/* Fidelity climb HUD — in the visible upper stage (above the progressive dock overlay) */}
           {activeTurn && activeTurn.fidelityHistory.length > 0 && (
-            <div className="absolute top-12 right-3 w-[260px] hud rounded px-2 py-1 text-[10px] z-20">
+            <div className="absolute bottom-[38%] right-3 w-[280px] hud rounded px-2 py-1 text-[10px]">
               <div className="flex items-baseline justify-between mb-0.5 px-1">
                 <div className="text-zinc-400">fidelity climb</div>
                 <div className="instrument-mono" style={{color: 'var(--success)'}}>
                   {latestFidelity?.toFixed(4)} / {threshold}
                 </div>
               </div>
-              <div className="h-[56px] -mx-1">
+              <div className="h-[64px] -mx-1">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={activeTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
@@ -561,8 +555,7 @@ export default function ConductorQPUInstrument() {
             </div>
           )}
 
-          {/* State machine status chip — bottom-right of the stage, above progressive blur dock.
-              Single derived state; updates from connected / is_ready / active jobs / turns. */}
+          {/* StageStateChip bottom-right (above dock, clear of fidelity climb during turns) */}
           <div className="absolute bottom-3 right-3 z-30">
             <StageStateChip state={stageMachine} />
           </div>
