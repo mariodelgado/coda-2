@@ -254,7 +254,7 @@ export function CalibrationSurface({
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
       <Canvas
         dpr={[1, 1.75]}
-        camera={{ position: [1.82, 1.72, 2.5], fov: 47, near: 0.1, far: 40 }}
+        camera={{ position: [2.25, 2.15, 3.15], fov: 52, near: 0.1, far: 40 }}
         gl={glFactory as unknown as React.ComponentProps<typeof Canvas>["gl"]}
       >
         <React.Suspense fallback={null}>
