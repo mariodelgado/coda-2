@@ -75,7 +75,7 @@ body {
   letter-spacing: 0.2px;
 }
 
-/* Viewer bezel — iMovie preview pane feel (now a transparent frame overlay; canvas lives behind) */
+/* Viewer bezel — transparent frame overlay; canvases live behind in the split panes */
 .viewer-bezel {
   position: relative;
   width: 100%;
@@ -87,23 +87,10 @@ body {
     inset 0 1px 0 rgba(255,255,255,0.06),
     0 12px 32px rgba(0,0,0,0.65),
     0 2px 8px rgba(0,0,0,0.45);
-  /* frame overlay must not clip or paint over the full-bleed stage */
   overflow: visible;
 }
 
-/* Content area below toolbar: relative container for full-bleed stage + overlaid dock.
-   The WebGPU canvas lives at absolute inset-0 so it extends under the dock.
-   The dock is absolute at bottom (35%) with transparent base + progressive backdrop blur layers. */
-.content-area {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  background: #000000;
-}
-
-/* Legacy .hero / .main-split kept for reference but no longer drive the 65/35 split.
-   The split is now achieved by absolute positioning (stage full + dock 35% from bottom). */
+/* Legacy .hero / .main-split are disabled; side-by-side peer layout is driven by .stage-split */
 .main-split {
   display: none;
 }
@@ -111,9 +98,8 @@ body {
   display: none;
 }
 
-/* Content area: full-bleed stage + overlaid progressive dock.
-   The WebGPU canvas lives at absolute inset-0 and extends UNDER the dock.
-   The dock is absolute at the bottom (~35%), base is fully transparent.
+/* Content area: side-by-side stage + overlaid progressive dock.
+   Dock is absolute at the bottom; stage fills above it.
    Progressive blur is provided by stacked ::before/::after with backdrop-filter + mask gradients. */
 .content-area {
   position: relative;
@@ -123,12 +109,36 @@ body {
   background: #000000;
 }
 
-/* Full-bleed stage (WebGPU viz lives here and bleeds under the dock) */
+/* Side-by-side stage: two peer panels share the stage equally (left/right).
+   No inset glass. Dock overlays at bottom and is transparent so blur works. */
 .stage {
   position: absolute;
   inset: 0;
   z-index: 1;
   background: #000000;
+}
+
+/* Peer split layout: 50/50 horizontal split, no tabs, no inset */
+.stage-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: #111113; /* hairline between panes */
+}
+
+/* Each pane is a peer container; canvases fill them */
+.stage-pane {
+  position: relative;
+  overflow: hidden;
+  background: #000000;
+  min-height: 0;
+}
+
+/* Ensure the viz components fill their pane cleanly */
+.stage-pane > div,
+.stage-pane > canvas {
+  height: 100% !important;
+  width: 100% !important;
 }
 
 /* Overlaid dock — compact band at bottom, fully transparent base.
@@ -315,14 +325,13 @@ body {
   color: #52525b;
 }
 
-/* Stage / viz container — full bleed under the overlaid dock */
+/* Legacy full-bleed stage rule is overridden by .stage-split grid below when using the peer layout.
+   Keep a non-destructive base so other absolute children still work if needed. */
 .stage {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: #000000; /* under the three canvas; canvas draws the grid */
-  border-radius: 10px; /* soft frame for iMovie viewer feel above the dock */
-  overflow: hidden;
+  background: #000000;
 }
 
 /* Small fidelity HUD on hero */

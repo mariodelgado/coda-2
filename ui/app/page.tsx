@@ -51,8 +51,7 @@ export default function ConductorQPUInstrument() {
   const [detuning, setDetuning] = useState<Record<string, number> | null>(null)
   const [appliedParams, setAppliedParams] = useState<any>(null)
   const [metrics, setMetrics] = useState<any>(null)
-  // Combined stage (default): device is primary full-bleed; drift is a live frosted inset.
-  const [showDriftInset, setShowDriftInset] = useState(true)
+  // Peer side-by-side stage: drift landscape (left) and 3D device (right) share the stage equally.
 
   const [turns, setTurns] = useState<Turn[]>([])
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null)
@@ -461,78 +460,41 @@ export default function ConductorQPUInstrument() {
         </div>
       </div>
 
-      {/* Content area: full-bleed WebGPU stage (absolute inset-0) with progressive-blur dock overlaid at bottom.
-          The stage extends *under* the dock so backdrop-filter has real content to blur.
-          Dock itself is transparent; graduated blur comes from ::before/::after + mask-image. */}
+      {/* Content area: side-by-side stage (drift left / device right) with progressive-blur dock overlaid at bottom.
+          The two peer panels share the stage equally. Dock itself is transparent; graduated blur comes from ::before/::after + mask-image. */}
       <div className="content-area">
-        {/* Full-bleed stage — the WebGPU viz bleeds under the dock */}
-        <div className="stage">
+        {/* Side-by-side stage: param-drift landscape (left) and 3D cryo device (right) are peer panels.
+            Overlays (fidelity HUD, StageStateChip) are positioned above the split. */}
+        <div className="stage stage-split">
           {backendDown && (
             <div className="absolute top-2 left-2 z-40 text-[9px] px-2 py-px rounded-full border border-white/10 bg-black/70 backdrop-blur text-[#FF3B30] font-mono tracking-[0.3px]">
               OFFLINE — make run-api
             </div>
           )}
 
-          {/* Combined stage (default): Device 3D is primary full-bleed background.
-              Drift landscape renders as a live frosted inset panel (left third / top-left).
-              Positioned to avoid overlapping the fidelity climb (right mid) and device
-              HUD badges (top-right) and bottom-left applied/true legend. No tab switch required. */}
-          <Device3DLazy
-            device={device}
-            detuning={detuning}
-            applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
-            className="absolute inset-0"
-          />
+          {/* Left pane: param-drift landscape (WebGPU viz preserved) */}
+          <div className="stage-pane stage-pane-left">
+            <CalibrationSurfaceLazy
+              detuning={detuning}
+              applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
+              fidelityHistory={surfaceHistory}
+              readinessScore={device?.readiness_score ?? 0.7}
+              readoutFidelity={device?.readout_fidelity ?? null}
+              className="h-full w-full"
+            />
+          </div>
 
-          {/* Drift inset — frosted glass instrument panel (live Δf × Δa landscape).
-              Sized to sit cleanly in left third; 3D device remains the hero.
-              Title + live mono readouts; subtle glass treatment, no collision with other HUD. */}
-          {showDriftInset && (
-            <div className="absolute top-2 left-2 z-30 w-[288px] h-[188px] rounded-xl overflow-hidden border border-white/10 bg-black/60 backdrop-blur-2xl shadow-xl ring-1 ring-inset ring-white/5">
-              <CalibrationSurfaceLazy
-                detuning={detuning}
-                applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
-                fidelityHistory={surfaceHistory}
-                readinessScore={device?.readiness_score ?? 0.7}
-                readoutFidelity={device?.readout_fidelity ?? null}
-              />
-              {/* Glass instrument header */}
-              <div className="pointer-events-none absolute inset-x-0 top-0 h-6 bg-gradient-to-b from-black/50 to-transparent" />
-              <div className="pointer-events-none absolute top-1 left-2 text-[9px] font-mono tracking-[0.3px] text-zinc-300/90">
-                param drift · Δf × Δa
-              </div>
-              {/* Live mono readouts (compact) */}
-              <div className="pointer-events-none absolute top-1 right-8 text-[9px] font-mono text-zinc-400 tabular-nums">
-                {detuning ? (
-                  <>Δf {Number(detuning.frequency_error || 0).toFixed(3)} · Δa {Number(detuning.amplitude_error || 0).toFixed(3)}</>
-                ) : null}
-              </div>
-              {/* Close affordance */}
-              <button
-                onClick={() => setShowDriftInset(false)}
-                className="absolute top-1 right-1 z-40 text-[9px] leading-none px-1 py-px rounded border border-white/15 bg-black/50 text-zinc-400 hover:text-white hover:bg-white/10 font-mono"
-                title="Hide drift inset"
-              >
-                ×
-              </button>
-            </div>
-          )}
+          {/* Right pane: 3D cryo device (R3F preserved) */}
+          <div className="stage-pane stage-pane-right">
+            <Device3DLazy
+              device={device}
+              detuning={detuning}
+              applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
+              className="h-full w-full"
+            />
+          </div>
 
-          {/* Restore affordance when inset is hidden (subtle; combined remains the default) */}
-          {!showDriftInset && (
-            <button
-              onClick={() => setShowDriftInset(true)}
-              className="absolute top-2 left-2 z-30 text-[9px] px-1.5 py-px rounded border border-white/15 bg-black/60 backdrop-blur text-zinc-400 hover:text-white hover:bg-white/10 font-mono"
-              title="Show drift inset"
-            >
-              drift
-            </button>
-          )}
-
-          {/* No top-right stage label here — Device3D renders its own "cryo stage" + READY·mK badge.
-              Drift inset carries its own title. Keeps visual hierarchy clean during CALIBRATING/READY. */}
-
-          {/* Fidelity climb HUD — in the visible upper stage (above the progressive dock overlay) */}
+          {/* Fidelity climb HUD — positioned over the right pane area */}
           {activeTurn && activeTurn.fidelityHistory.length > 0 && (
             <div className="absolute bottom-[38%] right-3 w-[280px] hud rounded px-2 py-1 text-[10px]">
               <div className="flex items-baseline justify-between mb-0.5 px-1">
@@ -555,7 +517,7 @@ export default function ConductorQPUInstrument() {
             </div>
           )}
 
-          {/* StageStateChip bottom-right (above dock, clear of fidelity climb during turns) */}
+          {/* StageStateChip bottom-right (above dock) */}
           <div className="absolute bottom-3 right-3 z-30">
             <StageStateChip state={stageMachine} />
           </div>
