@@ -53,7 +53,6 @@ function FidelitySurface({
   surfaceGain: number
 }) {
   const meshRef = React.useRef<THREE.Mesh>(null)
-  const geo = React.useMemo(() => new THREE.PlaneGeometry(2.4, 2.4, 64, 64), [])
 
   const trueOffset = React.useMemo(() => {
     const fx = Number(detuning?.frequency_error ?? 0)
@@ -65,14 +64,16 @@ function FidelitySurface({
     )
   }, [detuning])
 
-  React.useLayoutEffect(() => {
-    const pos = geo.attributes.position as THREE.BufferAttribute
+  // Derive a fresh geometry whenever the drift/target or fidelity changes.
+  // This is cheap (64×64 grid) and avoids mutating previous buffer state.
+  const geo = React.useMemo(() => {
+    const g = new THREE.PlaneGeometry(2.4, 2.4, 64, 64)
+    const pos = g.attributes.position as THREE.BufferAttribute
     const colors = new Float32Array(pos.count * 3)
     const color = new THREE.Color()
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const y = pos.getY(i)
-      // Landscape peaked at true target (trueOffset)
       const dx = x - trueOffset.x
       const dy = y - trueOffset.y
       const f = estimateFidelity(dx, dy, latestFidelity || 0.75)
@@ -86,9 +87,10 @@ function FidelitySurface({
       colors[i * 3 + 2] = color.b
     }
     pos.needsUpdate = true
-    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3))
-    geo.computeVertexNormals()
-  }, [geo, trueOffset, latestFidelity, surfaceGain])
+    g.setAttribute("color", new THREE.BufferAttribute(colors, 3))
+    g.computeVertexNormals()
+    return g
+  }, [trueOffset, latestFidelity, surfaceGain])
 
   useFrame((_, dt) => {
     if (!meshRef.current) return
@@ -252,7 +254,7 @@ export function CalibrationSurface({
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
       <Canvas
         dpr={[1, 1.75]}
-        camera={{ position: [1.6, 1.5, 2.2], fov: 42, near: 0.1, far: 40 }}
+        camera={{ position: [1.82, 1.72, 2.5], fov: 47, near: 0.1, far: 40 }}
         gl={glFactory as unknown as React.ComponentProps<typeof Canvas>["gl"]}
       >
         <React.Suspense fallback={null}>
