@@ -676,23 +676,10 @@ export default function QuantumChatInstrument() {
             <div className="stage-splitter-handle" />
           </div>
 
-          {/* Right pane: interactive isometric cryostat plate (hairline SVG + hover regions).
-              Hover a logical part (flange, plates, coil, cables, package) to see a richer live tooltip
-              with fidelity, mK, Δf, stage, active job, and last trace — all from real backend polls. */}
+          {/* Right pane: static isometric cryostat plate (finished hairline asset).
+              FIG 1 + DILUTION FRIDGE labels only; near-black #0a0a0b field; generous padding. */}
           <div className="stage-pane stage-pane-right">
-            <CryostatPlate
-              className="h-full w-full"
-              device={device}
-              detuning={detuning}
-              stageMachine={stageMachine}
-              hasActiveJob={hasActiveJob}
-              activeJobStatus={activeJobStatus}
-              lastTrace={
-                activeTurn && activeTurn.traces && activeTurn.traces.length
-                  ? activeTurn.traces[activeTurn.traces.length - 1]
-                  : null
-              }
-            />
+            <CryostatPlate className="h-full w-full" />
           </div>
 
           {/* StageStateChip bottom-right (above dock) — anchored to the overall stage */}
