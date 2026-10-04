@@ -5,7 +5,7 @@ PIP := pip3
 UV := uv
 
 help:
-	@echo "Conductor QPU - AI-to-QPU Integration Layer"
+	@echo "quantum-chat — quantum instrument (visual · text · math)"
 	@echo ""
 	@echo "Targets:"
 	@echo "  setup         - Create venv and install Python deps; also installs UI deps"
@@ -13,9 +13,9 @@ help:
 	@echo "  demo          - Run both Python demos (calibration + circuit)"
 	@echo "  demo-calibration - Run calibration demo (Python)"
 	@echo "  demo-circuit  - Run Bell pair circuit demo (Python)"
-	@echo "  founder-demo  - Run the scriptable founder demo (orchestrator + traces)"
-	@echo "  founder-demo-llm - Same as founder-demo but with CONDUCTOR_ENABLE_LLM=1 (requires OPENAI_API_KEY)"
-	@echo "  founder-demo-stub - Run founder demo against the hardware-shaped stub (no sim)"
+	@echo "  demo-script   - Run the scriptable demo (orchestrator + traces)"
+	@echo "  demo-script-llm - Same as demo-script but with CONDUCTOR_ENABLE_LLM=1 (requires OPENAI_API_KEY)"
+	@echo "  demo-script-stub - Run demo against the hardware-shaped stub (no sim)"
 	@echo "  test          - Run pytest suite"
 	@echo "  lint          - Run ruff linting"
 	@echo "  format        - Format code with ruff"
@@ -25,7 +25,7 @@ help:
 	@echo "  clean         - Remove build artifacts and caches"
 
 setup:
-	@echo "Setting up Conductor QPU (Python + Next.js UI)..."
+	@echo "Setting up quantum-chat (Python + Next.js UI)..."
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ".[dev]"
 	@echo "Installing Next.js UI dependencies..."
@@ -81,15 +81,15 @@ run-ui-dev:
 	@echo "  - LIVE pill and Calibrate Q0 chips will work once API is reachable."
 	cd ui && npm run dev
 
-founder-demo:
-	@echo "=== Running Founder Demo (scriptable, no UI) ==="
+demo-script:
+	@echo "=== Running quantum-chat demo (scriptable, no UI) ==="
 	$(PYTHON) -m demo_scripts.founder_demo
 
-founder-demo-llm:
-	@echo "=== Running Founder Demo with LLM planner (CONDUCTOR_ENABLE_LLM=1) ==="
+demo-script-llm:
+	@echo "=== Running quantum-chat demo with LLM planner (CONDUCTOR_ENABLE_LLM=1) ==="
 	@echo "Requires OPENAI_API_KEY in env. Falls back to deterministic on any LLM error."
 	CONDUCTOR_ENABLE_LLM=1 $(PYTHON) -m demo_scripts.founder_demo
 
-founder-demo-stub:
-	@echo "=== Running Founder Demo against ConductorShapedAdapter (stub) ==="
+demo-script-stub:
+	@echo "=== Running quantum-chat demo against hardware-shaped stub ==="
 	CONDUCTOR_QPU_BACKEND=stub $(PYTHON) -m demo_scripts.founder_demo

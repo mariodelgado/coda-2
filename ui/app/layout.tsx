@@ -26,8 +26,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Conductor QPU",
-  description: "Quantum instrument control plane — real traces, drift surface, calibration.",
+  title: "quantum-chat",
+  description: "Instrument for a quantum computer — visual, text, and math.",
   icons: { icon: "/favicon.ico" },
 }
 

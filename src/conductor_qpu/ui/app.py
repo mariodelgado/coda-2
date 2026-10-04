@@ -1,4 +1,4 @@
-"""Minimal Streamlit UI for the Conductor QPU control plane.
+"""Minimal Streamlit UI for quantum-chat.
 
 Focus is on demonstrating the control plane, not on UI polish:
 - Accept goals like "Bring qubit 0 to ready" and "Run a Bell pair and report fidelity"
@@ -32,9 +32,9 @@ def api_post(path: str, json: dict | None = None) -> dict:
         return {"error": str(e)}
 
 
-st.set_page_config(page_title="Conductor QPU", layout="wide")
-st.title("Conductor QPU — Agent Control Plane")
-st.caption("Spike: agent → orchestrator → QPU adapter → noisy simulator + calibration")
+st.set_page_config(page_title="quantum-chat", layout="wide")
+st.title("quantum-chat — Quantum Instrument")
+st.caption("visual · text · math  —  agent control plane for a quantum device")
 
 colA, colB = st.columns([1, 1])
 

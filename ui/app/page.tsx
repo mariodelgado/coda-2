@@ -18,6 +18,7 @@ import { useControlPlaneStore } from "@/lib/store"
 import { CommandPalette, defaultCommandIcons, type CommandAction } from "@/components/command/command-palette"
 import { CalibrationSurfaceLazy } from "@/components/viz/calibration-surface-lazy"
 import { Device3DLazy } from "@/components/viz/device-3d-lazy"
+import { CryostatPlate } from "@/components/viz/cryostat-plate"
 import { StageStateChip, getStageMachineState, type StageMachineState } from "@/components/stage/stage-state-chip"
 
 const easeOut = [0.23, 1, 0.32, 1] as const
@@ -40,7 +41,7 @@ interface Turn {
   createdAt: number
 }
 
-export default function ConductorQPUInstrument() {
+export default function QuantumChatInstrument() {
   const setCommandOpen = useControlPlaneStore((s) => s.setCommandOpen)
 
   const [apiBase, setApiBaseState] = useState<string>(getApiBase())
@@ -62,14 +63,22 @@ export default function ConductorQPUInstrument() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const eventSourcesRef = useRef<Record<string, EventSource>>({})
 
-  // Resizable stage split (iPadOS Split View style).
-  // Stored as fr units; default 1:1. Splitter track is 14px and excluded from fr math.
-  const [leftFr, setLeftFr] = React.useState<number>(1)
-  const [rightFr, setRightFr] = React.useState<number>(1)
+  // Resizable stage split (iPadOS Split View style) — three panes left→mid→right.
+  // Stored as fr units. Two 14px splitter tracks are fixed and excluded from fr math.
+  // Default roughly equal thirds (~34/33/33). Enforce ~22–28% minimum per pane.
+  const [leftFr, setLeftFr] = React.useState<number>(1.02)
+  const [midFr, setMidFr] = React.useState<number>(1.0)
+  const [rightFr, setRightFr] = React.useState<number>(1.0)
   const [isDraggingSplit, setIsDraggingSplit] = React.useState(false)
   const stageRef = React.useRef<HTMLDivElement | null>(null)
-  // Keep last pointer position during drag for smooth updates.
-  const dragStateRef = React.useRef<{ startX: number; startLeftFr: number; startRightFr: number } | null>(null)
+  // Drag state records which splitter (0 = L|M, 1 = M|R) and starting fr triple.
+  const dragStateRef = React.useRef<{
+    startX: number
+    startLeft: number
+    startMid: number
+    startRight: number
+    splitter: 0 | 1
+  } | null>(null)
 
   // Transcript auto-scroll container
   const transcriptRef = useRef<HTMLDivElement | null>(null)
@@ -421,27 +430,31 @@ export default function ConductorQPUInstrument() {
     return t.traces[t.traces.length-1]?.summary || ""
   }
 
-  // --- Splitter drag handlers (iPadOS Split View style) ---
-  const MIN_FR = 0.45
-  const MAX_FR = 2.22 // ~28% / 72% extremes
+  // --- Splitter drag handlers (iPadOS Split View style, three panes) ---
+  // Enforce ~22–28% minimum per pane (MIN_FR/MAX_FR calibrated to a 3-pane sum ≈ 3.02).
+  const MIN_FR = 0.66
+  const MAX_FR = 2.22
 
   const clampFr = (v: number) => Math.max(MIN_FR, Math.min(MAX_FR, v))
 
+  // Pointer down: capture which splitter (0 = L|M, 1 = M|R) from data attr.
   const handleSplitterPointerDown = React.useCallback((e: React.PointerEvent) => {
     const stageEl = stageRef.current
     if (!stageEl) return
+    const splitter = (e.currentTarget as HTMLElement).getAttribute("data-splitter") === "1" ? 1 : 0
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     setIsDraggingSplit(true)
     dragStateRef.current = {
       startX: e.clientX,
-      startLeftFr: leftFr,
-      startRightFr: rightFr,
+      startLeft: leftFr,
+      startMid: midFr,
+      startRight: rightFr,
+      splitter,
     }
-    // Ensure we get moves even if pointer leaves the narrow track.
     window.addEventListener("pointermove", handlePointerMove as unknown as EventListener, { passive: true })
     window.addEventListener("pointerup", handlePointerUp as unknown as EventListener, { once: true })
     window.addEventListener("pointercancel", handlePointerUp as unknown as EventListener, { once: true })
-  }, [leftFr, rightFr])
+  }, [leftFr, midFr, rightFr])
 
   const handlePointerMove = React.useCallback((e: PointerEvent) => {
     const stageEl = stageRef.current
@@ -449,17 +462,33 @@ export default function ConductorQPUInstrument() {
     if (!stageEl || !ds) return
     const rect = stageEl.getBoundingClientRect()
     const total = Math.max(1, rect.width)
-    // Map horizontal delta to fr delta. The middle track (14px) is fixed and not part of the fr columns.
     const dxPx = e.clientX - ds.startX
-    const dxFr = (dxPx / total) * (ds.startLeftFr + ds.startRightFr)
-    const nextLeft = clampFr(ds.startLeftFr + dxFr)
-    const nextRight = clampFr(ds.startRightFr - dxFr)
-    // Keep sum reasonably balanced around the starting sum to avoid drift.
-    const sum = nextLeft + nextRight
-    const targetSum = ds.startLeftFr + ds.startRightFr
-    const scale = sum > 0 ? targetSum / sum : 1
-    setLeftFr(clampFr(nextLeft * scale))
-    setRightFr(clampFr(nextRight * scale))
+    // The two splitter tracks (14px each) are fixed; fr columns absorb the delta.
+    const dxFr = (dxPx / total) * (ds.startLeft + ds.startMid + ds.startRight)
+
+    if (ds.splitter === 0) {
+      // Left | Mid splitter — adjust left vs mid, right unchanged
+      let nextLeft = clampFr(ds.startLeft + dxFr)
+      let nextMid = clampFr(ds.startMid - dxFr)
+      const sumLM = nextLeft + nextMid
+      const targetLM = ds.startLeft + ds.startMid
+      const scaleLM = sumLM > 0 ? targetLM / sumLM : 1
+      nextLeft = clampFr(nextLeft * scaleLM)
+      nextMid = clampFr(nextMid * scaleLM)
+      setLeftFr(nextLeft)
+      setMidFr(nextMid)
+    } else {
+      // Mid | Right splitter — adjust mid vs right, left unchanged
+      let nextMid = clampFr(ds.startMid + dxFr)
+      let nextRight = clampFr(ds.startRight - dxFr)
+      const sumMR = nextMid + nextRight
+      const targetMR = ds.startMid + ds.startRight
+      const scaleMR = sumMR > 0 ? targetMR / sumMR : 1
+      nextMid = clampFr(nextMid * scaleMR)
+      nextRight = clampFr(nextRight * scaleMR)
+      setMidFr(nextMid)
+      setRightFr(nextRight)
+    }
   }, [])
 
   const handlePointerUp = React.useCallback(() => {
@@ -468,25 +497,45 @@ export default function ConductorQPUInstrument() {
     window.removeEventListener("pointermove", handlePointerMove as unknown as EventListener)
   }, [handlePointerMove])
 
-  // Keyboard support: ArrowLeft/Right nudge the split when the splitter has focus.
+  // Keyboard support: ArrowLeft/Right nudge the focused splitter.
+  // We use document.activeElement to decide which splitter; if none, nudge L|M.
   const onSplitterKeyDown = React.useCallback((e: React.KeyboardEvent) => {
     const step = e.shiftKey ? 0.12 : 0.04
+    const el = e.currentTarget as HTMLElement
+    const which = el.getAttribute("data-splitter") === "1" ? 1 : 0
+
     if (e.key === "ArrowLeft") {
-      const nextL = clampFr(leftFr - step)
-      const nextR = clampFr(rightFr + step)
-      const s = (nextL + nextR) / (leftFr + rightFr)
-      setLeftFr(clampFr(nextL / s))
-      setRightFr(clampFr(nextR / s))
+      if (which === 0) {
+        const nextL = clampFr(leftFr - step)
+        const nextM = clampFr(midFr + step)
+        const s = (nextL + nextM) / (leftFr + midFr)
+        setLeftFr(clampFr(nextL / s))
+        setMidFr(clampFr(nextM / s))
+      } else {
+        const nextM = clampFr(midFr - step)
+        const nextR = clampFr(rightFr + step)
+        const s = (nextM + nextR) / (midFr + rightFr)
+        setMidFr(clampFr(nextM / s))
+        setRightFr(clampFr(nextR / s))
+      }
       e.preventDefault()
     } else if (e.key === "ArrowRight") {
-      const nextL = clampFr(leftFr + step)
-      const nextR = clampFr(rightFr - step)
-      const s = (nextL + nextR) / (leftFr + rightFr)
-      setLeftFr(clampFr(nextL / s))
-      setRightFr(clampFr(nextR / s))
+      if (which === 0) {
+        const nextL = clampFr(leftFr + step)
+        const nextM = clampFr(midFr - step)
+        const s = (nextL + nextM) / (leftFr + midFr)
+        setLeftFr(clampFr(nextL / s))
+        setMidFr(clampFr(nextM / s))
+      } else {
+        const nextM = clampFr(midFr + step)
+        const nextR = clampFr(rightFr - step)
+        const s = (nextM + nextR) / (midFr + rightFr)
+        setMidFr(clampFr(nextM / s))
+        setRightFr(clampFr(nextR / s))
+      }
       e.preventDefault()
     }
-  }, [leftFr, rightFr])
+  }, [leftFr, midFr, rightFr])
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#000000] text-white flex flex-col">
@@ -495,7 +544,7 @@ export default function ConductorQPUInstrument() {
       {/* Frosted instrument toolbar (no window chrome) */}
       <div className="toolbar relative">
         <div className="flex items-center gap-2 font-medium">
-          <span className="font-sans tracking-[-0.2px]">Conductor QPU</span>
+          <span className="font-sans tracking-[-0.2px]">Quantum Chat</span>
           <span
             className={`px-1.5 py-px rounded text-[10px] text-black font-mono tracking-[0.5px] ${connected ? "" : "opacity-60"}`}
             style={{ background: connected ? "var(--success)" : "#6b7280" }}
@@ -536,16 +585,15 @@ export default function ConductorQPUInstrument() {
         </div>
       </div>
 
-      {/* Content area: side-by-side stage (drift left / device right) with progressive-blur dock overlaid at bottom.
-          The two peer panels share the stage equally. Dock itself is transparent; graduated blur comes from ::before/::after + mask-image. */}
+      {/* Content area: three-pane stage (drift | device | cryostat) with progressive-blur dock overlaid at bottom.
+          Dock itself is transparent; graduated blur comes from ::before/::after + mask-image. */}
       <div className="content-area">
-        {/* Side-by-side stage: param-drift landscape (left) and 3D cryo device (right) are peer panels.
-            Overlays (fidelity HUD, StageStateChip) are positioned above the split.
-            Grid columns are driven by leftFr/rightFr state for real resize via the iPadOS splitter. */}
+        {/* Three-pane stage: param-drift landscape (left), 3D device (middle), static cryostat plate (right).
+            Two iPadOS Split View–style splitters. Grid driven by leftFr/midFr/rightFr. */}
         <div
           ref={stageRef}
           className="stage stage-split"
-          style={{ gridTemplateColumns: `${leftFr}fr 14px ${rightFr}fr` }}
+          style={{ gridTemplateColumns: `${leftFr}fr 14px ${midFr}fr 14px ${rightFr}fr` }}
         >
           {backendDown && (
             <div className="absolute top-2 left-2 z-40 text-[9px] px-2 py-px rounded-full border border-white/10 bg-black/70 backdrop-blur text-[#FF3B30] font-mono tracking-[0.3px]">
@@ -565,59 +613,89 @@ export default function ConductorQPUInstrument() {
             />
           </div>
 
-          {/* iPadOS Split View–style splitter track between panes.
-              Thin vertical hairline + capsule drag handle that fades in on hover / drag.
-              Pointer drag updates fr-based split; min widths enforced to avoid collapse. */}
+          {/* Splitter 0: between left and middle */}
           <div
             className={`stage-splitter ${isDraggingSplit ? "dragging" : ""}`}
+            data-splitter="0"
             onPointerDown={handleSplitterPointerDown}
             onKeyDown={onSplitterKeyDown}
             tabIndex={0}
             role="separator"
             aria-orientation="vertical"
-            aria-valuenow={Math.round((leftFr / (leftFr + rightFr)) * 100)}
-            aria-label="Resize stage panes"
+            aria-label="Resize left and middle panes"
           >
-            {/* Subtle centered hairline (iPadOS thin rule) */}
             <div className="stage-splitter-rule" />
-            {/* Capsule/pill handle — visible on hover or while dragging */}
             <div className="stage-splitter-handle" />
           </div>
 
-          {/* Right pane: 3D cryo device (R3F preserved) */}
-          <div className="stage-pane stage-pane-right">
+          {/* Middle pane: 3D cryo device (R3F preserved) */}
+          <div className="stage-pane stage-pane-mid relative">
             <Device3DLazy
               device={device}
               detuning={detuning}
               applied={appliedParams || (activeTurn?.lastCalParams ?? null)}
               className="h-full w-full"
             />
-          </div>
 
-          {/* Fidelity climb HUD — positioned over the right pane area */}
-          {activeTurn && activeTurn.fidelityHistory.length > 0 && (
-            <div className="absolute bottom-[38%] right-3 w-[280px] hud rounded px-2 py-1 text-[10px]">
-              <div className="flex items-baseline justify-between mb-0.5 px-1">
-                <div className="text-zinc-400">fidelity climb</div>
-                <div className="instrument-mono" style={{color: 'var(--success)'}}>
-                  {latestFidelity?.toFixed(4)} / {threshold}
+            {/* Fidelity climb HUD — inside middle pane (over device) */}
+            {activeTurn && activeTurn.fidelityHistory.length > 0 && (
+              <div className="absolute bottom-[38%] right-3 w-[280px] hud rounded px-2 py-1 text-[10px]">
+                <div className="flex items-baseline justify-between mb-0.5 px-1">
+                  <div className="text-zinc-400">fidelity climb</div>
+                  <div className="instrument-mono" style={{color: 'var(--success)'}}>
+                    {latestFidelity?.toFixed(4)} / {threshold}
+                  </div>
+                </div>
+                <div className="h-[64px] -mx-1">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={activeTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
+                      <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
+                      <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
+                      <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
+                      <ReferenceLine y={threshold} stroke="#FF9500" strokeDasharray="2 2" />
+                      <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
-              <div className="h-[64px] -mx-1">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={activeTurn.fidelityHistory.map(p => ({ step: p.iter, fidelity: p.fidelity }))} margin={{ top: 2, right: 4, bottom: 0, left: 0 }}>
-                    <CartesianGrid strokeDasharray="2 2" stroke="#27272a" />
-                    <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
-                    <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
-                    <ReferenceLine y={threshold} stroke="#FF9500" strokeDasharray="2 2" />
-                    <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
-          {/* StageStateChip bottom-right (above dock) */}
+          {/* Splitter 1: between middle and right (cryostat) */}
+          <div
+            className={`stage-splitter ${isDraggingSplit ? "dragging" : ""}`}
+            data-splitter="1"
+            onPointerDown={handleSplitterPointerDown}
+            onKeyDown={onSplitterKeyDown}
+            tabIndex={0}
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize middle and right panes"
+          >
+            <div className="stage-splitter-rule" />
+            <div className="stage-splitter-handle" />
+          </div>
+
+          {/* Right pane: interactive cryostat plate with live HUD.
+              Chips + spinners driven by real device/job state (same polls as toolbar/StageStateChip).
+              Hover regions (flange/upper/still/mixing/package/cables/coil) show deeper frosted tooltip. */}
+          <div className="stage-pane stage-pane-right">
+            <CryostatPlate
+              className="h-full w-full"
+              device={device}
+              detuning={detuning}
+              stageMachine={stageMachine}
+              hasActiveJob={hasActiveJob}
+              activeJobStatus={activeJobStatus}
+              lastTrace={
+                activeTurn && activeTurn.traces && activeTurn.traces.length
+                  ? activeTurn.traces[activeTurn.traces.length - 1]
+                  : null
+              }
+            />
+          </div>
+
+          {/* StageStateChip bottom-right (above dock) — anchored to the overall stage */}
           <div className="absolute bottom-3 right-3 z-30">
             <StageStateChip state={stageMachine} />
           </div>
