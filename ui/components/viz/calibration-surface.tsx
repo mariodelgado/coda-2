@@ -290,7 +290,7 @@ export function CalibrationSurface({
       </Canvas>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2 text-[10px]">
-        <div className="rounded bg-black/60 px-2 py-1 font-mono text-zinc-300 backdrop-blur border border-white/10">
+        <div className="rounded bg-black/78 px-2 py-1 font-mono text-zinc-300 border border-white/10">
           <span style={{color: '#007AFF'}}>●</span> true &nbsp;
           <span style={{color: '#FF9500'}}>●</span> applied &nbsp;
           drift={driftMag.toFixed(4)}
@@ -302,7 +302,7 @@ export function CalibrationSurface({
         </div>
         <div
           className={cn(
-            "rounded px-2 py-1 font-mono backdrop-blur border border-white/10",
+            "rounded px-2 py-1 font-mono border border-white/10",
             mode === "webgpu"
               ? "bg-[#0a0a0f] text-[#007AFF]"
               : mode === "checking"

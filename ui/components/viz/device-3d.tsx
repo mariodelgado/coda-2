@@ -292,7 +292,7 @@ function LiveReadoutStrip({
   ready: boolean
 }) {
   return (
-    <div className="pointer-events-none absolute top-2 right-2 z-20 w-[168px] rounded border border-white/10 bg-black/70 backdrop-blur px-2 py-1.5 text-[9px] font-mono text-zinc-300">
+    <div className="pointer-events-none absolute top-2 right-2 z-20 w-[168px] rounded border border-white/10 bg-black/78 px-2 py-1.5 text-[9px] font-mono text-zinc-300">
       <div className="flex items-center justify-between mb-1 px-0.5">
         <span className="text-[10px] tracking-[0.3px] text-zinc-400">readout</span>
         <span className={cn("text-[10px]", ready ? "text-[#34C759]" : "text-[#FF9500]")}>

@@ -596,7 +596,7 @@ export default function QuantumChatInstrument() {
           style={{ gridTemplateColumns: `${leftFr}fr 14px ${midFr}fr 14px ${rightFr}fr` }}
         >
           {backendDown && (
-            <div className="absolute top-2 left-2 z-40 text-[9px] px-2 py-px rounded-full border border-white/10 bg-black/70 backdrop-blur text-[#FF3B30] font-mono tracking-[0.3px]">
+            <div className="absolute top-2 left-2 z-40 text-[9px] px-2 py-px rounded-full border border-white/10 bg-black/70 text-[#FF3B30] font-mono tracking-[0.3px]">
               OFFLINE — make run-api
             </div>
           )}
@@ -701,12 +701,12 @@ export default function QuantumChatInstrument() {
           </div>
         </div>
 
-        {/* Progressive blur dock — frost supplied by a real clipped child (.dock-frost).
-            Only the bottom band should be frosted; the three stage panes must stay sharp on Safari. */}
+        {/* Dock band — solid gradient tint only (no backdrop-filter of any kind).
+            This is the nuclear fix for Safari: the entire three-pane stage must stay
+            optically crisp. No blur leaks from dock/composer/details. */}
         <div className="dock chat-dock">
-          {/* Real child (not pseudo) carrying backdrop-filter, sized exactly to the dock band.
-              No mask-image on this element — key for Safari not leaking blur upward. */}
-          <div className="dock-frost" />
+          {/* Real child carrying the solid/semi-opaque tint. NO backdrop-filter here or on composer. */}
+          <div className="dock-tint" />
           <div className="constrained chat-constrained">
             {/* Scrollable conversation transcript (top of dock, grows, scrolls) */}
             <div ref={transcriptRef} className="chat-transcript">

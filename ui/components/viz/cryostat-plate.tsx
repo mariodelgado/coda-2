@@ -45,7 +45,7 @@ function StageChip({ label, active, className }: { label: string; active?: boole
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/70 px-2 py-px font-mono text-[10px] backdrop-blur text-zinc-200",
+        "inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/70 px-2 py-px font-mono text-[10px] text-zinc-200",
         className
       )}
     >
@@ -107,19 +107,19 @@ export function CryostatPlate({
       className={cn("relative h-full w-full overflow-hidden bg-[#000000] flex items-start justify-center", className)}
       onPointerLeave={clear}
     >
-      {/* Plate sized + shifted to live strictly in the top ~2/3 of the pane (clear of frosted dock).
-          Smaller max-width + stronger upward translate. Chips anchored to the visual bottom.
-          Hover hit area, highlight band, and tooltip stay relative to this container so regions work. */}
-      <div className="relative w-full h-full pt-0.5 pb-0 flex items-start justify-center">
+      {/* Plate scaled to fill more of the right pane height (larger, less upward shift).
+          Still clear of the dock at bottom. Chips live at the visual bottom of the plate.
+          Hover regions and tooltip are relative to the plate container. */}
+      <div className="relative w-full h-full pt-1 pb-2 flex items-center justify-center">
         <div
           ref={containerRef}
           className="relative"
           style={{
             width: "100%",
-            maxWidth: 210,
+            maxWidth: 320,
             aspectRatio: "640 / 900",
-            transform: "translateY(-26%)",
-            transformOrigin: "50% 8%",
+            transform: "translateY(-4%)",
+            transformOrigin: "50% 10%",
           }}
           onPointerMove={onPointer}
           onPointerEnter={onPointer}
@@ -130,7 +130,7 @@ export function CryostatPlate({
             src="/plates/cryostat-isometric.svg"
             alt="Dilution fridge — isometric wireframe"
             className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
-            style={{ objectPosition: "50% 16%" }}
+            style={{ objectPosition: "50% 22%" }}
             draggable={false}
           />
 
@@ -153,26 +153,26 @@ export function CryostatPlate({
           <div className="absolute bottom-1 left-1 right-1 z-20 flex flex-wrap gap-1">
             <StageChip label={stageLabel} active={isActive} />
             {!Number.isNaN(q0) && (
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] backdrop-blur text-zinc-200">
+              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] text-zinc-200">
                 Q0 <span className="ml-1 text-white tabular-nums">{(q0 * 100).toFixed(0)}%</span>
               </div>
             )}
             {!Number.isNaN(t0) && (
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] backdrop-blur text-zinc-200 tabular-nums">
+              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] text-zinc-200 tabular-nums">
                 {t0.toFixed(1)} mK
               </div>
             )}
             {df !== 0 && (
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] backdrop-blur text-zinc-200 tabular-nums">
+              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] text-zinc-200 tabular-nums">
                 Δf {df.toFixed(3)}
               </div>
             )}
           </div>
 
-          {/* Rich frosted tooltip on hover (deeper than chips) */}
+          {/* Rich tooltip on hover (solid, no blur — stage must stay crisp) */}
           {hovered && (
             <div
-              className="absolute z-[80] pointer-events-none rounded-md border border-white/10 bg-[rgba(18,18,22,0.94)] backdrop-blur px-2.5 py-1.5 text-[10px] leading-tight shadow-2xl"
+              className="absolute z-[80] pointer-events-none rounded-md border border-white/10 bg-[rgba(18,18,22,0.96)] px-2.5 py-1.5 text-[10px] leading-tight shadow-2xl"
               style={{ left: tipPos.x, top: tipPos.y, minWidth: 188, maxWidth: 230 }}
             >
               <div className="font-medium tracking-[0.4px] text-zinc-100">{REGION_LABEL[hovered]}</div>

@@ -57,16 +57,14 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Instrument toolbar — clean frosted bar, no window chrome */
+/* Instrument toolbar — solid (no blur) for Safari crispness everywhere */
 .toolbar {
   height: 36px;
   min-height: 36px;
   display: flex;
   align-items: center;
   padding: 0 14px;
-  background: rgba(18, 18, 20, 0.88);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(18, 18, 20, 0.96);
   border-bottom: 1px solid var(--hairline);
   z-index: 70;
   flex-shrink: 0;
@@ -98,33 +96,22 @@ body {
   display: none;
 }
 
-/* Content area: side-by-side stage + overlaid progressive dock.
+/* Content area: three-pane stage + overlaid dock (solid tint only).
    Dock is absolute at the bottom; stage fills above it.
-   Progressive blur is provided by stacked ::before/::after with backdrop-filter + mask gradients. */
+   NO backdrop-filter on dock or any stage-overlapping layers — sharp stage is mandatory. */
 .content-area {
   position: relative;
   flex: 1;
   min-height: 0;
   overflow: hidden;
   background: #000000;
-  /* Root stacking context for the stage + overlaid dock.
-     Prevents backdrop-filter layers from the dock from compositing
-     against the full viewport on Safari (and helps Chromium). */
-  isolation: isolate;
-  transform: translateZ(0);
 }
 
-/* Side-by-side stage: two peer panels share the stage equally (left/right).
-   No inset glass. Dock overlays at bottom and is transparent so blur works.
-   Create a stacking context so dock's backdrop-filter cannot composite across it on Safari. */
 .stage {
   position: absolute;
   inset: 0;
   z-index: 1;
   background: #000000;
-  isolation: isolate;
-  transform: translateZ(0);
-  -webkit-transform: translateZ(0);
 }
 
 /* Peer split layout: resizable three-pane with iPadOS Split View–style dividers.
@@ -226,17 +213,13 @@ body {
 }
 
 /* Overlaid dock — compact band at bottom.
-   Frost is supplied by a real child element (.dock-frost) that is absolutely
-   positioned and exactly sized to the dock band height.
+   IMPORTANT: NO backdrop-filter anywhere in the dock or on dock children.
+   Any backdrop-filter here has been observed to leak and soften the entire
+   three-pane stage on Safari (even when "contained"). Nuclear fix: pure
+   gradient tint only (semi-opaque to solid). Sharp instrument stage is mandatory.
 
-   Safari-reliable pattern: the element carrying `backdrop-filter` must NOT
-   have `mask-image`. Combining mask + backdrop-filter on the same node/pseudo
-   is a common source of the "blur leaks over the entire stage" bug on Safari.
-   A concrete clipped child + backdrop-filter (no mask on the filtered element)
-   clips reliably.
-
-   Only the bottom chat dock should be frosted; the three instrument panes
-   (drift WebGL, device R3F, cryostat SVG) must stay optically sharp. */
+   Toolbar and top chrome stay separate; only the chat dock band gets a
+   solid-ish tint so the transcript/chips/composer are readable over the stage. */
 .dock {
   position: absolute;
   left: 0;
@@ -250,13 +233,12 @@ body {
   padding: 6px 0 4px;
   overflow: hidden;
   background: transparent;
-  /* Become the containing block for .dock-frost */
   position: relative;
 }
 
-/* The actual frosted layer. Real element (not pseudo), no mask-image on it.
-   Height: 100% of the .dock band so the blur never reaches the stage above. */
-.dock-frost {
+/* Solid/semi-opaque gradient tint only. NO backdrop-filter, NO -webkit-backdrop-filter.
+   This replaces the previous frosted attempt that caused full-stage blur on Safari. */
+.dock-tint {
   position: absolute;
   left: 0;
   right: 0;
@@ -267,20 +249,18 @@ body {
   overflow: hidden;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
-  /* Progressive heavy frost only inside the dock band */
+  /* Progressive opaque-to-transparent tint. No blur of any kind. */
   background: linear-gradient(
     to top,
-    rgba(20, 20, 24, 0.96) 0%,
-    rgba(20, 20, 24, 0.90) 12%,
-    rgba(20, 20, 24, 0.72) 26%,
-    rgba(20, 20, 24, 0.50) 42%,
-    rgba(20, 20, 24, 0.28) 58%,
-    rgba(20, 20, 24, 0.12) 74%,
-    rgba(20, 20, 24, 0.04) 86%,
-    transparent 94%
+    rgba(18, 18, 22, 0.98) 0%,
+    rgba(18, 18, 22, 0.96) 18%,
+    rgba(18, 18, 22, 0.90) 34%,
+    rgba(18, 18, 22, 0.78) 52%,
+    rgba(18, 18, 22, 0.60) 68%,
+    rgba(18, 18, 22, 0.38) 82%,
+    rgba(18, 18, 22, 0.18) 92%,
+    transparent 98%
   );
-  backdrop-filter: blur(26px) saturate(170%);
-  -webkit-backdrop-filter: blur(26px) saturate(170%);
 }
 
 /* Constrained centered column for ledger + composer */
@@ -343,7 +323,7 @@ body {
   color: #e4e4e7;
 }
 
-/* Centered premium composer — glassy, lets progressive dock blur show through */
+/* Centered composer — solid tint (no backdrop-filter). */
 .composer-wrap {
   display: flex;
   justify-content: center;
@@ -351,17 +331,13 @@ body {
 .composer {
   width: 100%;
   max-width: 42rem;
-  /* Very translucent so the graduated blur underneath is visible; still readable */
-  background: rgba(12, 12, 16, 0.28);
+  background: rgba(18, 18, 22, 0.92);
   border: 1px solid rgba(84, 84, 88, 0.55);
   border-radius: 999px;
   padding: 6px 10px 6px 18px;
   display: flex;
   align-items: center;
   gap: 8px;
-  /* mild inner blur to sit on the progressive dock */
-  backdrop-filter: blur(6px) saturate(120%);
-  -webkit-backdrop-filter: blur(6px) saturate(120%);
 }
 .composer input {
   flex: 1;
@@ -383,12 +359,11 @@ body {
   background: #000000;
 }
 
-/* Small fidelity HUD on hero */
+/* Small fidelity HUD on hero — solid, no blur (sharp stage requirement) */
 .hud {
   font-size: 10px;
-  background: rgba(0,0,0,0.65);
+  background: rgba(0,0,0,0.78);
   border: 1px solid var(--hairline);
-  backdrop-filter: blur(6px);
 }
 
 /* Hairline utility */
@@ -410,14 +385,11 @@ body {
   border-color: var(--hairline);
 }
 
-/* Details rail panel — glass so progressive dock blur is visible underneath */
+/* Details rail panel — solid (no backdrop-filter; sharp stage requirement) */
 .details {
   font-size: 11px;
-  background: rgba(12, 12, 16, 0.32);
+  background: rgba(18, 18, 22, 0.92);
   border: 1px solid rgba(84, 84, 88, 0.45);
-  /* let the graduated blur show through while keeping text readable */
-  backdrop-filter: blur(4px) saturate(110%);
-  -webkit-backdrop-filter: blur(4px) saturate(110%);
 }
 
 /* Quiet focus */
