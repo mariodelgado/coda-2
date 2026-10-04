@@ -26,7 +26,7 @@ export interface StageStateChipProps {
 
 const basePill =
   "pointer-events-none select-none inline-flex items-center gap-1.5 rounded-full border px-2 py-px font-mono text-[10px] " +
-  "bg-black/70 border-white/10 backdrop-blur text-zinc-200"
+  "bg-black/78 border-white/10 text-zinc-200"
 
 /**
  * Compact frosted mono state machine chip for the bottom-right of the stage.
