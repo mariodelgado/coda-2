@@ -701,9 +701,12 @@ export default function QuantumChatInstrument() {
           </div>
         </div>
 
-        {/* Progressive blur dock — transcript on top, chips, composer flush at absolute bottom.
-            The stage extends under so blur has real content. Composer is lowest UI element. */}
+        {/* Progressive blur dock — frost supplied by a real clipped child (.dock-frost).
+            Only the bottom band should be frosted; the three stage panes must stay sharp on Safari. */}
         <div className="dock chat-dock">
+          {/* Real child (not pseudo) carrying backdrop-filter, sized exactly to the dock band.
+              No mask-image on this element — key for Safari not leaking blur upward. */}
+          <div className="dock-frost" />
           <div className="constrained chat-constrained">
             {/* Scrollable conversation transcript (top of dock, grows, scrolls) */}
             <div ref={transcriptRef} className="chat-transcript">
