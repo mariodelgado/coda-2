@@ -166,13 +166,10 @@ function Scene({
   wireframe: boolean
   surfaceGain: number
 }) {
-  // Framing lift: raises the surface + markers + grid as a unit so the drift visualization
-  // sits higher in the viewport (less sky above, more headroom above the dock).
-  // Combined with an OrbitControls target slightly below the geometric center, this biases
-  // the subject upward in the 2D frame without CSS transforms.
-  const subjectLiftY = 0.40
-  // Orbit target Y is biased a bit lower than lift center to push viz content higher on screen.
-  const orbitTarget: [number, number, number] = [0, 0.10, 0]
+  // Framing lift + zoom-out for layout polish: camera farther back + higher subject bias
+  // so the peak/grid/HUD fit the pane without crowding the dock or overflowing splitters.
+  const subjectLiftY = 0.52
+  const orbitTarget: [number, number, number] = [0, 0.02, 0]
 
   return (
     <>
@@ -284,7 +281,7 @@ export function CalibrationSurface({
     <div className={cn("relative h-full w-full overflow-hidden", className)}>
       <Canvas
         dpr={[1, 1.75]}
-        camera={{ position: [2.72, 2.60, 3.82], fov: 52, near: 0.1, far: 40 }}
+        camera={{ position: [0, 2.85, 5.6], fov: 46, near: 0.1, far: 60 }}
         gl={glFactory as unknown as React.ComponentProps<typeof Canvas>["gl"]}
       >
         <React.Suspense fallback={null}>
