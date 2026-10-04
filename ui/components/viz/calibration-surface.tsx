@@ -94,16 +94,24 @@ function FidelitySurface({
 
   useFrame((_, dt) => {
     if (!meshRef.current) return
-    // Slow breathe — transform only
+    // Slow breathe — small deltas only. Base tilt lives on the parent group so the
+    // gridHelper shares the exact same plane (no skew, no vertical offset).
     meshRef.current.rotation.z = Math.sin(performance.now() * 0.00015) * 0.02
-    meshRef.current.rotation.x = -Math.PI / 2.35 + Math.sin(performance.now() * 0.0001) * 0.01
+    meshRef.current.rotation.x = Math.sin(performance.now() * 0.0001) * 0.01
     void dt
   })
 
   return (
-    <mesh ref={meshRef} geometry={geo} rotation={[-Math.PI / 2.35, 0, 0]} position={[0, -0.15, 0]}>
-      <meshStandardMaterial vertexColors wireframe={wireframe} flatShading={false} metalness={0.15} roughness={0.55} />
-    </mesh>
+    <>
+      <mesh ref={meshRef} geometry={geo}>
+        <meshStandardMaterial vertexColors wireframe={wireframe} flatShading={false} metalness={0.15} roughness={0.55} />
+      </mesh>
+      {/* Projection ring on the exact shared local plane (Z small to sit above grid, no extra rotation). */}
+      <mesh position={[trueOffset.x, trueOffset.y, 0.003]}>
+        <ringGeometry args={[0.095, 0.135, 32]} />
+        <meshBasicMaterial color="#007AFF" transparent opacity={0.45} />
+      </mesh>
+    </>
   )
 }
 
@@ -119,30 +127,30 @@ function Markers({
 
   useFrame(() => {
     const t = performance.now() * 0.003
+    // Animate along local +Z (normal to the shared tilted plane) so markers
+    // "float" above the surface without breaking grid/surface coplanarity.
     if (trueRef.current) {
-      trueRef.current.position.y = 0.55 + Math.sin(t) * 0.04
+      trueRef.current.position.z = 0.03 + Math.sin(t) * 0.025
     }
     if (appliedRef.current) {
-      appliedRef.current.position.y = 0.45 + Math.sin(t + 1.2) * 0.03
+      appliedRef.current.position.z = 0.025 + Math.sin(t + 1.2) * 0.02
     }
   })
 
   return (
     <group>
-      {/* Applied params sit at landscape origin (what we set) — system orange */}
-      <mesh ref={appliedRef} position={[0, 0.45, 0]}>
+      {/* Applied params sit at landscape origin (local XY on the shared plane) — system orange.
+          Small +Z keeps it above the grid/surface without a separate rotation. */}
+      <mesh ref={appliedRef} position={[0, 0, 0.025]}>
         <sphereGeometry args={[0.055, 16, 16]} />
         <meshStandardMaterial color="#FF9500" emissive="#FF9500" emissiveIntensity={0.65} />
       </mesh>
-      {/* True target drifts with live detuning — system blue */}
-      <mesh ref={trueRef} position={[trueX, 0.55, trueY]}>
+      {/* True target drifts with live detuning (local XY on the shared plane) — system blue. */}
+      <mesh ref={trueRef} position={[trueX, trueY, 0.03]}>
         <sphereGeometry args={[0.072, 16, 16]} />
         <meshStandardMaterial color="#007AFF" emissive="#007AFF" emissiveIntensity={0.85} />
       </mesh>
-      <mesh position={[trueX, 0.02, trueY]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[0.095, 0.135, 32]} />
-        <meshBasicMaterial color="#007AFF" transparent opacity={0.45} />
-      </mesh>
+      {/* Projection ring lives in FidelitySurface on the exact same local plane (Z≈0). */}
     </group>
   )
 }
@@ -173,10 +181,15 @@ function Scene({
       <directionalLight position={[4.5, 7.5, 3.5]} intensity={1.55} />
       <directionalLight position={[-5, 2.5, -6]} intensity={0.55} color="#a5b4fc" />
       <pointLight position={[0.5, 4.2, 1.5]} intensity={0.7} color="#ffffff" />
-      <group position={[0, subjectLiftY, 0]}>
+      {/* Shared tilted plane for surface + grid + ring projection.
+          Rotation applied once here so gridHelper, FidelitySurface (Z=0 local),
+          and ring share an identical plane (no skew, no vertical float).
+          subjectLiftY + orbitTarget framing intentionally preserved. */}
+      <group position={[0, subjectLiftY, 0]} rotation={[-Math.PI / 2.35, 0, 0]}>
         <FidelitySurface detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} />
         <Markers detuning={detuning} />
-        <gridHelper args={[3, 12, "#1f2937", "#111113"]} position={[0, -0.35, 0]} />
+        {/* Grid sits on the same local plane as the surface (tiny depth offset for draw order). */}
+        <gridHelper args={[3, 12, "#1f2937", "#111113"]} position={[0, 0, -0.003]} />
       </group>
       <OrbitControls
         enablePan={false}
