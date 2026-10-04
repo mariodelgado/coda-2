@@ -279,7 +279,7 @@ body {
   padding-right: 12px;
 }
 
-/* Clip rows (iMovie library list style) — extremely translucent so progressive dock blur shows through */
+/* Clip rows (iMovie library list style) — kept for reference; hidden under chat layout */
 .clip-list {
   max-height: 106px;
   overflow-y: auto;
