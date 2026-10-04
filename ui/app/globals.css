@@ -107,15 +107,24 @@ body {
   min-height: 0;
   overflow: hidden;
   background: #000000;
+  /* Root stacking context for the stage + overlaid dock.
+     Prevents backdrop-filter layers from the dock from compositing
+     against the full viewport on Safari (and helps Chromium). */
+  isolation: isolate;
+  transform: translateZ(0);
 }
 
 /* Side-by-side stage: two peer panels share the stage equally (left/right).
-   No inset glass. Dock overlays at bottom and is transparent so blur works. */
+   No inset glass. Dock overlays at bottom and is transparent so blur works.
+   Create a stacking context so dock's backdrop-filter cannot composite across it on Safari. */
 .stage {
   position: absolute;
   inset: 0;
   z-index: 1;
   background: #000000;
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 /* Peer split layout: resizable three-pane with iPadOS Split View–style dividers.
@@ -234,6 +243,16 @@ body {
   overflow: hidden;
   background: transparent; /* critical: nothing solid here */
   /* No hard top border — the progressive layers provide the transition */
+
+  /* Safari-safe confinement for backdrop-filter + mask:
+     Force a stacking context + paint containment so the blur + mask
+     cannot composite over the full viewport or leak into the stage panes.
+     This keeps the frosted progressive effect *only* on the dock area
+     on both Safari and Chromium. */
+  isolation: isolate;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  contain: paint layout;
 }
 
 /* Progressive heavy blur layer: strongest + most opaque at the very bottom.
@@ -272,6 +291,9 @@ body {
     black 88%,
     transparent 96%
   );
+  /* Safari + Chromium confinement: never let the filter layer paint outside this element */
+  pointer-events: none;
+  overflow: hidden;
 }
 
 /* Secondary lighter blur layer for smooth graduation upward to full transparency */
