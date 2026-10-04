@@ -118,16 +118,17 @@ body {
   background: #000000;
 }
 
-/* Peer split layout: resizable side-by-side with iPadOS Split View–style divider.
-   Uses a 3-column grid (left | splitter-track | right). The middle track provides
-   a thin visual rule + wider hit area; a capsule handle fades in on hover / drag. */
+/* Peer split layout: resizable three-pane with iPadOS Split View–style dividers.
+   Uses a 5-column grid (left | splitter0 | mid | splitter1 | right).
+   The two middle tracks (14px) provide thin visual rules + wider hit areas.
+   Capsule handles fade in on hover / drag. */
 .stage-split {
   display: grid;
-  /* Dynamic columns injected via inline style from React state (leftFr, rightFr). */
-  /* Fallback at rest for first paint before hydration */
-  grid-template-columns: 1fr 14px 1fr;
-  background: #000000; /* stage; splitter track draws its own hairline */
-  /* No gap; splitter track owns the separation. */
+  /* Dynamic columns injected via inline style from React state (leftFr, midFr, rightFr). */
+  /* Fallback at rest for first paint before hydration (roughly equal thirds) */
+  grid-template-columns: 1fr 14px 1fr 14px 1fr;
+  background: #000000; /* stage; splitter tracks draw their own hairlines */
+  /* No gap; splitter tracks own the separation. */
 }
 
 /* Each pane is a peer container; canvases fill them */

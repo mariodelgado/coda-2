@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 720 1040"
+  width="720"
+  height="1040"
+  fill="none"
+  aria-label="Cryostat isometric wireframe"
+>
+  <!-- Near-black field (the component provides padding + container bg; this is the plate art field) -->
+  <rect x="0" y="0" width="720" height="1040" fill="#0a0a0b"/>
+
+  <!--
+    Isometric hairline cryostat chandelier (dilution refrigerator)  structural reference only.
+    Stacked thermal stages, support rods, cable bundles, central heat exchanger, top flange, bottom qubit package.
+    Hairline (H0.71px) silver-gray on near-black. Front edges occlude rear. Mechanism (signal path) visible top’bottom.
+    Only labels: FIG 1 (tl), CRYOSTAT (tr). No arrows, no interior callouts.
+  -->
+
+  <!-- Projection helpers (documented here only):
+       isoX(x,z) = (x - z) * 0.866
+       isoY(x,y,z) = y + (x + z) * 0.5
+       y increases downward in SVG; stages descend from top flange (y small) to mixing chamber (y large).
+  -->
+
+  <!-- ===================== TOP FLANGE (room temp plate + neck) ===================== -->
+  <!-- Top cap flange (thick shallow cylinder projected) -->
+  <!-- Rear rim -->
+  <ellipse cx="360" cy="92" rx="168" ry="36" stroke="#8a8f98" stroke-width="0.9"/>
+  <!-- Front rim (drawn after for slight lift) -->
+  <ellipse cx="360" cy="86" rx="168" ry="36" stroke="#a8adb6" stroke-width="0.95"/>
+  <!-- Flange vertical wall cues (short iso "cylinder" sides) -->
+  <path d="M192 92 L192 108" stroke="#8a8f98" stroke-width="0.85"/>
+  <path d="M528 92 L528 108" stroke="#8a8f98" stroke-width="0.85"/>
+  <!-- Top surface ring highlight (front) -->
+  <path d="M192 86 Q360 58 528 86" stroke="#b8bdc6" stroke-width="0.7" fill="none"/>
+
+  <!-- ===================== STAGE 1 (4K plate) ===================== -->
+  <!-- Plate 1  outer + inner rim (rear first) -->
+  <ellipse cx="360" cy="178" rx="152" ry="27" stroke="#7d838c" stroke-width="0.8"/>
+  <ellipse cx="360" cy="174" rx="152" ry="27" stroke="#9ca2ab" stroke-width="0.85"/>
+  <!-- Small RF connectors around perimeter (subtle nodes)  sampled isometrically -->
+  <!-- Back row -->
+  <circle cx="250" cy="167" r="2.6" fill="none" stroke="#8a8f98" stroke-width="0.6"/>
+  <circle cx="310" cy="158" r="2.6" fill="none" stroke="#8a8f98" stroke-width="0.6"/>
+  <circle cx="410" cy="158" r="2.6" fill="none" stroke="#8a8f98" stroke-width="0.6"/>
+  <circle cx="470" cy="167" r="2.6" fill="none" stroke="#8a8f98" stroke-width="0.6"/>
+  <!-- Front row -->
+  <circle cx="232" cy="183" r="2.6" fill="none" stroke="#9ca2ab" stroke-width="0.65"/>
+  <circle cx="488" cy="183" r="2.6" fill="none" stroke="#9ca2ab" stroke-width="0.65"/>
+
+  <!-- ===================== STAGE 2 (still plate) ===================== -->
+  <ellipse cx="360" cy="272" rx="142" ry="24" stroke="#747a84" stroke-width="0.75"/>
+  <ellipse cx="360" cy="268" rx="142" ry="24" stroke="#959ba5" stroke-width="0.8"/>
+  <!-- Connectors -->
+  <circle cx="258" cy="263" r="2.4" fill="none" stroke="#8a8f98" stroke-width="0.55"/>
+  <circle cx="462" cy="263" r="2.4" fill="none" stroke="#8a8f98" stroke-width="0.55"/>
+  <circle cx="240" cy="279" r="2.4" fill="none" stroke="#959ba5" stroke-width="0.6"/>
+  <circle cx="480" cy="279" r="2.4" fill="none" stroke="#959ba5" stroke-width="0.6"/>
+
+  <!-- ===================== STAGE 3 (base plate / 1K or still) ===================== -->
+  <ellipse cx="360" cy="368" rx="135" ry="23" stroke="#6f757f" stroke-width="0.7"/>
+  <ellipse cx="360" cy="364" rx="135" ry="23" stroke="#8f95a0" stroke-width="0.75"/>
+  <!-- Connectors -->
+  <circle cx="265" cy="358" r="2.3" fill="none" stroke="#818891" stroke-width="0.55"/>
+  <circle cx="455" cy="358" r="2.3" fill="none" stroke="#818891" stroke-width="0.55"/>
+
+  <!-- ===================== STAGE 4 (mixing chamber plate) ===================== -->
+  <ellipse cx="360" cy="462" rx="122" ry="21" stroke="#686e79" stroke-width="0.65"/>
+  <ellipse cx="360" cy="458" rx="122" ry="21" stroke="#878d99" stroke-width="0.7"/>
+  <!-- Dense connector skirt hint at bottom stage -->
+  <circle cx="278" cy="453" r="2.2" fill="none" stroke="#7d838c" stroke-width="0.5"/>
+  <circle cx="442" cy="453" r="2.2" fill="none" stroke="#7d838c" stroke-width="0.5"/>
+  <circle cx="255" cy="467" r="2.2" fill="none" stroke="#878d99" stroke-width="0.55"/>
+  <circle cx="465" cy="467" r="2.2" fill="none" stroke="#878d99" stroke-width="0.55"/>
+
+  <!-- ===================== SUPPORT RODS (thick vertical pillars) ===================== -->
+  <!-- Rear rods (drawn first, occluded by front) -->
+  <path d="M235 108 L235 458" stroke="#6c727c" stroke-width="2.4"/>
+  <path d="M485 108 L485 458" stroke="#6c727c" stroke-width="2.4"/>
+  <!-- Side-back rods -->
+  <path d="M198 112 L198 455" stroke="#646b76" stroke-width="2.1"/>
+  <path d="M522 112 L522 455" stroke="#646b76" stroke-width="2.1"/>
+  <!-- Front rods (drawn later, win occlusion) -->
+  <path d="M272 105 L272 460" stroke="#9aa0aa" stroke-width="2.6"/>
+  <path d="M448 105 L448 460" stroke="#9aa0aa" stroke-width="2.6"/>
+
+  <!-- ===================== CENTRAL HELICAL HEAT EXCHANGER (coil) ===================== -->
+  <!-- Between stage 2 and 3 (most visible)  projected helix -->
+  <path
+    d="M312 282 Q328 294 312 306 Q296 318 312 330 Q328 342 312 354 Q296 366 312 378"
+    stroke="#8a909a" stroke-width="1.1" fill="none"/>
+  <path
+    d="M408 282 Q392 294 408 306 Q424 318 408 330 Q392 342 408 354 Q424 366 408 378"
+    stroke="#8a909a" stroke-width="1.1" fill="none"/>
+  <!-- Small vertical spine through coil -->
+  <path d="M360 280 L360 382" stroke="#6c727c" stroke-width="0.8"/>
+
+  <!-- ===================== CABLE BUNDLES (signal path) ===================== -->
+  <!-- Dense bundles looping / running between stages. Groups of parallel-ish lines. -->
+
+  <!-- Bundle group A (left-rear cluster) -->
+  <path d="M268 200 Q255 230 272 262" stroke="#777d87" stroke-width="0.55"/>
+  <path d="M275 200 Q262 232 278 264" stroke="#777d87" stroke-width="0.55"/>
+  <path d="M282 200 Q270 234 284 266" stroke="#777d87" stroke-width="0.55"/>
+
+  <path d="M272 272 Q258 305 275 338" stroke="#6f757f" stroke-width="0.5"/>
+  <path d="M280 272 Q265 307 282 340" stroke="#6f757f" stroke-width="0.5"/>
+  <path d="M288 272 Q272 310 288 343" stroke="#6f757f" stroke-width="0.5"/>
+
+  <!-- Bundle group B (right-rear cluster) -->
+  <path d="M452 200 Q465 232 448 264" stroke="#777d87" stroke-width="0.55"/>
+  <path d="M445 200 Q458 232 442 264" stroke="#777d87" stroke-width="0.55"/>
+
+  <path d="M448 272 Q462 307 445 340" stroke="#6f757f" stroke-width="0.5"/>
+  <path d="M440 272 Q455 310 438 343" stroke="#6f757f" stroke-width="0.5"/>
+
+  <!-- Front face bundles (more visible)  graceful curves from plate rims down -->
+  <!-- Left front bundle -->
+  <path d="M290 185 Q272 225 285 265" stroke="#9aa0aa" stroke-width="0.65"/>
+  <path d="M298 185 Q280 228 292 268" stroke="#9aa0aa" stroke-width="0.6"/>
+  <path d="M305 185 Q290 230 300 270" stroke="#9aa0aa" stroke-width="0.55"/>
+
+  <path d="M285 275 Q270 318 282 362" stroke="#8a909a" stroke-width="0.55"/>
+  <path d="M295 275 Q278 322 288 366" stroke="#8a909a" stroke-width="0.5"/>
+
+  <!-- Right front bundle -->
+  <path d="M430 185 Q448 225 435 265" stroke="#9aa0aa" stroke-width="0.65"/>
+  <path d="M422 185 Q440 228 428 268" stroke="#9aa0aa" stroke-width="0.6"/>
+  <path d="M415 185 Q432 230 420 270" stroke="#9aa0aa" stroke-width="0.55"/>
+
+  <path d="M435 275 Q450 318 438 362" stroke="#8a909a" stroke-width="0.55"/>
+  <path d="M425 275 Q442 322 432 366" stroke="#8a909a" stroke-width="0.5"/>
+
+  <!-- Mid-stage attenuator/filter blocks (small rects between plates) -->
+  <!-- Left column -->
+  <rect x="242" y="212" width="14" height="9" rx="1.5" stroke="#6c727c" stroke-width="0.6"/>
+  <rect x="242" y="308" width="14" height="9" rx="1.5" stroke="#6c727c" stroke-width="0.6"/>
+  <!-- Right column -->
+  <rect x="464" y="212" width="14" height="9" rx="1.5" stroke="#6c727c" stroke-width="0.6"/>
+  <rect x="464" y="308" width="14" height="9" rx="1.5" stroke="#6c727c" stroke-width="0.6"/>
+
+  <!-- ===================== BOTTOM QUBIT PACKAGE + SKIRT ===================== -->
+  <!-- Mixing chamber floor plate rim (bottommost) -->
+  <ellipse cx="360" cy="530" rx="96" ry="18" stroke="#5f656f" stroke-width="0.6"/>
+  <ellipse cx="360" cy="526" rx="96" ry="18" stroke="#7d838d" stroke-width="0.65"/>
+
+  <!-- Qubit package / chip mount (small central block at base) -->
+  <!-- Base copper-colored mount block -->
+  <rect x="322" y="542" width="76" height="22" rx="2" stroke="#8b8171" stroke-width="0.7"/>
+  <!-- Inner chip carrier (darker) -->
+  <rect x="334" y="548" width="52" height="12" rx="1" stroke="#555b64" stroke-width="0.6"/>
+  <!-- Chip surface cue -->
+  <rect x="342" y="552" width="36" height="6" rx="0.6" stroke="#6f757f" stroke-width="0.5"/>
+
+  <!-- Dense skirt cables converging from the bottom plate to the package center -->
+  <!-- Left side skirt -->
+  <path d="M310 522 Q295 535 335 555" stroke="#6f757f" stroke-width="0.45"/>
+  <path d="M298 524 Q282 538 332 556" stroke="#6f757f" stroke-width="0.4"/>
+  <path d="M285 526 Q275 542 330 557" stroke="#6f757f" stroke-width="0.38"/>
+  <!-- Right side skirt -->
+  <path d="M410 522 Q425 535 385 555" stroke="#6f757f" stroke-width="0.45"/>
+  <path d="M422 524 Q438 538 388 556" stroke="#6f757f" stroke-width="0.4"/>
+  <path d="M435 526 Q445 542 390 557" stroke="#6f757f" stroke-width="0.38"/>
+  <!-- Center front skirt -->
+  <path d="M348 523 Q352 538 358 558" stroke="#7d838d" stroke-width="0.5"/>
+  <path d="M372 523 Q368 538 362 558" stroke="#7d838d" stroke-width="0.5"/>
+
+  <!-- ===================== SIGNAL PATH EMPHASIS (subtle vertical continuity) ===================== -->
+  <!-- A very light continuous cue from top flange center down through stages to chip (not a literal wire, just path hint) -->
+  <path d="M360 108 L360 175 L360 270 L360 365 L360 460 L360 528" stroke="#5a606a" stroke-width="0.35" stroke-dasharray="2 3"/>
+
+  <!-- ===================== LABELS (only two on the asset) ===================== -->
+  <!-- FIG 1  top-left -->
+  <text
+    x="42"
+    y="46"
+    font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+    font-size="13"
+    font-weight="500"
+    letter-spacing="1.5"
+    fill="#9aa0aa"
+  >FIG 1</text>
+
+  <!-- CRYOSTAT  top-right -->
+  <text
+    x="678"
+    y="46"
+    font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
+    font-size="13"
+    font-weight="500"
+    letter-spacing="1.8"
+    fill="#9aa0aa"
+    text-anchor="end"
+  >CRYOSTAT</text>
+</svg>
