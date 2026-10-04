@@ -157,7 +157,10 @@ export function CryostatPlate({
               onPointerEnter={handleEnter("top")}
               onPointerLeave={clearHover}
               style={{ cursor: "pointer" }}
+              role="img"
+              aria-label="Top flange"
             >
+              <title>Top Flange (room temperature)</title>
               <ellipse cx="360" cy="92" rx="168" ry="36" stroke="#8a8f98" strokeWidth="0.9" />
               <ellipse cx="360" cy="86" rx="168" ry="36" stroke="#a8adb6" strokeWidth="0.95" />
               <path d="M192 92 L192 108" stroke="#8a8f98" strokeWidth="0.85" />
@@ -175,7 +178,10 @@ export function CryostatPlate({
               onPointerEnter={handleEnter("4k")}
               onPointerLeave={clearHover}
               style={{ cursor: "pointer" }}
+              role="img"
+              aria-label="4 K plate"
             >
+              <title>4 K Plate (upper thermal stage)</title>
               <ellipse cx="360" cy="178" rx="152" ry="27" stroke="#7d838c" strokeWidth="0.8" />
               <ellipse cx="360" cy="174" rx="152" ry="27" stroke="#9ca2ab" strokeWidth="0.85" />
               <circle cx="250" cy="167" r="2.6" fill="none" stroke="#8a8f98" strokeWidth="0.6" />
