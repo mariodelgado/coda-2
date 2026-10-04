@@ -21,7 +21,7 @@ from conductor_qpu.orchestrator.orchestrator import Orchestrator
 
 
 def main() -> int:
-    print("=== Conductor QPU — Bell Pair Circuit Demo ===\n")
+    print("=== quantum-chat — Bell Pair Circuit Demo ===\n")
 
     backend = NoisySimulatorBackend(num_qubits=2, seed=99)
     cal = CalibrationService(adapter=backend, fidelity_threshold=0.87, max_iterations=50, seed=11)

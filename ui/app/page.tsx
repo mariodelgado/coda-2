@@ -676,10 +676,23 @@ export default function QuantumChatInstrument() {
             <div className="stage-splitter-handle" />
           </div>
 
-          {/* Right pane: static isometric cryostat plate (finished hairline asset).
-              FIG 1 + DILUTION FRIDGE labels only; near-black #0a0a0b field; generous padding. */}
+          {/* Right pane: interactive cryostat plate with live HUD.
+              Chips + spinners driven by real device/job state (same polls as toolbar/StageStateChip).
+              Hover regions (flange/upper/still/mixing/package/cables/coil) show deeper frosted tooltip. */}
           <div className="stage-pane stage-pane-right">
-            <CryostatPlate className="h-full w-full" />
+            <CryostatPlate
+              className="h-full w-full"
+              device={device}
+              detuning={detuning}
+              stageMachine={stageMachine}
+              hasActiveJob={hasActiveJob}
+              activeJobStatus={activeJobStatus}
+              lastTrace={
+                activeTurn && activeTurn.traces && activeTurn.traces.length
+                  ? activeTurn.traces[activeTurn.traces.length - 1]
+                  : null
+              }
+            />
           </div>
 
           {/* StageStateChip bottom-right (above dock) — anchored to the overall stage */}

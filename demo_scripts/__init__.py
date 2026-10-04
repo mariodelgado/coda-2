@@ -1,1 +1,1 @@
-"""Demo scripts for Conductor QPU."""
+"""Demo scripts for quantum-chat."""

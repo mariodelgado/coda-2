@@ -39,7 +39,7 @@ except Exception:  # noqa: BLE001
     NoisySimulatorBackend = None  # type: ignore
 
 
-app = FastAPI(title="Conductor QPU", version="0.1.0", docs_url="/docs")
+app = FastAPI(title="quantum-chat", version="0.1.0", docs_url="/docs")
 
 # CORS for the Next.js UI (dev on :3000, prod builds may be same-origin or behind proxy)
 # allow_headers=["*"] covers Access-Control-Request-Private-Network in preflight.

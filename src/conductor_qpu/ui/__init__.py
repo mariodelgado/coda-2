@@ -1,4 +1,4 @@
-"""Streamlit UI for Conductor QPU."""
+"""Streamlit UI for quantum-chat."""
 
 from conductor_qpu.ui.app import run
 

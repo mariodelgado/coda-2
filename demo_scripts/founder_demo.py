@@ -1,6 +1,6 @@
-"""Founder demo script.
+"""quantum-chat demo script.
 
-One-command scriptable proof for Conductor founders.
+One-command scriptable demo for the instrument.
 
 Usage:
   python -m demo_scripts.founder_demo
@@ -42,7 +42,7 @@ def build_backend():
 def main() -> int:
     fail_mode = "--fail" in sys.argv or os.getenv("FOUNDER_DEMO_FAIL") == "1"
 
-    print("=== Conductor QPU — Founder Demo (scriptable) ===")
+    print("=== quantum-chat demo (scriptable) ===")
     backend = build_backend()
 
     if fail_mode and hasattr(backend, "set_demo_fid_cap"):

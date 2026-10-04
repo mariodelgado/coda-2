@@ -1,5 +1,5 @@
 /**
- * Thin HTTP client for the Conductor QPU FastAPI control plane.
+ * Thin HTTP client for the quantum control plane.
  * Base URL is configurable at runtime (UI header) via setApiBase.
  */
 

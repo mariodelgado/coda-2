@@ -1,6 +1,6 @@
-# Conductor QPU — Control Plane UI
+# quantum-chat — UI
 
-Next.js 16 App Router + shadcn/ui instrument panel for the FastAPI control plane.
+Next.js 16 App Router + shadcn/ui instrument panel for the quantum control plane.
 
 ## Stack (Emil Kowalski + WebGPU)
 

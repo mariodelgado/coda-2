@@ -20,7 +20,7 @@ from conductor_qpu.orchestrator.orchestrator import Orchestrator
 
 
 def main() -> int:
-    print("=== Conductor QPU — Calibration Demo ===\n")
+    print("=== quantum-chat — Calibration Demo ===\n")
 
     backend = NoisySimulatorBackend(num_qubits=2, seed=123)
     cal = CalibrationService(

@@ -1,11 +1,17 @@
-# Conductor QPU — AI-to-QPU Control Plane (Founder Spike)
+# quantum-chat
 
-> For Conductor Quantum: an agent-native control plane that treats calibration as first-class work, not an ops afterthought.
+> Instrument for talking to a quantum computer — visual, text, and math at once.
 
-**Thesis (in your language):**  
-Quantum hardware drifts. Calibration is the recurring tax before any useful circuit runs. Operators and agents spend their time deciding *when* and *how* to calibrate, watching whether it actually moved the needle, and correlating that with downstream job quality. This spike makes that loop legible, instrumented, and callable from code.
+**What this is.**  
+This is not a normal chat interface. It is a live instrument for a quantum computer. The same underlying machine (state, drift, calibration, circuits) is presented simultaneously in the three formats that matter:
 
-Everything here is **offline, zero LLM keys required**, and deliberately small. The goal is signal, not theater.
+- **visual** — the stage on top: a three-pane view of the cryostat and device (param-drift landscape, 3D device model, and a static isometric cryostat plate diagram).
+- **text** — the agent transcript and goal composer below: natural language turns, tool traces, and plain-English narration.
+- **math** — the live readouts and traces: fidelity, Δf (detuning), temperatures, applied vs. true parameters, calibration metrics.
+
+You can watch drift, steer calibration, run circuits, and read the physics — all without leaving the same surface. Instrument-first, not a chat void.
+
+Everything here is **offline, zero LLM keys required by default**, and deliberately small. The goal is signal, not theater.
 
 ---
 
@@ -43,13 +49,13 @@ These are not vanity numbers. They are the dials a real control plane operator (
 
 ---
 
-## 2-Minute Founder Demo (precise)
+## 2-Minute Demo (precise)
 
 Prerequisites: Python 3.11+, Node 18+, no API keys.
 
 ```bash
 git clone <repo>
-cd conductor-qpu
+cd <repo>
 make setup                 # python deps + ui/ npm install
 ```
 
@@ -65,8 +71,15 @@ make run-ui-dev            # Next.js on :3000
 
 Open http://localhost:3000.
 
-**Layout #2 — quantum instrument (this PR):**  
-65/35 split (top hero 65% viz, bottom 35% agent). Continuous gradient black (no hard seam). iOS system palette (blue true/target, orange applied, green/red status, label grays, iOS hairlines). Centered composer (max ~42rem) in bottom band. Mono instrument readouts. No bubbles/cards. Details in-rail only.
+**Layout — three-pane quantum instrument:**  
+The top stage is now three resizable panes (left to right):
+1. Param-drift landscape (WebGPU fidelity surface)
+2. 3D device view (R3F)
+3. Static isometric cryostat plate (hairline SVG diagram of the dilution refrigerator, no WebGPU/R3F)
+
+iPadOS-style splitters between panes (two splitters total). Roughly equal thirds by default; each pane is bounded ~22–28% minimum so none collapses.
+
+Below the stage is the progressive-blur dock with transcript, suggestion chips, and composer. Continuous near-black field. iOS system palette only (no purple). Mono readouts. StageStateChip, fidelity HUD, LIVE/READY status preserved.
 
 ### Walk (do this in order)
 
@@ -288,11 +301,10 @@ Behavior:
 - API responses include `user_message` and `agent_message` so chat UIs can render a real transcript.
 - Server advertises LLM status on `GET /health` (`llm_planner`, `llm_narrator`, `llm_provider`, `llm_model`).
 
-Founder-demo targets:
+Demo targets:
 
 ```bash
 make demo                 # Python calibration + circuit demos
-make founder-demo         # Orchestrator-driven founder script
 make test                 # full pytest
 make lint && make format
 cd ui && npm run build    # must be clean
@@ -307,4 +319,4 @@ cd ui && npm run build    # must be clean
 - No K8s, no secrets, no external services (unless you opt into the LLM path).
 - The value is in the traces, the calibration narrative, the clean seam, and a viz that explains drift — not decoration.
 
-If a skeptical quantum + ML founder looks at the execution timeline and the detuning card and says "I see how calibration is a recurring decision with observable cost," we did the job.
+If you look at the execution timeline, the fidelity surface, and the detuning readouts and immediately see how calibration is a recurring, observable decision with cost, the instrument has done its job.
