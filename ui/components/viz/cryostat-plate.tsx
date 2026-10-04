@@ -107,20 +107,21 @@ export function CryostatPlate({
       className={cn("relative h-full w-full overflow-hidden bg-[#000000] flex items-center justify-center", className)}
       onPointerLeave={clear}
     >
-      <div className="relative w-full h-full p-6 md:p-8 lg:p-10 flex items-center justify-center">
+      <div className="relative w-full h-full pt-3 md:pt-4 lg:pt-5 pb-2 flex items-start justify-center">
         <div
           ref={containerRef}
           className="relative"
-          style={{ width: "100%", maxWidth: 460, aspectRatio: "640 / 900" }}
+          style={{ width: "100%", maxWidth: 460, aspectRatio: "640 / 900", transform: "translateY(-4%)" }}
           onPointerMove={onPointer}
           onPointerEnter={onPointer}
         >
-          {/* The finished asset (preferred visual) */}
+          {/* The finished asset (preferred visual) — framed higher to avoid dock crowding; labels removed from asset */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/plates/cryostat-isometric.svg"
             alt="Dilution fridge — isometric wireframe"
             className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
+            style={{ objectPosition: "50% 28%" }}
             draggable={false}
           />
 

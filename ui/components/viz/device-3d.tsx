@@ -373,7 +373,7 @@ export function Device3D({ device, detuning, applied, className }: Device3DProps
   return (
     <div className={cn("relative h-full w-full overflow-hidden bg-[#000000]", className)}>
       <Canvas
-        camera={{ position: [0, 1.9, 3.9], fov: 44, near: 0.2, far: 40 }}
+        camera={{ position: [0, 2.15, 5.1], fov: 40, near: 0.2, far: 60 }}
         style={{ background: "#000000" }}
         dpr={[1, 1.6]}
       >
