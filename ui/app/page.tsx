@@ -580,8 +580,8 @@ export default function QuantumChatInstrument() {
         </div>
       </div>
 
-      {/* Content area: three-pane stage (drift | device | cryostat) with progressive-blur dock overlaid at bottom.
-          Dock itself is transparent; graduated blur comes from ::before/::after + mask-image. */}
+      {/* Content area: three-pane stage (drift | device | cryostat) with short solid-tint dock overlaid at bottom.
+          Dock uses pointer-events:none; inner content gets auto. No backdrop-filter anywhere. */}
       <div className="content-area">
         {/* Three-pane stage: param-drift landscape (left), 3D device (middle), static cryostat plate (right).
             Two iPadOS Split View–style splitters. Grid driven by leftFr/midFr/rightFr. */}

@@ -222,8 +222,9 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  height: clamp(96px, 13.5vh, 156px);
-  min-height: 96px;
+  /* Very short dock band so stage occupies top ~2/3+. */
+  height: clamp(72px, 10vh, 120px);
+  min-height: 72px;
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -231,23 +232,33 @@ body {
   overflow: hidden;
   background: transparent;
   position: relative;
+  /* Never block the three stage panes. */
   pointer-events: none;
+  /* Force no blur on the container (Safari safety). */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-/* Solid tint only — short bottom strip (composer/chips), no blur. */
+/* Solid tint ONLY — short bottom strip for chips + composer.
+   NO backdrop-filter and NO -webkit-backdrop-filter (explicit).
+   This is the required Safari-safe approach: solid tint, no blur layer at all. */
 .dock-tint {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  /* Keep the colored band low so upper stage stays clear */
-  height: 46%;
+  /* Confine the visible tint to the lowest part of the short dock (chips + composer only).
+     Transcript lives above this in the dock and sees the stage. */
+  height: 34%;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
-  /* Solid-to-transparent gradient, zero backdrop-filter */
+  /* Hard disable any blur on the tint layer. */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  /* Solid-to-transparent, no blur. */
   background: linear-gradient(
     to top,
     rgba(18, 18, 22, 0.96) 0%,
