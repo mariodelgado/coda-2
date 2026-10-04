@@ -120,6 +120,17 @@ export function CryostatPlate({
             viewBox="0 0 720 1040"
             className="absolute inset-0 w-full h-full"
             onPointerLeave={clearHover}
+            onPointerMove={(e) => {
+              if (hovered) {
+                const rect = rootRef.current?.getBoundingClientRect();
+                if (rect) {
+                  setTip({
+                    x: e.clientX - rect.left + 14,
+                    y: Math.max(12, e.clientY - rect.top - 10),
+                  });
+                }
+              }
+            }}
           >
             <rect x="0" y="0" width="720" height="1040" fill="#0a0a0b" />
 
