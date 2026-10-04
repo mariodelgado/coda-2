@@ -212,18 +212,18 @@ body {
   outline-offset: -1px;
 }
 
-/* Short frosted dock band (~14vh / max ~160px).
-   Progressive frosted blur (backdrop-filter) + soft tint ONLY inside this short band at the very bottom.
-   The top ~2/3+ of the three instrument panes must be completely clear and sharp on Safari.
-   Real clipped child (.dock-frost) carries backdrop-filter (no mask on the filtered node) — Safari reliable.
-   Dock container has pointer-events:none; only inner chat content (transcript, chips, composer) receives events. */
+/* Short solid-tint dock band (~14vh / max ~160px).
+   NO backdrop-filter of any kind (Safari leaks blur to the whole stage).
+   Solid progressive tint ONLY in a short bottom strip (chips + composer).
+   The top ~2/3+ of the three instrument panes must be completely clear and sharp.
+   Dock container pointer-events:none; only inner chat gets events. */
 .dock {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: clamp(100px, 14vh, 160px);
-  min-height: 100px;
+  height: clamp(96px, 13.5vh, 156px);
+  min-height: 96px;
   z-index: 20;
   display: flex;
   flex-direction: column;
@@ -234,30 +234,28 @@ body {
   pointer-events: none;
 }
 
-/* Real clipped frost carrier (full height of the short dock).
-   backdrop-filter + progressive soft tint. No mask-image on this element. */
-.dock-frost {
+/* Solid tint only — short bottom strip (composer/chips), no blur. */
+.dock-tint {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 100%;
+  /* Keep the colored band low so upper stage stays clear */
+  height: 46%;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
-  /* Progressive: stronger frost near composer, fades upward inside the short band. */
+  /* Solid-to-transparent gradient, zero backdrop-filter */
   background: linear-gradient(
     to top,
-    rgba(20, 20, 24, 0.92) 0%,
-    rgba(20, 20, 24, 0.78) 16%,
-    rgba(20, 20, 24, 0.48) 34%,
-    rgba(20, 20, 24, 0.18) 56%,
-    transparent 78%
+    rgba(18, 18, 22, 0.96) 0%,
+    rgba(18, 18, 22, 0.86) 16%,
+    rgba(18, 18, 22, 0.50) 34%,
+    rgba(18, 18, 22, 0.14) 54%,
+    transparent 74%
   );
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
 }
 
 /* Constrained centered column for ledger + composer */

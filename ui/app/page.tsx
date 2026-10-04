@@ -696,12 +696,12 @@ export default function QuantumChatInstrument() {
           </div>
         </div>
 
-        {/* Short frosted dock (~14vh / max 160px). Progressive blur confined inside.
-            Dock container has pointer-events:none so stage panes stay interactive.
-            Only the chat content receives events. */}
+        {/* Short solid-tint dock (~14vh / max 160px). NO backdrop-filter.
+            Dock container has pointer-events:none so the three stage panes stay interactive.
+            Tint is a short bottom strip only (chips + composer). Top ~2/3+ of panes stay clear. */}
         <div className="dock chat-dock">
-          {/* Real clipped child with backdrop-filter + tint. No mask on the filtered element (Safari safe). */}
-          <div className="dock-frost" />
+          {/* Solid tint layer (no blur). Short bottom composer/chips area. */}
+          <div className="dock-tint" />
           <div className="constrained chat-constrained" style={{ pointerEvents: 'auto' }}>
             {/* Scrollable conversation transcript (top of dock, grows, scrolls) */}
             <div ref={transcriptRef} className="chat-transcript">
