@@ -104,28 +104,37 @@ export function CryostatPlate({
 
   return (
     <div
-      className={cn("relative h-full w-full overflow-hidden bg-[#000000] flex items-center justify-center", className)}
+      className={cn("relative h-full w-full overflow-hidden bg-[#000000] flex items-start justify-center", className)}
       onPointerLeave={clear}
     >
-      <div className="relative w-full h-full pt-3 md:pt-4 lg:pt-5 pb-2 flex items-start justify-center">
+      {/* Plate sized + shifted to live strictly in the top ~2/3 of the pane (clear of frosted dock).
+          Smaller max-width + stronger upward translate. Chips anchored to the visual bottom.
+          Hover hit area, highlight band, and tooltip stay relative to this container so regions work. */}
+      <div className="relative w-full h-full pt-0.5 pb-0 flex items-start justify-center">
         <div
           ref={containerRef}
           className="relative"
-          style={{ width: "100%", maxWidth: 460, aspectRatio: "640 / 900", transform: "translateY(-4%)" }}
+          style={{
+            width: "100%",
+            maxWidth: 210,
+            aspectRatio: "640 / 900",
+            transform: "translateY(-26%)",
+            transformOrigin: "50% 8%",
+          }}
           onPointerMove={onPointer}
           onPointerEnter={onPointer}
         >
-          {/* The finished asset (preferred visual) — framed higher to avoid dock crowding; labels removed from asset */}
+          {/* The finished asset (preferred visual) — scaled to top 2/3, clear of dock */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/plates/cryostat-isometric.svg"
             alt="Dilution fridge — isometric wireframe"
             className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
-            style={{ objectPosition: "50% 28%" }}
+            style={{ objectPosition: "50% 16%" }}
             draggable={false}
           />
 
-          {/* Subtle left highlight band for the hovered logical part */}
+          {/* Subtle left highlight band for the hovered logical part (scoped to the visual plate) */}
           {hovered && (
             <div
               className="absolute left-0 z-10 pointer-events-none"
@@ -140,21 +149,21 @@ export function CryostatPlate({
             />
           )}
 
-          {/* Live instrument chips — overlaid on the plate area */}
-          <div className="absolute bottom-2 left-2 right-2 z-20 flex flex-wrap gap-1.5">
+          {/* Live instrument chips — now at the visual bottom of the (smaller) plate, not the pane bottom */}
+          <div className="absolute bottom-1 left-1 right-1 z-20 flex flex-wrap gap-1">
             <StageChip label={stageLabel} active={isActive} />
             {!Number.isNaN(q0) && (
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1.5 py-px font-mono text-[10px] backdrop-blur text-zinc-200">
+              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] backdrop-blur text-zinc-200">
                 Q0 <span className="ml-1 text-white tabular-nums">{(q0 * 100).toFixed(0)}%</span>
               </div>
             )}
             {!Number.isNaN(t0) && (
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1.5 py-px font-mono text-[10px] backdrop-blur text-zinc-200 tabular-nums">
+              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] backdrop-blur text-zinc-200 tabular-nums">
                 {t0.toFixed(1)} mK
               </div>
             )}
             {df !== 0 && (
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1.5 py-px font-mono text-[10px] backdrop-blur text-zinc-200 tabular-nums">
+              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] backdrop-blur text-zinc-200 tabular-nums">
                 Δf {df.toFixed(3)}
               </div>
             )}
