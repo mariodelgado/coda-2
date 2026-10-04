@@ -79,10 +79,30 @@ export interface DetuningResponse {
 }
 
 // Default to a same-origin prefix so the Next dev server can proxy to the control plane.
-// In dev, next.config rewrites /qpu/* → http://127.0.0.1:8000/*.
-// If you run the UI against a remote or differently-port API, set NEXT_PUBLIC_API_BASE explicitly
-// (e.g. NEXT_PUBLIC_API_BASE=http://localhost:8000 or a full origin).
-let _base = process.env.NEXT_PUBLIC_API_BASE || "/qpu"
+// In dev, next.config rewrites /qpu/* → http://127.0.0.1:8000/* (local only).
+// IMPORTANT for tunnels / Safari / remote clients:
+//   - Leave NEXT_PUBLIC_API_BASE *unset* at build time. Client will use "/qpu" (same-origin).
+//   - Never bake http://127.0.0.1 or http://localhost into the client bundle for deployed UIs.
+//   - If you *must* point at a non-same-origin API, use a full origin that the client can reach.
+const envBase = process.env.NEXT_PUBLIC_API_BASE;
+let _base: string;
+if (envBase) {
+  // Defensive: if a dev URL was accidentally baked into a production bundle,
+  // fall back to same-origin /qpu when the runtime origin is not local.
+  const looksLikeLocal = /localhost|127\.0\.0\.1/.test(envBase);
+  if (looksLikeLocal && typeof window !== "undefined") {
+    const origin = window.location.origin;
+    if (!/localhost|127\.0\.0\.1/.test(origin)) {
+      _base = "/qpu";
+    } else {
+      _base = envBase.replace(/\/$/, "");
+    }
+  } else {
+    _base = envBase.replace(/\/$/, "");
+  }
+} else {
+  _base = "/qpu";
+}
 
 export function setApiBase(base: string) {
   _base = base.replace(/\/$/, "")

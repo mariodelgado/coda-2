@@ -52,6 +52,16 @@ Only set `NEXT_PUBLIC_API_BASE` if you run the API on a different origin/port in
 
 Optional (explicit): `NEXT_PUBLIC_API_BASE=http://localhost:8000` (still works; no rewrite needed).
 
+### Tunnel / Safari / remote clients (Cloudflare tunnel, trycloudflare, etc.)
+
+- **Leave `NEXT_PUBLIC_API_BASE` unset at build time.**
+- The client will default to same-origin `/qpu` (relative).
+- Next dev rewrites `/qpu/*` → the local API only for local dev.
+- From the tunnel (which fronts only the UI on :3000), calls to `/qpu/health` etc. will go through the tunnel and be proxied by the dev server (or your production proxy).
+- Do **not** bake `http://127.0.0.1:8000`, `http://localhost:8000`, or any `127.0.0.1:3000/qpu` into the client bundle — that URL will be unreachable from a remote Safari (or any client not on the same machine).
+- If you previously built with a local `NEXT_PUBLIC_API_BASE`, the client bundle may contain an absolute URL pointing at the builder's machine. Rebuild without the var (or with it unset) to get a same-origin `/qpu` bundle.
+- Toolbar will show **LIVE** once `/qpu/health` succeeds over the tunnel.
+
 ## Key files
 
 - `app/page.tsx` — control plane composition

@@ -222,6 +222,18 @@ If you ever need to point elsewhere, set `NEXT_PUBLIC_API_BASE` explicitly (e.g.
 
 Hard refresh the UI after starting the API if the first health check raced with API startup.
 
+### Tunnel / Safari / remote access (e.g. Cloudflare tunnel)
+
+For clients hitting the UI through a tunnel that only exposes the Next.js port (e.g. :3000):
+
+- **Leave `NEXT_PUBLIC_API_BASE` unset** when building the UI bundle.
+- Client code defaults to relative `/qpu` (same-origin).
+- The dev server rewrite (`/qpu/*` → local API) is only for direct local access.
+- From the tunneled Safari (or any remote browser), `/qpu/health`, `/device/state`, etc. must resolve relative to the tunneled origin.
+- Never bake `http://127.0.0.1:8000`, `http://localhost:8000`, or a builder-local `http://127.0.0.1:3000/qpu` into the production client bundle — that will cause OFFLINE (health fails because the absolute URL points at the wrong machine).
+- Rebuild without the env var (or explicitly unset) after any accidental local-base build.
+- The toolbar **refresh** button re-checks health and can recover transient issues.
+
 ### See calibration live
 
 1. The **stage** (top) shows the current device view.
