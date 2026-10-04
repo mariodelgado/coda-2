@@ -30,7 +30,9 @@ export function CryostatPlate({ className }: CryostatPlateProps) {
     >
       {/* Generous padding container to keep the plate breathing room on all sides */}
       <div className="relative w-full h-full p-8 md:p-10 lg:p-12 flex items-center justify-center">
-        {/* The plate asset itself — static SVG, hairline isometric, no interaction */}
+        {/* The plate asset itself — static SVG, hairline isometric, no interaction.
+            Using <img> is intentional for a static illustration asset with object-fit contain. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/plates/cryostat-isometric.svg"
           alt="Cryostat — isometric wireframe of dilution refrigerator thermal stages and signal path"
