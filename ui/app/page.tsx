@@ -541,7 +541,7 @@ export default function QuantumChatInstrument() {
     <div className="h-screen w-screen overflow-hidden bg-[#000000] text-white flex flex-col">
       <CommandPalette actions={commandActions} disabled={!connected} />
 
-      {/* Frosted instrument toolbar (no window chrome) */}
+      {/* Clean instrument toolbar */}
       <div className="toolbar relative">
         <div className="flex items-center gap-2 font-medium">
           <span className="font-sans tracking-[-0.2px]">Quantum Chat</span>
@@ -552,24 +552,19 @@ export default function QuantumChatInstrument() {
           >
             {connected ? "LIVE" : "OFFLINE"}
           </span>
-          <span className={isReady ? "text-success" : "text-applied"}>
-            {isReady ? "READY" : "CAL NEEDED"}
-          </span>
-          {readiness && <span className="text-zinc-500">· {readiness}</span>}
         </div>
 
-        <div className="ml-auto flex items-center gap-4 instrument-mono text-zinc-400 pr-1">
-          {q0Fid != null && <span>Q0 <span className="text-white">{(q0Fid * 100).toFixed(1)}</span>%</span>}
-          {q0Temp != null && <span><span className="text-white">{q0Temp}</span> mK</span>}
-          {detuning && <span className="text-applied">Δf {Number(detuning.frequency_error || 0).toFixed(3)}</span>}
-          {latestFidelity != null && <span>fid <span className="text-true">{latestFidelity.toFixed(4)}</span></span>}
+        {/* READY centered when ready (instrument-first, minimal clutter) */}
+        <div className="absolute left-1/2 -translate-x-1/2 text-[10px] font-mono tracking-[0.5px] text-success">
+          {isReady ? "READY" : ""}
+        </div>
 
+        <div className="ml-auto flex items-center gap-2">
           <button onClick={() => setCommandOpen(true)} className="rounded border hairline px-1.5 py-px hover:bg-white/5" title="⌘K">
             <CommandIcon className="h-3 w-3" />
           </button>
           <button
             onClick={() => {
-              // Re-check connection first (recover from an initial failed health check), then refresh data if ok
               void checkConnection().then((ok) => {
                 if (ok) {
                   void refreshDevice()
@@ -578,15 +573,15 @@ export default function QuantumChatInstrument() {
               })
             }}
             className="rounded border hairline px-1.5 py-px hover:bg-white/5"
-            title="Re-check connection and refresh device/metrics"
+            title="Refresh"
           >
             refresh
           </button>
         </div>
       </div>
 
-      {/* Content area: three-pane stage (drift | device | cryostat) with progressive-blur dock overlaid at bottom.
-          Dock itself is transparent; graduated blur comes from ::before/::after + mask-image. */}
+      {/* Content area: three-pane stage (drift | device | cryostat) with short solid-tint dock overlaid at bottom.
+          Dock uses pointer-events:none; inner content gets auto. No backdrop-filter anywhere. */}
       <div className="content-area">
         {/* Three-pane stage: param-drift landscape (left), 3D device (middle), static cryostat plate (right).
             Two iPadOS Split View–style splitters. Grid driven by leftFr/midFr/rightFr. */}
@@ -701,13 +696,13 @@ export default function QuantumChatInstrument() {
           </div>
         </div>
 
-        {/* Dock band — solid gradient tint only (no backdrop-filter of any kind).
-            This is the nuclear fix for Safari: the entire three-pane stage must stay
-            optically crisp. No blur leaks from dock/composer/details. */}
+        {/* Short solid-tint dock (~14vh / max 160px). NO backdrop-filter.
+            Dock container has pointer-events:none so the three stage panes stay interactive.
+            Tint is a short bottom strip only (chips + composer). Top ~2/3+ of panes stay clear. */}
         <div className="dock chat-dock">
-          {/* Real child carrying the solid/semi-opaque tint. NO backdrop-filter here or on composer. */}
+          {/* Solid tint layer (no blur). Short bottom composer/chips area. */}
           <div className="dock-tint" />
-          <div className="constrained chat-constrained">
+          <div className="constrained chat-constrained" style={{ pointerEvents: 'auto' }}>
             {/* Scrollable conversation transcript (top of dock, grows, scrolls) */}
             <div ref={transcriptRef} className="chat-transcript">
               {turns.length === 0 && (
@@ -715,28 +710,18 @@ export default function QuantumChatInstrument() {
               )}
               {turns.map((t) => (
                 <div key={t.id} className="chat-turn">
-                  {/* User message */}
-                  <div className="chat-user">
-                    <span className="chat-label">you</span>
-                    <span className="chat-text">{t.userMessage || t.goal}</span>
+                  {/* User bubble (right) */}
+                  <div className="bubble user">
+                    {t.userMessage || t.goal}
                   </div>
-                  {/* Agent NL reply — primary content */}
-                  <div className="chat-agent">
-                    <span className="chat-label">agent</span>
-                    {t.status === "running" && (
-                      <span className="chat-text text-applied">running…</span>
-                    )}
-                    {t.status === "failed" && (
-                      <span className="chat-text text-fail">{t.error || "failed"}</span>
-                    )}
-                    {t.status !== "running" && t.agentMessage && (
-                      <span className="chat-text chat-nl">{t.agentMessage}</span>
-                    )}
-                    {t.status !== "running" && !t.agentMessage && !t.error && (
-                      <span className="chat-text text-zinc-500">completed</span>
-                    )}
+                  {/* Agent bubble (left) */}
+                  <div className="bubble agent">
+                    {t.status === "running" && "running…"}
+                    {t.status === "failed" && (t.error || "failed")}
+                    {t.status !== "running" && t.agentMessage && t.agentMessage}
+                    {t.status !== "running" && !t.agentMessage && !t.error && "completed"}
                   </div>
-                  {/* Optional micro traces line (collapsed; not the primary view) */}
+                  {/* Tiny trace pills (non-primary) */}
                   {t.traces && t.traces.length > 0 && (
                     <div className="chat-traces">
                       {t.traces.slice(-3).map((tr, i) => (
