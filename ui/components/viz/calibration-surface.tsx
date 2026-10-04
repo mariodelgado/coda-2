@@ -188,8 +188,9 @@ function Scene({
       <group position={[0, subjectLiftY, 0]} rotation={[-Math.PI / 2.35, 0, 0]}>
         <FidelitySurface detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} />
         <Markers detuning={detuning} />
-        {/* Grid sits on the same local plane as the surface (tiny depth offset for draw order). */}
-        <gridHelper args={[3, 12, "#1f2937", "#111113"]} position={[0, 0, -0.003]} />
+        {/* Grid sits on the same local plane as the surface (tiny depth offset for draw order).
+            Raised contrast vs pure black stage / fidelity surface; iOS-muted neutral grays (no neon/purple). */}
+        <gridHelper args={[3, 12, "#3a3a3e", "#2b2b2f"]} position={[0, 0, -0.003]} />
       </group>
       <OrbitControls
         enablePan={false}

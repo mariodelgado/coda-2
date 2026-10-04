@@ -118,12 +118,16 @@ body {
   background: #000000;
 }
 
-/* Peer split layout: 50/50 horizontal split, no tabs, no inset */
+/* Peer split layout: resizable side-by-side with iPadOS Split View–style divider.
+   Uses a 3-column grid (left | splitter-track | right). The middle track provides
+   a thin visual rule + wider hit area; a capsule handle fades in on hover / drag. */
 .stage-split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: #111113; /* hairline between panes */
+  /* Dynamic columns injected via inline style from React state (leftFr, rightFr). */
+  /* Fallback at rest for first paint before hydration */
+  grid-template-columns: 1fr 14px 1fr;
+  background: #000000; /* stage; splitter track draws its own hairline */
+  /* No gap; splitter track owns the separation. */
 }
 
 /* Each pane is a peer container; canvases fill them */
@@ -139,6 +143,76 @@ body {
 .stage-pane > canvas {
   height: 100% !important;
   width: 100% !important;
+}
+
+/* iPadOS Split View–style splitter track.
+   14px wide track centered between panes; contains a 1px hairline and a capsule handle.
+   Hairline is subtle; handle fades in on hover or when dragging. */
+.stage-splitter {
+  position: relative;
+  z-index: 10;
+  cursor: col-resize;
+  /* Wider hit area than the visual hairline; keeps panes flush to the track edges. */
+  background: transparent;
+  /* Let the grid column define width; ensure full height. */
+  height: 100%;
+  /* Center interactions. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Subtle hover affordance on the track itself. */
+  transition: background-color 120ms var(--ease-out);
+}
+.stage-splitter:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+.stage-splitter.dragging {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Thin vertical rule (iPadOS hairline). */
+.stage-splitter-rule {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  /* iOS-style muted separator — not pure white, not neon. */
+  background: var(--hairline);
+  transform: translateX(-0.5px);
+  pointer-events: none;
+}
+
+/* Capsule/pill drag handle — hidden by default, appears on hover/drag.
+   Matches iPadOS Split View affordance: rounded pill, higher contrast on interaction. */
+.stage-splitter-handle {
+  position: relative;
+  z-index: 1;
+  width: 4px;
+  height: 42px;
+  border-radius: 999px;
+  /* Muted but visible on dark stage; uses hairline + slight fill for depth. */
+  background: rgba(120, 120, 128, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: 0;
+  transform: translateZ(0);
+  transition: opacity 120ms var(--ease-out), background-color 120ms var(--ease-out), border-color 120ms var(--ease-out);
+  pointer-events: none; /* visuals only; track handles pointer */
+}
+/* Show on hover of the track or while dragging. */
+.stage-splitter:hover .stage-splitter-handle,
+.stage-splitter.dragging .stage-splitter-handle {
+  opacity: 1;
+}
+.stage-splitter.dragging .stage-splitter-handle {
+  background: rgba(120, 120, 128, 0.75);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Keyboard focus ring for a11y (arrows nudge split). */
+.stage-splitter:focus-visible {
+  outline: 1px solid rgba(0, 122, 255, 0.45);
+  outline-offset: -1px;
 }
 
 /* Overlaid dock — compact band at bottom, fully transparent base.

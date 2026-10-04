@@ -62,6 +62,15 @@ export default function ConductorQPUInstrument() {
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const eventSourcesRef = useRef<Record<string, EventSource>>({})
 
+  // Resizable stage split (iPadOS Split View style).
+  // Stored as fr units; default 1:1. Splitter track is 14px and excluded from fr math.
+  const [leftFr, setLeftFr] = React.useState<number>(1)
+  const [rightFr, setRightFr] = React.useState<number>(1)
+  const [isDraggingSplit, setIsDraggingSplit] = React.useState(false)
+  const stageRef = React.useRef<HTMLDivElement | null>(null)
+  // Keep last pointer position during drag for smooth updates.
+  const dragStateRef = React.useRef<{ startX: number; startLeftFr: number; startRightFr: number } | null>(null)
+
   // Transcript auto-scroll container
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const scrollTranscript = useCallback(() => {
@@ -412,6 +421,73 @@ export default function ConductorQPUInstrument() {
     return t.traces[t.traces.length-1]?.summary || ""
   }
 
+  // --- Splitter drag handlers (iPadOS Split View style) ---
+  const MIN_FR = 0.45
+  const MAX_FR = 2.22 // ~28% / 72% extremes
+
+  const clampFr = (v: number) => Math.max(MIN_FR, Math.min(MAX_FR, v))
+
+  const handleSplitterPointerDown = React.useCallback((e: React.PointerEvent) => {
+    const stageEl = stageRef.current
+    if (!stageEl) return
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    setIsDraggingSplit(true)
+    dragStateRef.current = {
+      startX: e.clientX,
+      startLeftFr: leftFr,
+      startRightFr: rightFr,
+    }
+    // Ensure we get moves even if pointer leaves the narrow track.
+    window.addEventListener("pointermove", handlePointerMove as unknown as EventListener, { passive: true })
+    window.addEventListener("pointerup", handlePointerUp as unknown as EventListener, { once: true })
+    window.addEventListener("pointercancel", handlePointerUp as unknown as EventListener, { once: true })
+  }, [leftFr, rightFr])
+
+  const handlePointerMove = React.useCallback((e: PointerEvent) => {
+    const stageEl = stageRef.current
+    const ds = dragStateRef.current
+    if (!stageEl || !ds) return
+    const rect = stageEl.getBoundingClientRect()
+    const total = Math.max(1, rect.width)
+    // Map horizontal delta to fr delta. The middle track (14px) is fixed and not part of the fr columns.
+    const dxPx = e.clientX - ds.startX
+    const dxFr = (dxPx / total) * (ds.startLeftFr + ds.startRightFr)
+    const nextLeft = clampFr(ds.startLeftFr + dxFr)
+    const nextRight = clampFr(ds.startRightFr - dxFr)
+    // Keep sum reasonably balanced around the starting sum to avoid drift.
+    const sum = nextLeft + nextRight
+    const targetSum = ds.startLeftFr + ds.startRightFr
+    const scale = sum > 0 ? targetSum / sum : 1
+    setLeftFr(clampFr(nextLeft * scale))
+    setRightFr(clampFr(nextRight * scale))
+  }, [])
+
+  const handlePointerUp = React.useCallback(() => {
+    setIsDraggingSplit(false)
+    dragStateRef.current = null
+    window.removeEventListener("pointermove", handlePointerMove as unknown as EventListener)
+  }, [handlePointerMove])
+
+  // Keyboard support: ArrowLeft/Right nudge the split when the splitter has focus.
+  const onSplitterKeyDown = React.useCallback((e: React.KeyboardEvent) => {
+    const step = e.shiftKey ? 0.12 : 0.04
+    if (e.key === "ArrowLeft") {
+      const nextL = clampFr(leftFr - step)
+      const nextR = clampFr(rightFr + step)
+      const s = (nextL + nextR) / (leftFr + rightFr)
+      setLeftFr(clampFr(nextL / s))
+      setRightFr(clampFr(nextR / s))
+      e.preventDefault()
+    } else if (e.key === "ArrowRight") {
+      const nextL = clampFr(leftFr + step)
+      const nextR = clampFr(rightFr - step)
+      const s = (nextL + nextR) / (leftFr + rightFr)
+      setLeftFr(clampFr(nextL / s))
+      setRightFr(clampFr(nextR / s))
+      e.preventDefault()
+    }
+  }, [leftFr, rightFr])
+
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#000000] text-white flex flex-col">
       <CommandPalette actions={commandActions} disabled={!connected} />
@@ -464,8 +540,13 @@ export default function ConductorQPUInstrument() {
           The two peer panels share the stage equally. Dock itself is transparent; graduated blur comes from ::before/::after + mask-image. */}
       <div className="content-area">
         {/* Side-by-side stage: param-drift landscape (left) and 3D cryo device (right) are peer panels.
-            Overlays (fidelity HUD, StageStateChip) are positioned above the split. */}
-        <div className="stage stage-split">
+            Overlays (fidelity HUD, StageStateChip) are positioned above the split.
+            Grid columns are driven by leftFr/rightFr state for real resize via the iPadOS splitter. */}
+        <div
+          ref={stageRef}
+          className="stage stage-split"
+          style={{ gridTemplateColumns: `${leftFr}fr 14px ${rightFr}fr` }}
+        >
           {backendDown && (
             <div className="absolute top-2 left-2 z-40 text-[9px] px-2 py-px rounded-full border border-white/10 bg-black/70 backdrop-blur text-[#FF3B30] font-mono tracking-[0.3px]">
               OFFLINE — make run-api
@@ -482,6 +563,25 @@ export default function ConductorQPUInstrument() {
               readoutFidelity={device?.readout_fidelity ?? null}
               className="h-full w-full"
             />
+          </div>
+
+          {/* iPadOS Split View–style splitter track between panes.
+              Thin vertical hairline + capsule drag handle that fades in on hover / drag.
+              Pointer drag updates fr-based split; min widths enforced to avoid collapse. */}
+          <div
+            className={`stage-splitter ${isDraggingSplit ? "dragging" : ""}`}
+            onPointerDown={handleSplitterPointerDown}
+            onKeyDown={onSplitterKeyDown}
+            tabIndex={0}
+            role="separator"
+            aria-orientation="vertical"
+            aria-valuenow={Math.round((leftFr / (leftFr + rightFr)) * 100)}
+            aria-label="Resize stage panes"
+          >
+            {/* Subtle centered hairline (iPadOS thin rule) */}
+            <div className="stage-splitter-rule" />
+            {/* Capsule/pill handle — visible on hover or while dragging */}
+            <div className="stage-splitter-handle" />
           </div>
 
           {/* Right pane: 3D cryo device (R3F preserved) */}
