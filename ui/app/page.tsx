@@ -41,7 +41,7 @@ interface Turn {
   createdAt: number
 }
 
-export default function ConductorQPUInstrument() {
+export default function QuantumChatInstrument() {
   const setCommandOpen = useControlPlaneStore((s) => s.setCommandOpen)
 
   const [apiBase, setApiBaseState] = useState<string>(getApiBase())
@@ -544,7 +544,7 @@ export default function ConductorQPUInstrument() {
       {/* Frosted instrument toolbar (no window chrome) */}
       <div className="toolbar relative">
         <div className="flex items-center gap-2 font-medium">
-          <span className="font-sans tracking-[-0.2px]">Conductor QPU</span>
+          <span className="font-sans tracking-[-0.2px]">Quantum Chat</span>
           <span
             className={`px-1.5 py-px rounded text-[10px] text-black font-mono tracking-[0.5px] ${connected ? "" : "opacity-60"}`}
             style={{ background: connected ? "var(--success)" : "#6b7280" }}
@@ -676,9 +676,23 @@ export default function ConductorQPUInstrument() {
             <div className="stage-splitter-handle" />
           </div>
 
-          {/* Right pane: static isometric cryostat plate (hairline SVG, no WebGPU/R3F) */}
+          {/* Right pane: interactive isometric cryostat plate (hairline SVG + hover regions).
+              Hover a logical part (flange, plates, coil, cables, package) to see a richer live tooltip
+              with fidelity, mK, Δf, stage, active job, and last trace — all from real backend polls. */}
           <div className="stage-pane stage-pane-right">
-            <CryostatPlate className="h-full w-full" />
+            <CryostatPlate
+              className="h-full w-full"
+              device={device}
+              detuning={detuning}
+              stageMachine={stageMachine}
+              hasActiveJob={hasActiveJob}
+              activeJobStatus={activeJobStatus}
+              lastTrace={
+                activeTurn && activeTurn.traces && activeTurn.traces.length
+                  ? activeTurn.traces[activeTurn.traces.length - 1]
+                  : null
+              }
+            />
           </div>
 
           {/* StageStateChip bottom-right (above dock) — anchored to the overall stage */}
