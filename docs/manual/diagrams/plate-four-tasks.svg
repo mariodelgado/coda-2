@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 580" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="760" height="580" fill="#eef2f0"/>
+  <text x="36" y="36" font-size="11" fill="#1a1a1a" letter-spacing="0.28em" font-weight="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">FOUR TASKS</text>
+  <text x="36" y="56" font-size="9" fill="#4a5560" letter-spacing="0.12em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">NATURAL-LANGUAGE GOAL  →  ONE TOOL  →  A RESULT YOU CAN SEE</text>
+  <g>
+<rect x="36" y="78" width="334" height="214" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.3"/>
+<rect x="36" y="78" width="334" height="42" rx="8" fill="#5a8fb5"/>
+<rect x="36" y="104" width="334" height="16" fill="#5a8fb5"/>
+<text x="54" y="105" font-size="13" font-weight="700" fill="#1a1a1a" letter-spacing="0.14em">CALIBRATE</text>
+<text x="354" y="105" text-anchor="end" font-size="10" fill="#1a1a1a" letter-spacing="0.16em">01</text>
+<line x1="72" y1="156" x2="72" y2="260" stroke="#1a1a1a" stroke-width="1.2"/>
+<circle cx="72" cy="156" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="72" y="159.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">1</text>
+<text x="92" y="150" font-size="8" fill="#4a5560" letter-spacing="0.16em">GOAL</text>
+<text x="92" y="166" font-size="12" font-weight="600" fill="#1a1a1a">Bring qubit 0 to ready</text>
+<text x="92" y="182" font-size="9.5" fill="#4a5560">Calibrate Q0 chip</text>
+<circle cx="72" cy="208" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="72" y="211.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">2</text>
+<text x="92" y="202" font-size="8" fill="#4a5560" letter-spacing="0.16em">TOOL</text>
+<text x="92" y="218" font-size="12" font-weight="600" fill="#1a1a1a">calibrate_qubit</text>
+<circle cx="72" cy="260" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="72" y="263.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">3</text>
+<text x="92" y="254" font-size="8" fill="#4a5560" letter-spacing="0.16em">OUTCOME</text>
+<text x="92" y="270" font-size="12" font-weight="600" fill="#1a1a1a">Toolbar READY</text>
+<text x="92" y="286" font-size="9.5" fill="#4a5560">device.is_ready · agent affirms</text>
+</g>
+<g>
+<rect x="390" y="78" width="334" height="214" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.3"/>
+<rect x="390" y="78" width="334" height="42" rx="8" fill="#7a8a4a"/>
+<rect x="390" y="104" width="334" height="16" fill="#7a8a4a"/>
+<text x="408" y="105" font-size="13" font-weight="700" fill="#1a1a1a" letter-spacing="0.14em">BELL</text>
+<text x="708" y="105" text-anchor="end" font-size="10" fill="#1a1a1a" letter-spacing="0.16em">02</text>
+<line x1="426" y1="156" x2="426" y2="260" stroke="#1a1a1a" stroke-width="1.2"/>
+<circle cx="426" cy="156" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="426" y="159.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">1</text>
+<text x="446" y="150" font-size="8" fill="#4a5560" letter-spacing="0.16em">GOAL</text>
+<text x="446" y="166" font-size="12" font-weight="600" fill="#1a1a1a">Bell pair chip</text>
+<text x="446" y="182" font-size="9.5" fill="#4a5560">bell · circuit · pair</text>
+<circle cx="426" cy="208" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="426" y="211.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">2</text>
+<text x="446" y="202" font-size="8" fill="#4a5560" letter-spacing="0.16em">TOOL</text>
+<text x="446" y="218" font-size="12" font-weight="600" fill="#1a1a1a">run_bell_pair</text>
+<circle cx="426" cy="260" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="426" y="263.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">3</text>
+<text x="446" y="254" font-size="8" fill="#4a5560" letter-spacing="0.16em">OUTCOME</text>
+<text x="446" y="270" font-size="12" font-weight="600" fill="#1a1a1a">Ledger 00 and 11</text>
+<text x="446" y="286" font-size="9.5" fill="#4a5560">01 and 10 are the errors</text>
+</g>
+<g>
+<rect x="36" y="310" width="334" height="214" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.3"/>
+<rect x="36" y="310" width="334" height="42" rx="8" fill="#3d6a8c"/>
+<rect x="36" y="336" width="334" height="16" fill="#3d6a8c"/>
+<text x="54" y="337" font-size="13" font-weight="700" fill="#f7faf9" letter-spacing="0.14em">STATUS</text>
+<text x="354" y="337" text-anchor="end" font-size="10" fill="#f7faf9" letter-spacing="0.16em">03</text>
+<line x1="72" y1="388" x2="72" y2="492" stroke="#1a1a1a" stroke-width="1.2"/>
+<circle cx="72" cy="388" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="72" y="391.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">1</text>
+<text x="92" y="382" font-size="8" fill="#4a5560" letter-spacing="0.16em">GOAL</text>
+<text x="92" y="398" font-size="12" font-weight="600" fill="#1a1a1a">device state</text>
+<text x="92" y="414" font-size="9.5" fill="#4a5560">health · status · temperature</text>
+<circle cx="72" cy="440" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="72" y="443.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">2</text>
+<text x="92" y="434" font-size="8" fill="#4a5560" letter-spacing="0.16em">TOOL</text>
+<text x="92" y="450" font-size="12" font-weight="600" fill="#1a1a1a">get_device_state</text>
+<circle cx="72" cy="492" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="72" y="495.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">3</text>
+<text x="92" y="486" font-size="8" fill="#4a5560" letter-spacing="0.16em">OUTCOME</text>
+<text x="92" y="502" font-size="12" font-weight="600" fill="#1a1a1a">Read LIVE / READY</text>
+<text x="92" y="518" font-size="9.5" fill="#4a5560">fidelity · Δf · state chip</text>
+</g>
+<g>
+<rect x="390" y="310" width="334" height="214" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.3"/>
+<rect x="390" y="310" width="334" height="42" rx="8" fill="#c41e1e"/>
+<rect x="390" y="336" width="334" height="16" fill="#c41e1e"/>
+<text x="408" y="337" font-size="13" font-weight="700" fill="#f7faf9" letter-spacing="0.14em">CANCEL</text>
+<text x="708" y="337" text-anchor="end" font-size="10" fill="#f7faf9" letter-spacing="0.16em">04</text>
+<line x1="426" y1="388" x2="426" y2="492" stroke="#1a1a1a" stroke-width="1.2"/>
+<circle cx="426" cy="388" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="426" y="391.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">1</text>
+<text x="446" y="382" font-size="8" fill="#4a5560" letter-spacing="0.16em">GOAL</text>
+<text x="446" y="398" font-size="12" font-weight="600" fill="#1a1a1a">cancel &lt;job-id&gt;</text>
+<text x="446" y="414" font-size="9.5" fill="#4a5560">one job, not the session</text>
+<circle cx="426" cy="440" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="426" y="443.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">2</text>
+<text x="446" y="434" font-size="8" fill="#4a5560" letter-spacing="0.16em">TOOL</text>
+<text x="446" y="450" font-size="12" font-weight="600" fill="#1a1a1a">cancel_job</text>
+<circle cx="426" cy="492" r="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+<text x="426" y="495.5" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a">3</text>
+<text x="446" y="486" font-size="8" fill="#4a5560" letter-spacing="0.16em">OUTCOME</text>
+<text x="446" y="502" font-size="12" font-weight="600" fill="#1a1a1a">That job stops</text>
+<text x="446" y="518" font-size="9.5" fill="#4a5560">it does not stay running</text>
+</g>
+  <text x="380" y="552" text-anchor="middle" font-size="10" fill="#4a5560">No keyword match: get_device_state, then a soft calibrate (qubit 0, target 0.85). Not a fifth task.</text>
+</svg>

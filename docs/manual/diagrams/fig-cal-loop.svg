@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 340" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="720" height="340" fill="#f8fafc"/>
+  <text x="20" y="26" font-size="10" fill="#475569" letter-spacing="1.2">CLOSED-LOOP CALIBRATION · MEASURE → DECIDE → APPLY → REMEASURE</text>
+  <rect x="60" y="55" width="220" height="95" rx="8" fill="#007AFF"/>
+  <text x="170" y="92" text-anchor="middle" font-size="14" fill="#fff" font-weight="600">1 · MEASURE</text>
+  <text x="170" y="114" text-anchor="middle" font-size="10" fill="#dbeafe">adapter.measure_fidelity(q)</text>
+  <text x="170" y="132" text-anchor="middle" font-size="9" fill="#bfdbfe">current best known fidelity</text>
+  <path d="M280 102 H360" stroke="#0f172a" stroke-width="2" marker-end="url(#ar)"/>
+  <rect x="360" y="55" width="220" height="95" rx="8" fill="#475569"/>
+  <text x="470" y="92" text-anchor="middle" font-size="14" fill="#fff" font-weight="600">2 · DECIDE</text>
+  <text x="470" y="114" text-anchor="middle" font-size="10" fill="#e2e8f0">_sample_neighbor(scale)</text>
+  <text x="470" y="132" text-anchor="middle" font-size="9" fill="#cbd5e1">anneal accept if worse</text>
+  <path d="M470 150 v40" stroke="#0f172a" stroke-width="2" marker-end="url(#ar)"/>
+  <rect x="360" y="195" width="220" height="95" rx="8" fill="#FF9500"/>
+  <text x="470" y="232" text-anchor="middle" font-size="14" fill="#fff" font-weight="600">3 · APPLY</text>
+  <text x="470" y="254" text-anchor="middle" font-size="10" fill="#ffedd5">apply_calibration_update</text>
+  <text x="470" y="272" text-anchor="middle" font-size="9" fill="#fed7aa">records interface_latency</text>
+  <path d="M360 242 H280" stroke="#0f172a" stroke-width="2" marker-end="url(#ar)"/>
+  <rect x="60" y="195" width="220" height="95" rx="8" fill="#34C759"/>
+  <text x="170" y="232" text-anchor="middle" font-size="14" fill="#fff" font-weight="600">4 · REMEASURE</text>
+  <text x="170" y="254" text-anchor="middle" font-size="10" fill="#dcfce7">best_fid ≥ threshold?</text>
+  <text x="170" y="272" text-anchor="middle" font-size="9" fill="#bbf7d0">0.88 service · 0.82 ready</text>
+  <path d="M170 195 v-40" stroke="#0f172a" stroke-width="2" marker-end="url(#ar)"/>
+  <text x="250" y="180" font-size="9" fill="#475569">loop until success or max_iterations</text>
+  <rect x="600" y="80" width="100" height="180" rx="6" fill="#0f172a"/>
+  <text x="650" y="110" text-anchor="middle" font-size="9" fill="#94a3b8">STOP</text>
+  <text x="650" y="140" text-anchor="middle" font-size="10" fill="#34C759" font-weight="600">success</text>
+  <text x="650" y="158" text-anchor="middle" font-size="8" fill="#cbd5e1">≥ 0.88</text>
+  <text x="650" y="190" text-anchor="middle" font-size="10" fill="#FF3B30" font-weight="600">fail</text>
+  <text x="650" y="208" text-anchor="middle" font-size="8" fill="#cbd5e1">max iters</text>
+  <text x="650" y="226" text-anchor="middle" font-size="8" fill="#cbd5e1">or fid cap</text>
+  <path d="M580 242 H600" stroke="#0f172a" stroke-width="1.5"/>
+  <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#0f172a"/></marker></defs>
+</svg>

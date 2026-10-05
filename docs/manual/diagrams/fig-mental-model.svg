@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 340" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="720" height="340" fill="#f8fafc"/>
+  <text x="20" y="28" font-size="11" fill="#475569" letter-spacing="1.5">FIG · MENTAL MODEL</text>
+  <!-- NL Goal -->
+  <rect x="40" y="50" width="160" height="48" rx="6" fill="#0f172a"/>
+  <text x="120" y="72" text-anchor="middle" font-size="12" fill="#fff" font-weight="600">NL Goal</text>
+  <text x="120" y="88" text-anchor="middle" font-size="9" fill="#94a3b8">“Bring qubit 0 to ready”</text>
+  <!-- arrow -->
+  <path d="M120 98 v18" stroke="#475569" stroke-width="1.5" marker-end="url(#a)"/>
+  <!-- Orchestrator -->
+  <rect x="30" y="125" width="180" height="70" rx="6" fill="#475569"/>
+  <text x="120" y="150" text-anchor="middle" font-size="12" fill="#fff" font-weight="600">Orchestrator</text>
+  <text x="120" y="168" text-anchor="middle" font-size="9" fill="#e2e8f0">planner · 5 tools · traces</text>
+  <text x="120" y="182" text-anchor="middle" font-size="8" fill="#cbd5e1">src/…/orchestrator/</text>
+  <path d="M120 195 v18" stroke="#475569" stroke-width="1.5"/>
+  <!-- Calibration + Jobs -->
+  <rect x="20" y="220" width="95" height="55" rx="5" fill="#007AFF"/>
+  <text x="67" y="245" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">Calibration</text>
+  <text x="67" y="260" text-anchor="middle" font-size="8" fill="#dbeafe">Service</text>
+  <rect x="125" y="220" width="95" height="55" rx="5" fill="#475569"/>
+  <text x="172" y="245" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">Jobs</text>
+  <text x="172" y="260" text-anchor="middle" font-size="8" fill="#e2e8f0">submit/poll</text>
+  <path d="M220 252 H280" stroke="#475569" stroke-width="1.5"/>
+  <!-- Adapter -->
+  <rect x="280" y="125" width="160" height="150" rx="6" fill="none" stroke="#FF9500" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="360" y="148" text-anchor="middle" font-size="11" fill="#FF9500" font-weight="600">QPUAdapter</text>
+  <text x="360" y="164" text-anchor="middle" font-size="8" fill="#475569">narrow waist · 6 methods</text>
+  <rect x="295" y="178" width="130" height="36" rx="4" fill="#FF9500"/>
+  <text x="360" y="200" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">NoisySimulator</text>
+  <rect x="295" y="222" width="130" height="36" rx="4" fill="#1e293b"/>
+  <text x="360" y="244" text-anchor="middle" font-size="10" fill="#94a3b8">Hardware stub</text>
+  <!-- UI -->
+  <rect x="500" y="50" width="180" height="230" rx="6" fill="#0f172a"/>
+  <text x="590" y="78" text-anchor="middle" font-size="12" fill="#fff" font-weight="600">Instrument UI</text>
+  <text x="590" y="96" text-anchor="middle" font-size="9" fill="#94a3b8">Next.js · 65 / 35</text>
+  <rect x="515" y="110" width="150" height="90" rx="4" fill="#1e293b"/>
+  <text x="590" y="148" text-anchor="middle" font-size="10" fill="#007AFF">WebGPU stage</text>
+  <text x="590" y="164" text-anchor="middle" font-size="8" fill="#64748b">param drift surface</text>
+  <rect x="515" y="210" width="150" height="50" rx="4" fill="#334155"/>
+  <text x="590" y="232" text-anchor="middle" font-size="10" fill="#FF9500">Dock · ledger</text>
+  <text x="590" y="248" text-anchor="middle" font-size="8" fill="#94a3b8">composer · chips</text>
+  <path d="M460 200 H500" stroke="#475569" stroke-width="1.5"/>
+  <text x="480" y="192" text-anchor="middle" font-size="8" fill="#475569">HTTP / SSE</text>
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#475569"/></marker></defs>
+</svg>

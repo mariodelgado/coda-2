@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="720" height="280" fill="#fff"/>
+  <text x="20" y="24" font-size="10" fill="#475569" letter-spacing="1">THREE CONCERNS · ONE DIRECTION</text>
+  <!-- Intent -->
+  <rect x="30" y="45" width="200" height="200" rx="8" fill="#eff6ff" stroke="#007AFF" stroke-width="1.5"/>
+  <rect x="30" y="45" width="200" height="32" rx="8" fill="#007AFF"/>
+  <rect x="30" y="61" width="200" height="16" fill="#007AFF"/>
+  <text x="130" y="66" text-anchor="middle" font-size="12" fill="#fff" font-weight="600">INTENT</text>
+  <text x="130" y="100" text-anchor="middle" font-size="10" fill="#0f172a" font-weight="600">Agent / Orchestrator</text>
+  <text x="40" y="124" font-size="9" fill="#475569">· NL goals → ToolCalls</text>
+  <text x="40" y="142" font-size="9" fill="#475569">· decide when to calibrate</text>
+  <text x="40" y="160" font-size="9" fill="#475569">· emit ToolTrace ledger</text>
+  <text x="40" y="178" font-size="9" fill="#475569">· watch three metrics</text>
+  <text x="40" y="210" font-size="8" fill="#007AFF">planner.py · orchestrator.py</text>
+  <!-- Contract -->
+  <rect x="260" y="45" width="200" height="200" rx="8" fill="#fff7ed" stroke="#FF9500" stroke-width="1.5"/>
+  <rect x="260" y="45" width="200" height="32" rx="8" fill="#FF9500"/>
+  <rect x="260" y="61" width="200" height="16" fill="#FF9500"/>
+  <text x="360" y="66" text-anchor="middle" font-size="12" fill="#fff" font-weight="600">CONTRACT</text>
+  <text x="360" y="100" text-anchor="middle" font-size="10" fill="#0f172a" font-weight="600">QPUAdapter</text>
+  <text x="270" y="124" font-size="9" fill="#475569">· submit / poll / cancel</text>
+  <text x="270" y="142" font-size="9" fill="#475569">· get_device_state</text>
+  <text x="270" y="160" font-size="9" fill="#475569">· get / apply calibration</text>
+  <text x="270" y="178" font-size="9" fill="#475569">· typed models only</text>
+  <text x="270" y="210" font-size="8" fill="#FF9500">adapter/base.py</text>
+  <!-- Physics -->
+  <rect x="490" y="45" width="200" height="200" rx="8" fill="#f1f5f9" stroke="#475569" stroke-width="1.5"/>
+  <rect x="490" y="45" width="200" height="32" rx="8" fill="#475569"/>
+  <rect x="490" y="61" width="200" height="16" fill="#475569"/>
+  <text x="590" y="66" text-anchor="middle" font-size="12" fill="#fff" font-weight="600">PHYSICS / NOISE</text>
+  <text x="590" y="100" text-anchor="middle" font-size="10" fill="#0f172a" font-weight="600">Backend</text>
+  <text x="500" y="124" font-size="9" fill="#475569">· hidden true params</text>
+  <text x="500" y="142" font-size="9" fill="#475569">· random-walk drift</text>
+  <text x="500" y="160" font-size="9" fill="#475569">· fidelity = f(‖Δ‖)</text>
+  <text x="500" y="178" font-size="9" fill="#475569">· Bell stochastic readout</text>
+  <text x="500" y="210" font-size="8" fill="#475569">noisy_sim.py · stub</text>
+  <!-- arrows -->
+  <path d="M230 145 H260" stroke="#0f172a" stroke-width="1.5" marker-end="url(#b)"/>
+  <path d="M460 145 H490" stroke="#0f172a" stroke-width="1.5" marker-end="url(#b)"/>
+  <defs><marker id="b" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#0f172a"/></marker></defs>
+</svg>

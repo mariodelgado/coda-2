@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="760" height="400" fill="#eef2f0"/>
+  <text x="36" y="36" font-size="11" fill="#1a1a1a" letter-spacing="0.28em" font-weight="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">PLATE 06  ·  REAL ARTIFACT VS STAND-IN</text>
+  <text x="36" y="56" font-size="9" fill="#4a5560" letter-spacing="0.12em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">WHAT SHIPS AS SOFTWARE  ·  WHAT STANDS IN FOR THE FRIDGE</text>
+
+  <!-- left: real -->
+  <rect x="40" y="88" width="320" height="270" rx="8" fill="#c5d5d8" stroke="#1a1a1a" stroke-width="1.4"/>
+  <rect x="40" y="88" width="320" height="40" rx="8" fill="#7a8a4a" fill-opacity="0.55"/>
+  <rect x="40" y="112" width="320" height="16" fill="#7a8a4a" fill-opacity="0.55"/>
+  <text x="200" y="114" text-anchor="middle" font-size="12" font-weight="700" fill="#1a1a1a" letter-spacing="0.18em">REAL ARTIFACT</text>
+
+  <circle cx="90" cy="180" r="8" fill="#7a8a4a"/>
+  <text x="110" y="184" font-size="10" fill="#1a1a1a">QPUAdapter contract (6 methods)</text>
+  <circle cx="90" cy="210" r="8" fill="#7a8a4a"/>
+  <text x="110" y="214" font-size="10" fill="#1a1a1a">CalibrationService + metrics</text>
+  <circle cx="90" cy="240" r="8" fill="#7a8a4a"/>
+  <text x="110" y="244" font-size="10" fill="#1a1a1a">Orchestrator · tools · traces</text>
+  <circle cx="90" cy="270" r="8" fill="#7a8a4a"/>
+  <text x="110" y="274" font-size="10" fill="#1a1a1a">FastAPI control plane</text>
+  <circle cx="90" cy="300" r="8" fill="#7a8a4a"/>
+  <text x="110" y="304" font-size="10" fill="#1a1a1a">Instrument UI (drift | device | cryostat)</text>
+  <text x="200" y="340" text-anchor="middle" font-size="8.5" fill="#4a5560">durable seam — keep this</text>
+
+  <!-- right: stand-in -->
+  <rect x="400" y="88" width="320" height="270" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.4"/>
+  <rect x="400" y="88" width="320" height="40" rx="8" fill="#5a8fb5" fill-opacity="0.45"/>
+  <rect x="400" y="112" width="320" height="16" fill="#5a8fb5" fill-opacity="0.45"/>
+  <text x="560" y="114" text-anchor="middle" font-size="12" font-weight="700" fill="#1a1a1a" letter-spacing="0.14em">STAND-IN SIM</text>
+
+  <circle cx="450" cy="180" r="8" fill="#3d6a8c"/>
+  <text x="470" y="184" font-size="10" fill="#1a1a1a">NoisySimulatorBackend</text>
+  <circle cx="450" cy="210" r="8" fill="#3d6a8c"/>
+  <text x="470" y="214" font-size="10" fill="#1a1a1a">hidden true params + drift</text>
+  <circle cx="450" cy="240" r="8" fill="#3d6a8c"/>
+  <text x="470" y="244" font-size="10" fill="#1a1a1a">toy fidelity kernel</text>
+  <circle cx="450" cy="270" r="8" fill="#3d6a8c"/>
+  <text x="470" y="274" font-size="10" fill="#1a1a1a">stochastic Bell counts</text>
+  <circle cx="450" cy="300" r="8" fill="#c41e1e"/>
+  <text x="470" y="304" font-size="10" fill="#1a1a1a">not a dilution refrigerator</text>
+  <text x="560" y="340" text-anchor="middle" font-size="8.5" fill="#4a5560">replaceable behind the adapter</text>
+</svg>

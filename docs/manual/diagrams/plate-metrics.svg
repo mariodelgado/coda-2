@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 360" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="760" height="360" fill="#c5d5d8"/>
+  <text x="36" y="36" font-size="11" fill="#1a1a1a" letter-spacing="0.28em" font-weight="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">PLATE 05  ·  METRICS SCOREBOARD</text>
+  <text x="36" y="56" font-size="9" fill="#4a5560" letter-spacing="0.12em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">TIME-TO-CAL  ·  SUCCESS RATE  ·  INTERFACE LATENCY</text>
+
+  <!-- three large cards -->
+  <g>
+    <rect x="40" y="90" width="210" height="220" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.3"/>
+    <circle cx="145" cy="160" r="42" fill="#5a8fb5" fill-opacity="0.35"/>
+    <text x="145" y="166" text-anchor="middle" font-size="22" font-weight="700" fill="#1a1a1a">t</text>
+    <text x="145" y="230" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.14em">TIME-TO-CAL</text>
+    <text x="145" y="252" text-anchor="middle" font-size="8.5" fill="#4a5560">wall seconds to</text>
+    <text x="145" y="266" text-anchor="middle" font-size="8.5" fill="#4a5560">best_fid ≥ 0.88</text>
+    <text x="145" y="288" text-anchor="middle" font-size="8" fill="#3d6a8c">successes only</text>
+  </g>
+  <g>
+    <rect x="275" y="90" width="210" height="220" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.3"/>
+    <circle cx="380" cy="160" r="42" fill="#7a8a4a" fill-opacity="0.4"/>
+    <text x="380" y="166" text-anchor="middle" font-size="20" font-weight="700" fill="#1a1a1a">%</text>
+    <text x="380" y="230" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.14em">SUCCESS RATE</text>
+    <text x="380" y="252" text-anchor="middle" font-size="8.5" fill="#4a5560">successes ÷ attempts</text>
+    <text x="380" y="266" text-anchor="middle" font-size="8.5" fill="#4a5560">running aggregate</text>
+    <text x="380" y="288" text-anchor="middle" font-size="8" fill="#7a8a4a">CalibrationMetrics</text>
+  </g>
+  <g>
+    <rect x="510" y="90" width="210" height="220" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.3"/>
+    <circle cx="615" cy="160" r="42" fill="#3d6a8c" fill-opacity="0.35"/>
+    <!-- red accent dot for latency -->
+    <circle cx="640" cy="140" r="5" fill="#c41e1e"/>
+    <text x="615" y="166" text-anchor="middle" font-size="18" font-weight="700" fill="#1a1a1a">Δt</text>
+    <text x="615" y="230" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">LATENCY</text>
+    <text x="615" y="252" text-anchor="middle" font-size="8.5" fill="#4a5560">per apply_update</text>
+    <text x="615" y="266" text-anchor="middle" font-size="8.5" fill="#4a5560">roundtrip sample</text>
+    <text x="615" y="288" text-anchor="middle" font-size="8" fill="#3d6a8c">interface cost</text>
+  </g>
+</svg>

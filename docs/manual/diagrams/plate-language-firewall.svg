@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 400" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="760" height="400" fill="#c5d5d8"/>
+  <defs>
+  <marker id="arr-f" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#1a1a1a"/>
+  </marker>
+  <marker id="arr-f-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#c41e1e"/>
+  </marker>
+</defs>
+  <text x="36" y="36" font-size="11" fill="#1a1a1a" letter-spacing="0.28em" font-weight="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">PLATE 03  ·  LANGUAGE → PHYSICS</text>
+  <text x="36" y="56" font-size="9" fill="#4a5560" letter-spacing="0.12em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">DECISIONS  →  NUMBERS  →  CONTRACT  →  PHYSICS   ·   FIREWALL AT THE ADAPTER</text>
+
+  <!-- cascade of geometric blocks -->
+  <g>
+    <rect x="40" y="100" width="120" height="200" rx="4" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+    <text x="100" y="140" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">LANGUAGE</text>
+    <text x="100" y="170" text-anchor="middle" font-size="8.5" fill="#4a5560">“Calibrate Q0”</text>
+    <text x="100" y="196" text-anchor="middle" font-size="8.5" fill="#4a5560">composer</text>
+    <text x="100" y="212" text-anchor="middle" font-size="8.5" fill="#4a5560">chips · ⌘K</text>
+  </g>
+  <g>
+    <rect x="190" y="100" width="120" height="200" rx="4" fill="#5a8fb5" fill-opacity="0.35" stroke="#1a1a1a" stroke-width="1.2"/>
+    <text x="250" y="140" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">DECISIONS</text>
+    <text x="250" y="170" text-anchor="middle" font-size="8.5" fill="#2a2a2a">ToolCall list</text>
+    <text x="250" y="196" text-anchor="middle" font-size="8.5" fill="#2a2a2a">planner</text>
+    <text x="250" y="212" text-anchor="middle" font-size="8.5" fill="#2a2a2a">(LLM optional)</text>
+  </g>
+  <g>
+    <rect x="340" y="100" width="120" height="200" rx="4" fill="#7a8a4a" fill-opacity="0.4" stroke="#1a1a1a" stroke-width="1.2"/>
+    <text x="400" y="140" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">NUMBERS</text>
+    <text x="400" y="170" text-anchor="middle" font-size="8.5" fill="#2a2a2a">qubit_id</text>
+    <text x="400" y="186" text-anchor="middle" font-size="8.5" fill="#2a2a2a">Δfreq · Δamp</text>
+    <text x="400" y="210" text-anchor="middle" font-size="8.5" fill="#2a2a2a">threshold 0.88</text>
+  </g>
+
+  <!-- firewall bar -->
+  <g>
+    <rect x="490" y="88" width="24" height="224" rx="2" fill="#c41e1e"/>
+    <text x="502" y="70" text-anchor="middle" font-size="8" fill="#c41e1e" font-weight="700" letter-spacing="0.16em">FIREWALL</text>
+    <text transform="rotate(-90 502 200)" x="502" y="200" text-anchor="middle" font-size="9" fill="#f7faf9" letter-spacing="0.2em">ADAPTER</text>
+  </g>
+
+  <g>
+    <rect x="540" y="100" width="180" height="200" rx="4" fill="#3d6a8c" fill-opacity="0.32" stroke="#1a1a1a" stroke-width="1.2"/>
+    <text x="630" y="140" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">PHYSICS</text>
+    <text x="630" y="170" text-anchor="middle" font-size="8.5" fill="#2a2a2a">typed ops only</text>
+    <text x="630" y="194" text-anchor="middle" font-size="8.5" fill="#2a2a2a">submit · poll · cancel</text>
+    <text x="630" y="210" text-anchor="middle" font-size="8.5" fill="#2a2a2a">get / apply cal</text>
+    <text x="630" y="234" text-anchor="middle" font-size="8.5" fill="#2a2a2a">device state</text>
+    <circle cx="630" cy="268" r="10" fill="#c41e1e" fill-opacity="0.85"/>
+    <text x="630" y="271" text-anchor="middle" font-size="7" fill="#f7faf9" font-weight="700">Q</text>
+  </g>
+
+  <line x1="160" y1="200" x2="186" y2="200" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arr-f)"/>
+  <line x1="310" y1="200" x2="336" y2="200" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arr-f)"/>
+  <line x1="460" y1="200" x2="486" y2="200" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arr-f)"/>
+  <line x1="514" y1="200" x2="536" y2="200" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arr-f)"/>
+
+  <text x="380" y="360" text-anchor="middle" font-size="9" fill="#4a5560">Prose never reaches the device. Only typed CalibrationParams and Job payloads cross the red bar.</text>
+</svg>

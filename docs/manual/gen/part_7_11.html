@@ -1,0 +1,202 @@
+<h1 class="part"><span class="part-num">Part 7</span>Orchestrator & tools</h1>
+
+<p class="lede">The orchestrator is a thin agent runtime. It registers tools, calls tools, runs goals through a planner, and exposes traces and metrics. No LLM is required on the default path.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-tools.svg" alt="FIG. 7.1"/>
+  <p class="fig-cap"><span class="label">FIG. 7.1</span>Tool catalog.</p>
+</div>
+
+<h2>7.1 ToolCall, ToolResult, ToolTrace</h2>
+
+<table><thead><tr><th>TYPE</th><th>FIELDS</th><th>ROLE</th></tr></thead><tbody><tr><td>ToolCall</td><td>tool, args</td><td>Planner output step</td></tr><tr><td>ToolResult</td><td>ok, data, latency_s, error?</td><td>Tool return value</td></tr><tr><td>ToolTrace</td><td>timestamp, tool, args, latency_s, ok, summary</td><td>UI timeline / ledger observability</td></tr></tbody></table><p class="table-cap">Table 7.1. Orchestrator dataclasses (orchestrator/orchestrator.py).</p>
+
+<p>Summaries are derived: fidelity=…, 00/11 counts, ready=… score=…, or first keys. Traces reset at the start of each <code>run_goal</code>.</p>
+
+<h2>7.2 Planner rules</h2>
+<p><code>plan_from_goal</code> normalises whitespace/case and matches keywords:</p>
+
+<table><thead><tr><th>INTENT KEYWORDS</th><th>TOOL PLAN</th></tr></thead><tbody><tr><td>bring, calibrat, ready, tune</td><td>calibrate_qubit(qubit_id parsed 0|1, target 0.88 or 0.92 if high/strict)</td></tr><tr><td>bell, circuit, entangl, pair</td><td>run_bell_pair(shots 1024|256 few/quick|4096 many/precise)</td></tr><tr><td>state, health, status, ready?, temperature</td><td>get_device_state</td></tr><tr><td>cancel …</td><td>cancel_job(job_id token)</td></tr><tr><td>default (no match)</td><td>get_device_state then calibrate_qubit(0, 0.85)</td></tr></tbody></table><p class="table-cap">Table 7.2. Deterministic planner mapping (planner.py).</p>
+
+<p><code>plan()</code> tries <code>maybe_llm_plan</code> first when <code>CONDUCTOR_ENABLE_LLM</code> is truthy and openai imports; otherwise <code>plan_from_goal</code>. LLM failures return None and fall through. The API’s <code>POST /goals</code> uses <code>Orchestrator.run_goal</code>, which imports <code>plan_from_goal</code> as its default planner function (note: the server also imports <code>plan</code> but run_goal defaults to plan_from_goal unless a planner callable is passed).</p>
+
+<h2>7.3 Early stop</h2>
+<p>If a step’s tool is <code>calibrate_qubit</code> or <code>run_bell_pair</code> and <code>ok</code> is False, <code>run_goal</code> breaks the plan early. Visibility tools do not abort the sequence.</p>
+
+<h2>7.4 Metrics surface from orchestrator</h2>
+<p><code>get_metrics()</code> returns calibration metrics dict, per-tool call counts and avg latency, optional adapter <code>get_stats()</code> (total_jobs, total_shots on the sim), and an interface_latency_p50_hint aliased from avg interface latency.</p>
+
+<p class="sources"><strong>Sources.</strong> orchestrator/orchestrator.py; orchestrator/planner.py</p>
+<h1 class="part"><span class="part-num">Part 8</span>Operator UI</h1>
+
+<p class="lede">The UI is a Next.js App Router instrument panel. It is not a chat app with a chart widget. The stage is the product: three panes — <strong>drift | device 3D | cryostat</strong>. The dock is the agent surface.</p>
+
+<div class="figure full ui-still">
+  <img src="assets/ui/manual-3pane-home.png" alt="FIG. 8.1 — Coda 2 three-pane instrument at rest"/>
+  <p class="fig-cap"><span class="label">FIG. 8.1</span>Screenshot: the three-pane instrument at rest. Left: parameter-drift landscape (orange applied, blue true). Center: 3D device with qubit spheres and the readout card. Right: isometric dilution-fridge plate with its status strip and the StageStateChip. Bottom: dock with empty-state hint, six workflow chips, and the composer.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-ui-layout.svg" alt="FIG. 8.2"/>
+  <p class="fig-cap"><span class="label">FIG. 8.2</span>Schematic of the same chrome. Toolbar on top. Three panes separated by two splitters. Dock over the bottom-third frost.</p>
+</div>
+<p>Current UI (<code>main</code>, three-pane chrome through PR&nbsp;#25–#27): three panes at rest. Left is a high-contrast drift grid, coplanar with the fidelity surface. Center is Device3D: qubit spheres, chiplets, resonators, and a readout card (Q0/Q1 fidelity, T1, T2, err, mK). Right is the isometric cryostat plate with a status strip (state · Q0 % · mK · Δf). Two iPadOS Split View–style separators resize the panes; hover shows a capsule drag handle; each pane keeps a minimum width (roughly 22–28% of the stage). No traffic lights. No glass inset. No tabs. Earlier releases shipped a single drift stage (65/35) and then a two-pane drift | device split; both are historical.</p>
+<div class="figure full ui-still">
+  <img src="assets/ui/manual-3pane-dock-chips.png" alt="FIG. 8.3"/>
+  <p class="fig-cap"><span class="label">FIG. 8.3</span>Screenshot crop: dock region — empty-state hint, six workflow chips (Calibrate Q0 · Bell pair · Q0 readiness · Device status · Improve Bell · Diagnose Q0), and the high-contrast composer with ⌘K.</p>
+</div>
+<div class="figure full ui-still">
+  <img src="assets/ui/manual-3pane-calibrating.png" alt="FIG. 8.4"/>
+  <p class="fig-cap"><span class="label">FIG. 8.4</span>Screenshot: a Calibrate Q0 turn on the three-pane stage. All three panes stay live. The you-bubble sits right; the agent reports fidelity and readiness. The Calibrate Q0 path is unchanged.</p>
+</div>
+
+<h2>8.1 Layout rules</h2>
+<ul>
+<li>Full-viewport black shell (<code>h-screen w-screen</code>).</li>
+<li>Toolbar without traffic lights: brand, LIVE badge, READY centered, ⌘K and refresh on the right.</li>
+<li>Three-pane stage at rest. Left: high-contrast drift grid, coplanar with the fidelity surface. Center: Device3D (qubits, chiplets, resonators, readout card). Right: isometric cryostat plate with status strip.</li>
+<li>Two iPadOS Split View–style separators. Hover shows a capsule drag handle. Drag to resize. Each pane keeps a minimum width.</li>
+<li>No glass inset. No tabs. (PR&nbsp;#2 labels drift | device were tabs. That control is gone.)</li>
+<li>Bottom-right <code>StageStateChip</code> (OFFLINE → DRIFT → CALIBRATING → RUNNING → READY / FAILED).</li>
+<li>Content area: stage absolute inset-0; dock overlaid at bottom over a Safari-safe bottom-third frost (<code>.stage-blur</code>, no <code>backdrop-filter</code>) so the canvases extend underneath and the top two-thirds stay sharp.</li>
+<li>Composer max width ~42rem, centered; six workflow chips above it.</li>
+<li>Dock transcript uses you (right) / agent (left) bubbles above chips, with small tool pills under agent replies. No card wall on first paint.</li>
+</ul>
+
+<h2>8.2 Drift visualisation</h2>
+<p><code>calibration-surface.tsx</code> builds a PlaneGeometry heightfield from <code>estimateFidelity(dx,dy,base)</code>, peaked at the true offset implied by live detuning. Cyan marker = true; amber = applied at origin of the applied frame. Colours: ≥0.88 blue, ≥0.75 orange, else gray. On current main the left grid is high contrast and shares the tilted group with that surface, so the grid and the mountain sit coplanar. WebGPU via async <code>three/webgpu</code> renderer when <code>navigator.gpu</code> exists; else WebGL + banner.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-fidelity-surface.svg" alt="FIG. 8.5"/>
+  <p class="fig-cap"><span class="label">FIG. 8.5</span>Semantic map of the stage surface.</p>
+</div>
+
+<h2>8.3 Composer, chips, ledger, details</h2>
+<p>Workflow chips: Calibrate Q0, Bell pair, Q0 readiness, Device status, Improve Bell, Diagnose Q0 — each submits a goal string through <code>api.postGoal</code>. Turns append to local state with status running→succeeded/failed, traces, fidelityHistory, bellCounts. The dock transcript stacks you/agent bubbles above chips; selecting a turn expands details (fidelity climb, tool traces, optional counts). The primary operator path stays first-class: a natural-language goal or a chip, then calibrate, then READY, then a Bell circuit.</p>
+
+<h2>8.4 Command palette and demos</h2>
+<p>⌘K opens cmdk actions: goals, refresh, force fail next calibration, start long job. Demo actions hit <code>/demo/*</code> endpoints. Cancel uses goal <code>cancel {jobId}</code> or stop button on running jobs.</p>
+
+<h2>8.5 Polling</h2>
+<p>Device + metrics refresh every 6.5 s when connected. Active running jobs poll every 850 ms; SSE also attaches via EventSource to <code>/sse/jobs/{id}</code>.</p>
+
+<h2>8.6 Design stack</h2>
+
+<table><thead><tr><th>CONCERN</th><th>LIBRARY</th></tr></thead><tbody><tr><td>Command palette</td><td>cmdk (no open animation)</td></tr><tr><td>Toasts</td><td>sonner</td></tr><tr><td>Motion</td><td>motion (transform/opacity, ease [0.23,1,0.32,1])</td></tr><tr><td>Charts</td><td>recharts</td></tr><tr><td>3D</td><td>three + @react-three/fiber + drei</td></tr><tr><td>State</td><td>zustand</td></tr><tr><td>Primitives</td><td>shadcn/ui + Radix</td></tr></tbody></table><p class="table-cap">Table 8.1. UI dependencies (see ui/README.md).</p>
+<p class="sources"><strong>Sources.</strong> ui/app/page.tsx; ui/components/viz/calibration-surface.tsx; ui/components/viz/device-3d.tsx; ui/components/viz/cryostat-plate.tsx; ui/components/stage/stage-state-chip.tsx; ui/components/command/command-palette.tsx; ui/lib/api.ts; ui/README.md</p>
+<h1 class="part"><span class="part-num">Part 9</span>Operations</h1>
+
+<p class="lede">Install, run, demo, and test this system on a developer machine. Python ≥3.11, Node ≥18, no API keys required for the default path.</p>
+
+<h2>9.1 Setup</h2>
+<pre>
+git clone https://github.com/mariodelgado/ai-to-qpu-spike
+cd ai-to-qpu-spike
+make setup          # pip install -e ".[dev]" + cd ui && npm install
+</pre>
+
+<h2>9.2 Run full stack</h2>
+<pre>
+# Terminal A
+make run-api        # FastAPI http://localhost:8000
+# Terminal B
+make run-ui-dev     # Next.js http://localhost:3000
+# open http://localhost:3000
+</pre>
+<p>Optional: <code>NEXT_PUBLIC_API_BASE=http://localhost:8000</code>. Production UI: <code>make run-ui</code> (build + start).</p>
+
+<h2>9.3 Makefile targets</h2>
+
+<table><thead><tr><th>TARGET</th><th>ACTION</th></tr></thead><tbody><tr><td>setup</td><td>Python editable install + npm install</td></tr><tr><td>install</td><td>pip install -e ".[dev]"</td></tr><tr><td>demo</td><td>calibration + circuit Python demos</td></tr><tr><td>demo-calibration / demo-circuit</td><td>Individual demos</td></tr><tr><td>founder-demo</td><td>Scriptable orchestrator demo</td></tr><tr><td>founder-demo-stub</td><td>Same against ConductorShapedAdapter</td></tr><tr><td>test</td><td>pytest tests/ -v</td></tr><tr><td>lint / format</td><td>ruff check / format</td></tr><tr><td>run-api</td><td>uvicorn API :8000</td></tr><tr><td>run-ui / run-ui-dev</td><td>Next.js prod / dev :3000</td></tr><tr><td>clean</td><td>Build artifacts, caches, demo_outputs</td></tr></tbody></table><p class="table-cap">Table 9.1. Makefile surface.</p>
+
+<h2>9.4 Tests</h2>
+<p>Expected areas: adapter contract, adapter selection via env, API happy path, calibration convergence, failure paths (cap, cancel). Guarantees stated in README: pytest green, <code>make demo</code> works, offline, no keys.</p>
+
+<h2>9.5 Environment variables</h2>
+
+<table><thead><tr><th>VARIABLE</th><th>DEFAULT</th><th>EFFECT</th></tr></thead><tbody><tr><td>CONDUCTOR_QPU_BACKEND</td><td>sim</td><td>sim vs stub/hardware/shaped/conductor</td></tr><tr><td>CONDUCTOR_ENABLE_LLM</td><td>0</td><td>Enable optional OpenAI planner</td></tr><tr><td>CONDUCTOR_LLM_MODEL</td><td>gpt-4o-mini</td><td>Model when LLM planner on</td></tr><tr><td>NEXT_PUBLIC_API_BASE</td><td>http://localhost:8000</td><td>UI API base</td></tr><tr><td>FOUNDER_DEMO_FAIL</td><td>—</td><td>If 1, founder_demo caps fidelity</td></tr></tbody></table><p class="table-cap">Table 9.2. Environment knobs.</p>
+<p class="sources"><strong>Sources.</strong> Makefile; pyproject.toml; ui/package.json; README.md</p>
+<h1 class="part"><span class="part-num">Part 10</span>Worked walkthroughs</h1>
+
+<p class="lede">Step sequences for the founder demo paths. Pair with the screenshots in Part 8.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-seq-calibrate.svg" alt="FIG. 10.1"/>
+  <p class="fig-cap"><span class="label">FIG. 10.1</span>Sequence: Calibrate Q0 from chip click through GoalResponse and surface update.</p>
+</div>
+
+<h2>10.1 Calibrate Q0</h2>
+<ol>
+<li>API and UI running; toolbar shows LIVE.</li>
+<li>Observe cyan/amber separation on the stage (drift).</li>
+<li>Click <strong>Calibrate Q0</strong> (goal: “Bring qubit 0 to ready”).</li>
+<li>Ledger turn appears running; fidelity climb HUD may populate as history returns.</li>
+<li>On completion, toast “Reached threshold” if last fidelity ≥ threshold; surface markers should move closer if the loop helped.</li>
+<li>Click the ledger row: in-rail chart + tool traces (<code>calibrate_qubit</code> summary fidelity=…).</li>
+</ol>
+
+<div class="figure ">
+  <img src="diagrams/fig-seq-bell.svg" alt="FIG. 10.2"/>
+  <p class="fig-cap"><span class="label">FIG. 10.2</span>Sequence: Bell pair.</p>
+</div>
+
+<h2>10.2 Bell pair</h2>
+<ol>
+<li>Click <strong>Bell pair</strong>.</li>
+<li>Orchestrator plans <code>run_bell_pair</code>; adapter returns counts.</li>
+<li>Ledger shows 00/01/10/11 summary; toast “Bell complete”.</li>
+<li>Status bar continues to reflect latest device snapshot on poll.</li>
+</ol>
+
+<h2>10.3 Forced calibration failure</h2>
+<ol>
+<li>⌘K → “Force fail next calibration” (POST /demo/fail_next_cal, cap 0.69).</li>
+<li>Run Calibrate Q0.</li>
+<li>Expect success=false domain result; fidelity below 0.88; toast shows completed fidelity or failure path; metrics attempts increment.</li>
+</ol>
+
+<h2>10.4 Cancel long job</h2>
+<ol>
+<li>⌘K → “Start long job (cancel me)”.</li>
+<li>Turn shows running; stop button available.</li>
+<li>Stop/cancel → job CANCELLED; toast “Cancel requested”.</li>
+</ol>
+
+<h2>10.5 Scriptable founder demo (no UI)</h2>
+<pre>
+make founder-demo
+# or
+CONDUCTOR_QPU_BACKEND=stub make founder-demo-stub
+python -m demo_scripts.founder_demo --fail
+</pre>
+<p>Prints steps, traces, three metrics, readiness; exits 0.</p>
+
+<p class="sources"><strong>Sources.</strong> README.md (2-minute founder demo); demo_scripts/founder_demo.py; ui/app/page.tsx (submitGoal, commandActions)</p>
+<h1 class="part"><span class="part-num">Part 11</span>Reference</h1>
+
+<h2>11.1 Python package</h2>
+<p><code>conductor-qpu</code> 0.1.0, MIT, requires Python ≥3.11. Runtime deps: numpy, scipy, fastapi, uvicorn, pydantic, httpx, python-multipart. Dev: pytest, pytest-asyncio, ruff, mypy. Optional llm: openai. Scripts: <code>conductor-qpu-api</code>, <code>conductor-qpu-ui</code>.</p>
+
+<h2>11.2 Glossary</h2>
+
+<table><thead><tr><th>TERM</th><th>DEFINITION</th></tr></thead><tbody><tr><td>Adapter</td><td>QPUAdapter implementation sitting under the control plane</td></tr><tr><td>Applied params</td><td>Last calibration vector written to the backend</td></tr><tr><td>True params</td><td>Hidden simulator state; source of detuning</td></tr><tr><td>Detuning</td><td>Per-field |applied − true| exposed for teaching/ops</td></tr><tr><td>Goal</td><td>NL string mapped to ToolCalls</td></tr><tr><td>ToolTrace</td><td>Structured record of one tool invocation</td></tr><tr><td>Readiness</td><td>all readout_fidelity ≥ 0.82</td></tr><tr><td>Calibration success</td><td>best_fid ≥ service threshold (0.88 default)</td></tr><tr><td>time_to_calibrated</td><td>Wall time to successful threshold cross</td></tr><tr><td>interface_latency</td><td>apply_calibration_update roundtrip sample</td></tr><tr><td>Stage</td><td>Primary WebGPU/WebGL visual surface</td></tr><tr><td>Dock</td><td>Bottom progressive-blur agent/ledger band</td></tr><tr><td>Stub</td><td>ConductorShapedAdapter — shape only, not connected</td></tr></tbody></table><p class="table-cap">Table G.1. Glossary.</p>
+
+<h2>11.3 Figure index</h2>
+
+<table><thead><tr><th>FIGURE</th><th>TITLE</th></tr></thead><tbody><tr><td>A.1–A.2</td><td>Front plates: who this is for; four tasks</td></tr><tr><td>A.3–A.7</td><td>Front stills: idle home, typed goal, READY, Bell ledger, instrument map</td></tr><tr><td>R.1</td><td>The three metrics</td></tr><tr><td>C.1</td><td>Colour legend</td></tr><tr><td>1.1–1.5</td><td>QPU primer plates: Bloch, control/readout, why calibrate, stack, our seam</td></tr><tr><td>1.6–1.9</td><td>Tools, cal loop, software stack map, thresholds</td></tr><tr><td>2.1–2.8</td><td>Theory diagrams (layers, contract, loop, drift, surface, UI rationale, layout, failures)</td></tr>
+<tr><td>D.01–D.06</td><td>Mid-century plates: whole machine, cal loop, language firewall, stage/dock, metrics, real vs sim</td></tr><tr><td>3.1–3.3</td><td>Architecture, package, dataflow</td></tr><tr><td>5.1–5.2</td><td>Adapter contract, drift</td></tr><tr><td>6.1–6.3</td><td>Metrics, loop, failures</td></tr><tr><td>7.1</td><td>Tool catalog</td></tr><tr><td>8.1–8.5</td><td>UI layout, screenshots, surface semantics</td></tr><tr><td>10.1–10.2</td><td>Calibrate Q0 and Bell sequences</td></tr></tbody></table><p class="table-cap">Table F.1. Figure index (primary).</p>
+
+<h2>11.4 Week-1 port checklist (from README)</h2>
+<ol>
+<li>Implement QPUAdapter against vendor SDK / internal driver.</li>
+<li>Persist jobs + traces (Postgres); add goal_id.</li>
+<li>Calibration policy object (strategies, cost model, multi-qubit readiness, calibrate-or-not recommendation).</li>
+<li>Narrow plan+execute+observe API or MCP tool surface.</li>
+<li>Real detuning from diagnostics.</li>
+<li>Guardrails: kill switches, max iterations, backoff, refuse circuit below fidelity X.</li>
+</ol>
+
+<h2>11.5 Closing</h2>
+<p>This manual describes the AI→QPU integration layer on main @ <code>b05005c</code> (2026-10-03/04 PT, through PR&nbsp;#18). It is a control-plane integration layer with a noisy simulator behind a real seam. The theory of the interface — goals, tools, closed-loop calibration, trust surfaces, instrument UI — is the durable claim. The simulator numbers are not.</p>
+<p class="sources"><strong>Repository.</strong> https://github.com/mariodelgado/ai-to-qpu-spike · Engineering Edition · October 2026</p>
+
+</body></html>

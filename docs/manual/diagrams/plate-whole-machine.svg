@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 420" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="760" height="420" fill="#c5d5d8"/>
+  <defs>
+  <marker id="arr-w" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#1a1a1a"/>
+  </marker>
+  <marker id="arr-w-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#c41e1e"/>
+  </marker>
+</defs>
+  <text x="36" y="36" font-size="11" fill="#1a1a1a" letter-spacing="0.28em" font-weight="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">PLATE 01  ·  THE WHOLE MACHINE</text>
+  <text x="36" y="56" font-size="9" fill="#4a5560" letter-spacing="0.12em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">HUMAN INTENT  →  AGENT  →  ADAPTER  →  SIMULATOR / QPU  →  FIDELITY  →  INSTRUMENT</text>
+
+  <!-- soft background discs -->
+  <circle cx="120" cy="230" r="78" fill="#5a8fb5" fill-opacity="0.22"/>
+  <circle cx="380" cy="210" r="95" fill="#7a8a4a" fill-opacity="0.16"/>
+  <circle cx="640" cy="240" r="88" fill="#3d6a8c" fill-opacity="0.18"/>
+
+  <!-- nodes -->
+  <g>
+    <rect x="28" y="160" width="112" height="72" rx="6" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+    <text x="84" y="190" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.06em">INTENT</text>
+    <text x="84" y="210" text-anchor="middle" font-size="8.5" fill="#4a5560">NL goal</text>
+  </g>
+  <g>
+    <rect x="168" y="160" width="112" height="72" rx="6" fill="#5a8fb5" fill-opacity="0.55" stroke="#1a1a1a" stroke-width="1.2"/>
+    <text x="224" y="190" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.06em">AGENT</text>
+    <text x="224" y="210" text-anchor="middle" font-size="8.5" fill="#2a2a2a">5 tools · traces</text>
+  </g>
+  <g>
+    <rect x="308" y="160" width="112" height="72" rx="6" fill="#7a8a4a" fill-opacity="0.45" stroke="#1a1a1a" stroke-width="1.2"/>
+    <text x="364" y="186" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.06em">ADAPTER</text>
+    <text x="364" y="204" text-anchor="middle" font-size="8.5" fill="#2a2a2a">6-method waist</text>
+    <text x="364" y="218" text-anchor="middle" font-size="7.5" fill="#c41e1e" font-weight="600">FIREWALL</text>
+  </g>
+  <g>
+    <rect x="448" y="148" width="112" height="96" rx="6" fill="#3d6a8c" fill-opacity="0.35" stroke="#1a1a1a" stroke-width="1.2"/>
+    <text x="504" y="178" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.04em">PHYSICS</text>
+    <text x="504" y="198" text-anchor="middle" font-size="8.5" fill="#2a2a2a">sim (default)</text>
+    <text x="504" y="214" text-anchor="middle" font-size="8.5" fill="#2a2a2a">or QPU stub</text>
+    <circle cx="504" cy="230" r="4" fill="#c41e1e"/>
+  </g>
+  <g>
+    <rect x="588" y="160" width="144" height="72" rx="6" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+    <text x="660" y="186" text-anchor="middle" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.04em">INSTRUMENT</text>
+    <text x="660" y="206" text-anchor="middle" font-size="8.5" fill="#4a5560">stage · dock · HUD</text>
+  </g>
+
+  <!-- forward arrows -->
+  <line x1="140" y1="196" x2="164" y2="196" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-w)"/>
+  <line x1="280" y1="196" x2="304" y2="196" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-w)"/>
+  <line x1="420" y1="196" x2="444" y2="196" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-w)"/>
+  <line x1="560" y1="196" x2="584" y2="196" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-w)"/>
+
+  <!-- fidelity feedback arc -->
+  <path d="M660 232 C660 310, 120 310, 84 232" fill="none" stroke="#c41e1e" stroke-width="1.5"
+        stroke-dasharray="5 4" marker-end="url(#arr-w-red)"/>
+  <text x="372" y="338" text-anchor="middle" font-size="9" fill="#c41e1e" letter-spacing="0.18em" font-weight="600">FIDELITY BACK</text>
+  <text x="372" y="356" text-anchor="middle" font-size="8" fill="#4a5560">detuning · readiness · tool traces · metrics</text>
+
+  <!-- small legend -->
+  <circle cx="36" cy="392" r="5" fill="#5a8fb5" fill-opacity="0.55"/>
+  <text x="48" y="396" font-size="8" fill="#4a5560">control</text>
+  <circle cx="110" cy="392" r="5" fill="#7a8a4a" fill-opacity="0.55"/>
+  <text x="122" y="396" font-size="8" fill="#4a5560">contract</text>
+  <circle cx="190" cy="392" r="5" fill="#c41e1e"/>
+  <text x="202" y="396" font-size="8" fill="#4a5560">accent / stop</text>
+</svg>

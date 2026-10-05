@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 260" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="720" height="260" fill="#fff"/>
+  <text x="16" y="22" font-size="10" fill="#475569" letter-spacing="1.2">CALIBRATION FAILURE MODES</text>
+  <rect x="30" y="50" width="200" height="180" rx="8" fill="#fef2f2" stroke="#FF3B30"/>
+  <text x="130" y="80" text-anchor="middle" font-size="11" fill="#FF3B30" font-weight="600">Fid cap (demo)</text>
+  <text x="45" y="110" font-size="9" fill="#475569">set_demo_fid_cap(0.69)</text>
+  <text x="45" y="130" font-size="9" fill="#475569">POST /demo/fail_next_cal</text>
+  <text x="45" y="150" font-size="9" fill="#475569">fidelity stuck below 0.88</text>
+  <text x="45" y="180" font-size="9" fill="#475569">success=False</text>
+  <text x="45" y="200" font-size="9" fill="#475569">attempts still counted</text>
+  <rect x="260" y="50" width="200" height="180" rx="8" fill="#fff7ed" stroke="#FF9500"/>
+  <text x="360" y="80" text-anchor="middle" font-size="11" fill="#FF9500" font-weight="600">Max iterations</text>
+  <text x="275" y="110" font-size="9" fill="#475569">max_iterations=60 (API)</text>
+  <text x="275" y="130" font-size="9" fill="#475569">patience restarts widen</text>
+  <text x="275" y="150" font-size="9" fill="#475569">best_fid may be &lt; thresh</text>
+  <text x="275" y="180" font-size="9" fill="#475569">message: In progress /</text>
+  <text x="275" y="200" font-size="9" fill="#475569">Max iterations reached</text>
+  <rect x="490" y="50" width="200" height="180" rx="8" fill="#f1f5f9" stroke="#475569"/>
+  <text x="590" y="80" text-anchor="middle" font-size="11" fill="#475569" font-weight="600">Stub backend</text>
+  <text x="505" y="110" font-size="9" fill="#475569">measure_fidelity = 0.55</text>
+  <text x="505" y="130" font-size="9" fill="#475569">is_ready always False</text>
+  <text x="505" y="150" font-size="9" fill="#475569">circuits fail NotImpl</text>
+  <text x="505" y="180" font-size="9" fill="#475569">shape-only seam for</text>
+  <text x="505" y="200" font-size="9" fill="#475569">real driver plug-in</text>
+</svg>

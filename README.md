@@ -4,7 +4,7 @@
 
 Coda 2 turns short goals (“Bring qubit 0 to ready”, “Run a Bell pair”) into typed control-plane tools, shows live device physics on a three-pane stage, and keeps the conversation in a bottom-third chat dock. Offline by default. No API keys required for the core path.
 
-[Demo video](docs/media/demo.mov) · [Architecture plate](docs/diagrams/architecture.svg) · [UI layout](docs/diagrams/ui-layout.svg)
+[Technical manual (PDF)](docs/manual/coda-2-manual.pdf) · [Demo video](docs/media/demo.mov) · [Architecture plate](docs/diagrams/architecture.svg) · [UI layout](docs/diagrams/ui-layout.svg)
 
 ---
 

@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 640" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="860" height="640" fill="#eef2f0"/>
+  <defs>
+  <marker id="arr-cal" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 Z" fill="#1a1a1a"/>
+  </marker>
+  <marker id="arr-cal-red" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 Z" fill="#c41e1e"/>
+  </marker>
+  <marker id="arr-cal-blue" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 Z" fill="#3d6a8c"/>
+  </marker>
+</defs>
+  <text x="28" y="30" font-size="11" fill="#1a1a1a" letter-spacing="0.22em" font-weight="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">FIG. 1.4  ·  CALIBRATION AS A CLOSED LOOP ON THE STACK</text>
+  <text x="28" y="50" font-size="8.5" fill="#4a5560" letter-spacing="0.08em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">MEASURE → DECIDE → APPLY → REMEASURE  ·  KNOBS + OBSERVABLES IN LEGEND</text>
+
+  <!-- left stack — more vertical spacing -->
+  <text x="40" y="78" font-size="8" font-weight="700" fill="#4a5560" letter-spacing="0.14em">STACK (REF)</text>
+  <rect x="40" y="92" width="200" height="42" rx="3" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="140" y="118" text-anchor="middle" font-size="9" fill="#1a1a1a">PC / AWG</text>
+  <rect x="40" y="146" width="200" height="42" rx="3" fill="#c5d5d8" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="140" y="172" text-anchor="middle" font-size="9" fill="#1a1a1a">fridge RF</text>
+  <rect x="40" y="200" width="200" height="42" rx="3" fill="#3d6a8c" fill-opacity="0.3" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="140" y="226" text-anchor="middle" font-size="9" fill="#1a1a1a">qubit + res.</text>
+  <rect x="40" y="254" width="200" height="42" rx="3" fill="#7a8a4a" fill-opacity="0.35" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="140" y="280" text-anchor="middle" font-size="9" fill="#1a1a1a">digitizer → PC</text>
+
+  <!-- center loop — pushed down clear of subtitle -->
+  <circle cx="430" cy="235" r="125" fill="none" stroke="#7a8a4a" stroke-width="1.3" opacity="0.5"/>
+  <circle cx="430" cy="235" r="95" fill="#5a8fb5" fill-opacity="0.08"/>
+
+  <circle cx="430" cy="118" r="40" fill="#5a8fb5" fill-opacity="0.5" stroke="#1a1a1a" stroke-width="1.2"/>
+  <circle cx="430" cy="118" r="12" fill="#1a1a1a"/><text x="430" y="122" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">1</text>
+  <text x="430" y="172" text-anchor="middle" font-size="8" fill="#4a5560">measure</text>
+
+  <circle cx="545" cy="235" r="40" fill="#7a8a4a" fill-opacity="0.5" stroke="#1a1a1a" stroke-width="1.2"/>
+  <circle cx="545" cy="235" r="12" fill="#1a1a1a"/><text x="545" y="239" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">2</text>
+  <text x="545" y="290" text-anchor="middle" font-size="8" fill="#4a5560">decide</text>
+
+  <circle cx="430" cy="352" r="40" fill="#3d6a8c" fill-opacity="0.45" stroke="#1a1a1a" stroke-width="1.2"/>
+  <circle cx="430" cy="352" r="12" fill="#1a1a1a"/><text x="430" y="356" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">3</text>
+  <text x="430" y="408" text-anchor="middle" font-size="8" fill="#4a5560">apply</text>
+
+  <circle cx="315" cy="235" r="40" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+  <circle cx="315" cy="235" r="12" fill="#1a1a1a"/><text x="315" y="239" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">4</text>
+  <text x="315" y="290" text-anchor="middle" font-size="8" fill="#4a5560">remeasure</text>
+
+  <path d="M462 148 Q520 155 520 200" fill="none" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-cal)"/>
+  <path d="M530 270 Q520 315 462 338" fill="none" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-cal)"/>
+  <path d="M398 338 Q340 315 340 270" fill="none" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-cal)"/>
+  <path d="M340 200 Q340 155 398 148" fill="none" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-cal)"/>
+
+  <!-- knobs / observables — spaced -->
+  <rect x="640" y="70" width="180" height="150" rx="5" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+  <text x="730" y="96" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">KNOBS</text>
+  <circle cx="662" cy="124" r="12" fill="#1a1a1a"/><text x="662" y="128" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">5</text>
+  <text x="680" y="128" font-size="10" fill="#1a1a1a">amplitude</text>
+  <circle cx="662" cy="156" r="12" fill="#1a1a1a"/><text x="662" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">6</text>
+  <text x="680" y="160" font-size="10" fill="#1a1a1a">frequency</text>
+  <circle cx="662" cy="188" r="12" fill="#1a1a1a"/><text x="662" y="192" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">7</text>
+  <text x="680" y="192" font-size="10" fill="#1a1a1a">timing</text>
+
+  <rect x="640" y="240" width="180" height="150" rx="5" fill="#c5d5d8" stroke="#1a1a1a" stroke-width="1.2"/>
+  <text x="730" y="266" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a" letter-spacing="0.08em">OBSERVABLES</text>
+  <circle cx="662" cy="294" r="12" fill="#1a1a1a"/><text x="662" y="298" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">8</text>
+  <text x="680" y="298" font-size="10" fill="#1a1a1a">gate fidelity</text>
+  <circle cx="662" cy="326" r="12" fill="#1a1a1a"/><text x="662" y="330" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">9</text>
+  <text x="680" y="330" font-size="10" fill="#1a1a1a">readout fid.</text>
+  <circle cx="662" cy="358" r="12" fill="#1a1a1a"/><text x="662" y="362" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">10</text>
+  <text x="680" y="362" font-size="10" fill="#1a1a1a">T1 / T2 (hw)</text>
+
+  <!-- why box -->
+  <rect x="40" y="430" width="780" height="70" rx="5" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+  <text x="56" y="456" font-size="9" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">WHY THE LOOP EXISTS</text>
+  <text x="56" y="478" font-size="9" fill="#4a5560">Drift moves true parameters. Detuning = |applied − true|. Fidelity falls as detuning grows.</text>
+  <text x="56" y="496" font-size="9" fill="#1a1a1a">Stop when best fidelity ≥ 0.88 (default) or iterations end. Remeasurement is required.</text>
+
+  <rect x="28" y="512" width="804" height="106" rx="4" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="40" y="530" font-size="8" font-weight="700" fill="#1a1a1a" letter-spacing="0.14em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">LEGEND</text>
+  <circle cx="40" cy="545" r="8" fill="#1a1a1a"/><text x="40" y="549" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">1</text><text x="54" y="548" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Measure fidelity(q)</text>
+  <circle cx="430" cy="545" r="8" fill="#1a1a1a"/><text x="430" y="549" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">2</text><text x="444" y="548" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Decide: ≥ threshold?</text>
+  <circle cx="40" cy="561" r="8" fill="#1a1a1a"/><text x="40" y="565" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">3</text><text x="54" y="564" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Apply knob update to cal / AWG</text>
+  <circle cx="430" cy="561" r="8" fill="#1a1a1a"/><text x="430" y="565" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">4</text><text x="444" y="564" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Remeasure — loop or stop</text>
+  <circle cx="40" cy="577" r="8" fill="#1a1a1a"/><text x="40" y="581" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">5</text><text x="54" y="580" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Amplitude knob</text>
+  <circle cx="430" cy="577" r="8" fill="#1a1a1a"/><text x="430" y="581" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">6</text><text x="444" y="580" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Frequency knob</text>
+  <circle cx="40" cy="593" r="8" fill="#1a1a1a"/><text x="40" y="597" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">7</text><text x="54" y="596" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Timing / phase knob</text>
+  <circle cx="430" cy="593" r="8" fill="#1a1a1a"/><text x="430" y="597" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">8</text><text x="444" y="596" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Gate fidelity observable</text>
+  <circle cx="40" cy="609" r="8" fill="#1a1a1a"/><text x="40" y="613" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">9</text><text x="54" y="612" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Readout fidelity observable</text>
+  <circle cx="430" cy="609" r="8" fill="#1a1a1a"/><text x="430" y="613" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">10</text><text x="444" y="612" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">T1 / T2 on hardware (sim uses fidelity kernel)</text>
+</svg>

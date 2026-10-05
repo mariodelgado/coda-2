@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 600" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="860" height="600" fill="#c5d5d8"/>
+  <defs>
+  <marker id="arr-cr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 Z" fill="#1a1a1a"/>
+  </marker>
+  <marker id="arr-cr-red" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 Z" fill="#c41e1e"/>
+  </marker>
+  <marker id="arr-cr-blue" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 Z" fill="#3d6a8c"/>
+  </marker>
+</defs>
+  <text x="28" y="30" font-size="11" fill="#1a1a1a" letter-spacing="0.22em" font-weight="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">FIG. 1.3  ·  CONTROL AND READOUT LOOP</text>
+  <text x="28" y="50" font-size="8.5" fill="#4a5560" letter-spacing="0.08em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">PULSE SEQUENCE → AWG → FRIDGE → QUBIT → READOUT → ADC → PC</text>
+
+  <!-- numbered stage boxes — tall enough, short labels -->
+  <g>
+    <rect x="36" y="80" width="100" height="90" rx="5" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+    <circle cx="86" cy="110" r="12" fill="#1a1a1a"/><text x="86" y="114" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">1</text>
+    <text x="86" y="145" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a">PULSE</text>
+    <text x="86" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a">SEQ</text>
+  </g>
+  <line x1="136" y1="125" x2="156" y2="125" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-cr)"/>
+
+  <g>
+    <rect x="160" y="80" width="100" height="90" rx="5" fill="#5a8fb5" fill-opacity="0.35" stroke="#1a1a1a" stroke-width="1.2"/>
+    <circle cx="210" cy="110" r="12" fill="#1a1a1a"/><text x="210" y="114" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">2</text>
+    <path d="M175 145 C185 145, 188 132, 196 132 S208 152, 216 152 S228 132, 236 132"
+          fill="none" stroke="#3d6a8c" stroke-width="1.6"/>
+    <text x="210" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a">AWG</text>
+  </g>
+  <line x1="260" y1="125" x2="280" y2="125" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-cr)"/>
+
+  <g>
+    <rect x="284" y="80" width="100" height="90" rx="5" fill="#3d6a8c" fill-opacity="0.3" stroke="#1a1a1a" stroke-width="1.2"/>
+    <circle cx="334" cy="110" r="12" fill="#1a1a1a"/><text x="334" y="114" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">3</text>
+    <text x="334" y="145" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a">FRIDGE</text>
+    <text x="334" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a">WIRING</text>
+  </g>
+  <line x1="384" y1="125" x2="404" y2="125" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-cr)"/>
+
+  <g>
+    <rect x="408" y="80" width="100" height="90" rx="5" fill="#7a8a4a" fill-opacity="0.4" stroke="#1a1a1a" stroke-width="1.2"/>
+    <circle cx="458" cy="110" r="12" fill="#1a1a1a"/><text x="458" y="114" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">4</text>
+    <circle cx="458" cy="145" r="16" fill="#c41e1e" fill-opacity="0.8"/>
+    <text x="458" y="149" text-anchor="middle" font-size="10" fill="#f7faf9" font-weight="700">Q</text>
+  </g>
+  <line x1="508" y1="125" x2="528" y2="125" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-cr)"/>
+
+  <g>
+    <rect x="532" y="80" width="100" height="90" rx="5" fill="#b08d3c" fill-opacity="0.4" stroke="#1a1a1a" stroke-width="1.2"/>
+    <circle cx="582" cy="110" r="12" fill="#1a1a1a"/><text x="582" y="114" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">5</text>
+    <text x="582" y="145" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a">READOUT</text>
+    <text x="582" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a">CHAIN</text>
+  </g>
+  <line x1="632" y1="125" x2="652" y2="125" stroke="#1a1a1a" stroke-width="1.4" marker-end="url(#arr-cr)"/>
+
+  <g>
+    <rect x="656" y="80" width="100" height="90" rx="5" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+    <circle cx="706" cy="110" r="12" fill="#1a1a1a"/><text x="706" y="114" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">6</text>
+    <text x="706" y="152" text-anchor="middle" font-size="18" font-weight="700" fill="#1a1a1a">0/1</text>
+  </g>
+
+  <!-- return path -->
+  <path d="M706 170 L706 210 L86 210 L86 170" fill="none" stroke="#c41e1e" stroke-width="1.6"
+        stroke-dasharray="5 3" marker-end="url(#arr-cr-red)"/>
+  <circle cx="396" cy="210" r="12" fill="#1a1a1a"/><text x="396" y="214" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">7</text>
+
+  <!-- two STE panels — shorter, more spacing -->
+  <rect x="36" y="250" width="380" height="180" rx="6" fill="#eef2f0" stroke="#1a1a1a" stroke-width="1.2"/>
+  <text x="52" y="278" font-size="9" font-weight="700" fill="#1a1a1a" letter-spacing="0.12em">CONTROL PATH (DOWN)</text>
+  <text x="52" y="306" font-size="9" fill="#4a5560">1 → 2 → 3 → 4</text>
+  <text x="52" y="330" font-size="9" fill="#2a2a2a">Gates become timed envelopes.</text>
+  <text x="52" y="352" font-size="9" fill="#2a2a2a">AWG + LO emit microwave voltages.</text>
+  <text x="52" y="374" font-size="9" fill="#2a2a2a">Fridge lines carry signals to MXC.</text>
+  <text x="52" y="396" font-size="9" fill="#2a2a2a">Fields at the qubit rotate the state.</text>
+  <text x="52" y="420" font-size="9" fill="#1a1a1a">Wrong amp / freq / timing → fidelity falls.</text>
+
+  <rect x="444" y="250" width="380" height="180" rx="6" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.2"/>
+  <text x="460" y="278" font-size="9" font-weight="700" fill="#1a1a1a" letter-spacing="0.12em">READOUT PATH (UP)</text>
+  <text x="460" y="306" font-size="9" fill="#4a5560">5 → 6 → 7</text>
+  <text x="460" y="330" font-size="9" fill="#2a2a2a">Probe tone interrogates the resonator.</text>
+  <text x="460" y="352" font-size="9" fill="#2a2a2a">TWPA + HEMT amplify the response.</text>
+  <text x="460" y="374" font-size="9" fill="#2a2a2a">Digitizer yields a classical bitstring.</text>
+  <text x="460" y="396" font-size="9" fill="#2a2a2a">PC classifies bits and decides next pulse.</text>
+  <text x="460" y="420" font-size="9" fill="#1a1a1a">Agents speak goals. Hardware speaks pulses.</text>
+
+  <rect x="28" y="442" width="804" height="88" rx="4" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="40" y="460" font-size="8" font-weight="700" fill="#1a1a1a" letter-spacing="0.14em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">LEGEND</text>
+  <circle cx="40" cy="475" r="8" fill="#1a1a1a"/><text x="40" y="479" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">1</text><text x="54" y="478" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Pulse sequence / timing table</text>
+  <circle cx="430" cy="475" r="8" fill="#1a1a1a"/><text x="430" y="479" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">2</text><text x="444" y="478" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">AWG / DAC + IQ / LO</text>
+  <circle cx="40" cy="491" r="8" fill="#1a1a1a"/><text x="40" y="495" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">3</text><text x="54" y="494" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Fridge wiring (300 K → MXC)</text>
+  <circle cx="430" cy="491" r="8" fill="#1a1a1a"/><text x="430" y="495" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">4</text><text x="444" y="494" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Qubit state evolves</text>
+  <circle cx="40" cy="507" r="8" fill="#1a1a1a"/><text x="40" y="511" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">5</text><text x="54" y="510" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Readout chain (TWPA · HEMT)</text>
+  <circle cx="430" cy="507" r="8" fill="#1a1a1a"/><text x="430" y="511" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">6</text><text x="444" y="510" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">ADC → classical bits</text>
+  <circle cx="40" cy="523" r="8" fill="#1a1a1a"/><text x="40" y="527" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">7</text><text x="54" y="526" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Classical PC — classify · log · next</text>
+</svg>

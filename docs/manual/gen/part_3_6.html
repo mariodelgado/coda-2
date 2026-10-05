@@ -1,0 +1,204 @@
+<h1 class="part"><span class="part-num">Part 3</span>System architecture</h1>
+
+<p class="lede">The system is a FastAPI control plane process plus a Next.js instrument client. Between them: REST and SSE. Under the API sit the orchestrator, calibration service, job store, and a backend. An environment variable selects the backend.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-architecture.svg" alt="FIG. 3.1"/>
+  <p class="fig-cap"><span class="label">FIG. 3.1</span>Component diagram. UI on :3000; API on :8000; runtime seam holds Orchestrator, CalibrationService, QPUAdapter, InMemoryJobStore.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-package.svg" alt="FIG. 3.2"/>
+  <p class="fig-cap"><span class="label">FIG. 3.2</span>Package layout under src/conductor_qpu and the sibling ui/ tree.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-dataflow.svg" alt="FIG. 3.3"/>
+  <p class="fig-cap"><span class="label">FIG. 3.3</span>Request path for a calibration goal from UI through API, orchestrator, calibration service, and adapter.</p>
+</div>
+
+<h2>3.1 Process topology</h2>
+<p>Two processes in development:</p>
+<ol>
+<li><code>python -m conductor_qpu.api</code> (Makefile <code>run-api</code>) — uvicorn serving <code>conductor_qpu.api.server:app</code> on <code>0.0.0.0:8000</code>.</li>
+<li><code>cd ui &amp;&amp; npm run dev</code> (Makefile <code>run-ui-dev</code>) — Next.js on <code>:3000</code>. CORS on the API allows localhost:3000.</li>
+</ol>
+<p>Python demos (<code>make demo</code>, <code>make founder-demo</code>) construct adapter + calibration + orchestrator in-process and need no HTTP server.</p>
+
+<h2>3.2 Object graph at API startup</h2>
+<p>Module import of <code>api/server.py</code> builds singletons:</p>
+<pre>
+_backend     = create_backend()          # env CONDUCTOR_QPU_BACKEND
+_calibration = CalibrationService(
+                 adapter=_backend,
+                 fidelity_threshold=0.88,
+                 max_iterations=60)
+_job_store   = InMemoryJobStore()
+_orchestrator = Orchestrator(
+                 adapter=_backend,
+                 calibration=_calibration,
+                 job_store=_job_store)
+_metrics     = MetricsAggregator()
+</pre>
+<p>There is no dependency-injection container. Tests construct their own graphs. The UI never imports Python — it speaks HTTP via <code>ui/lib/api.ts</code>.</p>
+
+<h2>3.3 Data stores</h2>
+<p>All state is in-memory for this prototype:</p>
+<ul>
+<li>Adapter job dict (<code>NoisySimulatorBackend._job_store</code> or stub equivalent).</li>
+<li><code>InMemoryJobStore</code> (bounded to 4096) — present for the seam; the API’s <code>/jobs</code> list currently reads the backend’s <code>list_recent_jobs</code>.</li>
+<li>Orchestrator <code>_last_traces</code> buffer — last goal’s traces.</li>
+<li>CalibrationMetrics counters on the service instance.</li>
+<li>MetricsAggregator deques (latency ms, fidelities) with maxlen 512.</li>
+</ul>
+<div class="honesty"><strong>Honesty</strong>
+Nothing survives process restart. The README’s week-1 plan calls out Postgres (or equivalent) with retention and goal_id correlation as the persistence swap.
+</div>
+
+<h2>3.4 Backend selection</h2>
+
+<table><thead><tr><th>CONDUCTOR_QPU_BACKEND</th><th>CLASS</th><th>BEHAVIOUR</th></tr></thead><tbody><tr><td>sim (default)</td><td>NoisySimulatorBackend</td><td>2-qubit drifting toy; full demo path</td></tr><tr><td>stub | hardware | shaped | conductor</td><td>ConductorShapedAdapter</td><td>Shape-only; circuits fail; fidelity 0.55; never ready</td></tr></tbody></table><p class="table-cap">Table 3.1. Factory mapping in adapter/factory.py.</p>
+<p class="sources"><strong>Sources.</strong> api/server.py; adapter/factory.py; jobs/store.py; ui/lib/api.ts</p>
+<h1 class="part"><span class="part-num">Part 4</span>Control plane / API</h1>
+
+<p class="lede">This part lists every HTTP endpoint from <code>src/conductor_qpu/api/server.py</code>. This book describes main @ <code>b05005c</code>. PR&nbsp;#13–#18 change stage framing only. They do not revise this route list. Schemas are Pydantic v2 models or ad-hoc dicts as noted. Errors use FastAPI <code>HTTPException</code>.</p>
+
+<h2>4.1 Cross-cutting</h2>
+<ul>
+<li><strong>CORS</strong> — allow_origins includes http://localhost:3000 and :8000 (and 127.0.0.1 variants); credentials allowed; methods/headers *.</li>
+<li><strong>OpenAPI</strong> — <code>docs_url="/docs"</code>, title field still reads the package-era string “Conductor QPU”, version 0.1.0 (the product name is Coda 2).</li>
+<li><strong>Auth</strong> — none. Local prototype only.</li>
+</ul>
+
+<h2>4.2 Health and readiness predicate</h2>
+
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/health</span><p>Returns <code>{status: ok, service: conductor-qpu}</code>. Used by the UI connection check.</p></div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/readiness_predicate</span><p>Returns the exact predicate name <code>all_qubits_readout_fidelity_above</code>, threshold 0.82, and description string. Founders can point at numbers, not vague claims.</p></div>
+<h2>4.3 Goals</h2>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/goals</span>
+<p><strong>Body</strong> <code>GoalRequest { goal: str }</code>. Runs <code>_orchestrator.run_goal</code>, records latencies into MetricsAggregator, returns <code>GoalResponse { goal, results[], traces[], metrics }</code>. Each result is <code>{ok, data, latency_s, error}</code>. Traces are the structured ToolTrace dicts for this execution.</p>
+</div>
+<h2>4.4 Calibration and circuits (direct)</h2>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/calibrate</span>
+<p><strong>Body</strong> <code>{ qubit_id?: int=0, target_fidelity?: float }</code>. Calls <code>_calibration.calibrate</code> directly (bypasses planner, still uses the service). Records fidelity in aggregator. Returns success, fidelity, iterations, duration_s, params subset, history.</p>
+</div>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/circuit/bell</span>
+<p><strong>Body</strong> <code>{ shots?: int=1024, qubits?: [0,1] }</code>. Builds a CIRCUIT QPUJob, submits to backend, polls once, returns job_id, counts, metrics — or error.</p>
+</div>
+<h2>4.5 Device</h2>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/device/state</span>
+<p>Snapshot: is_ready, readiness_score, qubits, temperatures_mk, coherence_us, readout_fidelity, notes, timestamp, readiness_predicate object.</p>
+</div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/device/detuning/{qubit_id}</span>
+<p>Returns detuning dict (frequency_error, amplitude_error, phase_error, readout_error_delta) plus applied params. 404 if unknown qubit. On the stub this raises NotImplementedError → 500 unless caught; the sim implements it.</p>
+</div>
+<h2>4.6 Jobs, traces, metrics</h2>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/jobs</span><p>Query <code>limit</code> (default 50). Lists recent jobs from backend <code>list_recent_jobs</code>. Documented non-durable.</p></div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/jobs/{job_id}</span><p>400 invalid UUID; 404 unknown. Returns status, type, timestamps, result data, metrics, error.</p></div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/traces</span><p>Most recent orchestrator tool traces (<code>get_last_traces()</code>).</p></div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/metrics</span><p>Union of orchestrator.get_metrics(), MetricsAggregator.snapshot(), and calibration.metrics.to_dict().</p></div>
+<h2>4.7 SSE</h2>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/sse/jobs/{job_id}</span>
+<p>Server-Sent Events. Polls backend every 200 ms, emits <code>event: update</code> when status changes, stops on terminal status, or <code>event: timeout</code> after ~24 s (120 iterations). <code>event: error</code> if job missing.</p>
+</div>
+<h2>4.8 Demo / guardrail endpoints</h2>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/demo/fail_next_cal</span>
+<p>If backend has <code>set_demo_fid_cap</code>, sets cap to 0.69 so subsequent calibration cannot reach 0.88. Returns <code>{ok, fid_cap, note}</code>.</p>
+</div>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/demo/start_long_job</span>
+<p>Starts a long-running diagnostic that stays RUNNING until cancel (sim helper). Returns <code>{job_id}</code>. Used to demo cancel in the UI.</p>
+</div>
+<h2>4.9 Error table</h2>
+<table><thead><tr><th>SITUATION</th><th>STATUS</th><th>DETAIL</th></tr></thead><tbody><tr><td>Malformed job UUID</td><td>400</td><td>invalid job_id</td></tr><tr><td>Unknown job</td><td>404</td><td>job not found</td></tr><tr><td>Unknown qubit (detuning)</td><td>404</td><td>ValueError text</td></tr><tr><td>Backend down (UI)</td><td>—</td><td>UI sets backendDown; toast; banner “make run-api”</td></tr><tr><td>Calibration capped</td><td>200 with success:false</td><td>Not an HTTP error — domain failure in body</td></tr><tr><td>Stub circuit</td><td>job FAILED</td><td>error explains hardware not connected</td></tr></tbody></table><p class="table-cap">Table 4.1. Error and failure signalling. Domain failures are often 200 + ok:false / success:false so agents can read them as tool results.</p>
+<p class="sources"><strong>Sources.</strong> api/server.py (all routes); ui/lib/api.ts (client mapping)</p>
+<h1 class="part"><span class="part-num">Part 5</span>Adapter & noisy simulator</h1>
+
+<p class="lede">The adapter is the narrow waist. This part documents the abstract contract, the noisy simulator’s dynamics, and the hardware-shaped stub.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-adapter-contract.svg" alt="FIG. 5.1"/>
+  <p class="fig-cap"><span class="label">FIG. 5.1</span>Contract reminder.</p>
+</div>
+
+<h2>5.1 QPUAdapter (base.py)</h2>
+<p>Abstract methods: <code>submit_job</code>, <code>poll_job</code>, <code>cancel_job</code>, <code>get_device_state</code>, <code>get_calibration</code>, <code>apply_calibration_update</code>. Synchronous by prototype choice; production ports may go async without changing the orchestrator’s conceptual model if a thin sync wrapper remains.</p>
+
+<h2>5.2 CalibrationParams and DeviceState</h2>
+
+<table><thead><tr><th>FIELD</th><th>ROLE</th></tr></thead><tbody><tr><td>qubit_id</td><td>Which qubit the params apply to</td></tr><tr><td>frequency</td><td>Fake GHz-scale drive frequency</td></tr><tr><td>amplitude</td><td>Drive amplitude</td></tr><tr><td>phase</td><td>Radians</td></tr><tr><td>t1, t2</td><td>Relaxation / dephasing (µs, theatrical)</td></tr><tr><td>readout_error</td><td>Bit-flip probability on measurement</td></tr></tbody></table><p class="table-cap">Table 5.1. CalibrationParams fields (models/types.py). Units are illustrative; only relative distance to true params matters on the sim.</p>
+
+<p><code>DeviceState</code> carries temperatures_mk, coherence_us (T1,T2) per qubit, readout_fidelity, is_ready, notes. <code>readiness_score()</code> averages readout fidelities into 0..1.</p>
+
+<h2>5.3 NoisySimulatorBackend</h2>
+<p>Construction: <code>num_qubits</code> clamped to 1..2, seed (default 42), drift_rate (default 0.002). Maintains <code>_true_params</code> and <code>_applied_params</code> per qubit, an RLock, and an in-memory job store.</p>
+<h3>Drift</h3>
+<p><code>_apply_drift</code> runs on state reads / polls when ≥50 ms elapsed. True params take a Gaussian step scaled by drift_rate and a sinusoidal term <code>sin(now*0.7+q)</code>, with clamps per field. This is the lab dynamic the UI visualises: calibration chases a moving target.</p>
+<h3>Fidelity kernel</h3>
+<p><code>_fidelity_from_params</code> builds a squared-error penalty across frequency, amplitude, phase, T1/T2 shortfalls, and readout error, then maps through <code>0.94*exp(-1.8*err)+0.05</code>, clamped to [0.55, 0.999]. Optional <code>_demo_fid_cap</code> can further ceiling the value for failure demos.</p>
+<h3>Bell simulation</h3>
+<p><code>_simulate_bell_readout</code> draws ideal 00/11, applies readout flips, and depolarises by contrast derived from joint fidelity. Returns counts dict.</p>
+<h3>Job handling</h3>
+<p>Calibration jobs run a small local loop (threshold 0.88, max 25) when submitted directly; the preferred path is the CalibrationService via the orchestrator (full metrics + traces). Circuit jobs run Bell (or stub success for unknown circuit names). Cancel flips non-terminal jobs to CANCELLED.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-drift.svg" alt="FIG. 5.2"/>
+  <p class="fig-cap"><span class="label">FIG. 5.2</span>True vs applied over time on the simulator.</p>
+</div>
+
+<h2>5.4 ConductorShapedAdapter</h2>
+<p>Documents what a real AWG/DAC/FPGA driver would look like. Circuits fail with an explicit NotImplemented error string. Calibration “succeeds” at fidelity 0.90 but notes that nothing was committed. <code>is_ready</code> is always False. <code>measure_fidelity</code> returns 0.55. <code>get_detuning</code> raises NotImplementedError. Use <code>CONDUCTOR_QPU_BACKEND=stub</code> and <code>make founder-demo-stub</code> to exercise the seam.</p>
+
+<p class="sources"><strong>Sources.</strong> adapter/base.py; adapter/noisy_sim.py; adapter/hardware_stub.py; adapter/factory.py; models/types.py; tests/test_adapter_contract.py; tests/test_adapter_selection.py</p>
+<h1 class="part"><span class="part-num">Part 6</span>Calibration & metrics</h1>
+
+<p class="lede">CalibrationService is an iterative, gradient-free tuner that records the three founder metrics. This part specifies the algorithm, thresholds, failure modes, and what tests assert.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-metrics.svg" alt="FIG. 6.1"/>
+  <p class="fig-cap"><span class="label">FIG. 6.1</span>Metric definitions again — they are the product dials.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-cal-loop.svg" alt="FIG. 6.2"/>
+  <p class="fig-cap"><span class="label">FIG. 6.2</span>Loop structure as implemented in calibration/service.py.</p>
+</div>
+
+<h2>6.1 Algorithm</h2>
+<ol>
+<li>Read current params; measure initial fidelity; history starts at (0, fid).</li>
+<li>For iteration 1..max_iterations:
+  <ul>
+  <li>Compute temperature schedule <code>temp = max(0.015, 0.55*(1-progress))</code>.</li>
+  <li>Choose exploration scale (wide early; widen further if patience half-exhausted).</li>
+  <li>Sample neighbour via Gaussian jitter on frequency, amplitude, phase, t1, t2, readout_error with field clamps.</li>
+  <li>Call <code>adapter.apply_calibration_update(candidate)</code>; record interface latency.</li>
+  <li>Accept if better than best; else accept worse with probability <code>exp((f-best)/temp)</code>.</li>
+  <li>Update best/no_improve; append history; optional on_step callback.</li>
+  <li>Break if best_fid ≥ threshold.</li>
+  <li>If no_improve ≥ patience: restart around best, sometimes with a wide redraw.</li>
+  </ul>
+</li>
+<li>Update CalibrationMetrics attempts/successes/time.</li>
+</ol>
+
+<h2>6.2 Defaults (API process)</h2>
+
+<table><thead><tr><th>PARAMETER</th><th>API DEFAULT</th><th>NOTES</th></tr></thead><tbody><tr><td>fidelity_threshold</td><td>0.88</td><td>Planner default target matches</td></tr><tr><td>max_iterations</td><td>60</td><td>Tests may use 30–80</td></tr><tr><td>patience</td><td>12</td><td>Service default</td></tr><tr><td>seed</td><td>123</td><td>Service default RNG</td></tr><tr><td>READINESS threshold</td><td>0.82</td><td>Separate predicate on DeviceState</td></tr></tbody></table><p class="table-cap">Table 6.1. Thresholds and loop limits.</p>
+
+<h2>6.3 Failure modes</h2>
+
+<div class="figure ">
+  <img src="diagrams/fig-failure-modes.svg" alt="FIG. 6.3"/>
+  <p class="fig-cap"><span class="label">FIG. 6.3</span>Three classes of failure the demos and tests cover.</p>
+</div>
+
+<ul>
+<li><strong>Fidelity cap</strong> — <code>POST /demo/fail_next_cal</code> or <code>set_demo_fid_cap</code>. Service reports success=False; fidelity stays below 0.88; attempts still increment.</li>
+<li><strong>Max iterations / patience cycling</strong> — if the basin cannot be climbed in time (or cap intervenes), final message reflects non-convergence.</li>
+<li><strong>Stub backend</strong> — measure_fidelity 0.55 permanently; useful to prove UI/orchestrator don’t assume sim omniscience.</li>
+</ul>
+
+<h2>6.4 Test and demo numbers</h2>
+<p><code>tests/test_calibration_converges.py</code> asserts fidelity can reach ≥0.80 on the noisy sim with threshold 0.86, and that metrics fields are populated across multi-qubit attempts. <code>tests/test_failure_paths.py</code> asserts capped runs end with success=False and that long-running jobs cancel to CANCELLED. Demos print the three metrics to stdout; they do not claim statistical significance across seeds.</p>
+<div class="honesty"><strong>Honesty</strong>
+Historical flakiness: early in development, fidelity could stick near the 0.55 floor while the threshold sat at 0.88 — the wide-basin kernel and exploration schedule exist specifically so the founder demo climbs reliably without becoming a fake always-success path. Caps remain to demonstrate honest failure.
+</div>
+
+<p class="sources"><strong>Sources.</strong> calibration/service.py; observability/metrics.py; tests/test_calibration_converges.py; tests/test_failure_paths.py; demo_scripts/run_calibration_demo.py; demo_scripts/founder_demo.py</p>
