@@ -1,0 +1,204 @@
+<h1 class="part"><span class="part-num">Part 1</span>Mental model</h1>
+
+<p class="lede">Start with the machine. Then look at the plug. A QPU is a set of two-level systems. Classical pulses steer them. Readout returns classical bits. The device drifts. This software sits above that stack. Natural-language goals and an orchestrator call a narrow <code>QPUAdapter</code>. The backend stands in for cryo and electronics. Four nouns remain clear once that seam is visible: goals, tools, jobs, and the calibration loop.</p>
+
+<h2>1.1 How a QPU works</h2>
+<p>A quantum processing unit is not a CPU with exotic opcodes. It is a small set of engineered two-level systems (qubits). Microwave and baseband electronics couple to those qubits. A cryogenic environment keeps thermal noise low so coherence lasts. Classical software decides which pulses to send. The physics decides what you get back. The primer below is the minimum model an operator or agent author needs.</p>
+
+<h3>1.1.1 Qubit modality — superconducting transmon</h3>
+<p>This manual uses a superconducting transmon as the example modality. A transmon is a Josephson junction with a large shunt capacitor. That circuit forms a weakly anharmonic oscillator. The two lowest levels are the computational states <code>|0⟩</code> and <code>|1⟩</code>. A readout resonator couples to the qubit. A microwave drive (XY) rotates the state. A flux or Z bias sets the qubit frequency when the junction is tunable. Other modalities (spin, trapped ion) differ in device physics. They still use pulses for control and a classical result for readout.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-qubit-bloch.svg" alt="FIG. 1.1 — Qubit modality: superconducting transmon"/>
+    <p class="fig-cap"><span class="label">FIG. 1.1</span>Qubit modality — superconducting transmon with readout resonator, XY drive, and flux/Z bias.</p>
+  </div>
+  <p class="diagram-explain">The chip holds a transmon and a readout resonator. The Josephson junction sets the nonlinearity. The shunt capacitor sets the charging energy. XY microwave pulses rotate the state. Flux bias sets frequency on tunable devices. Readout probes the resonator and returns a classical bit. This figure shows real QPU physics. This product uses a noisy simulator — see FIG.&nbsp;1.5.</p>
+  <p class="sources"><strong>Cite.</strong> P. Krantz et al., “A quantum engineer’s guide to superconducting qubits,” Appl. Phys. Rev. 6, 021318 (2019); arXiv:1904.06560 — https://arxiv.org/abs/1904.06560</p>
+</div>
+
+<h3>1.1.2 Cryogenic and RF stack</h3>
+<p>Room-temperature racks hold the AWG, DAC, local oscillator, mixers, digitizer, and control PC. Drive lines go down through the dilution refrigerator. Stages typically run at about 300&nbsp;K, 4&nbsp;K, still (~1&nbsp;K), and the mixing chamber (MXC, ~10–20&nbsp;mK). Attenuators on the drive path cut thermal noise into the qubit. The readout path amplifies a weak response: a TWPA near the sample, then a HEMT at 4&nbsp;K, then room-temperature electronics. The sample package sits at the MXC.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-qpu-stack.svg" alt="FIG. 1.2 — Cryogenic / RF stack"/>
+    <p class="fig-cap"><span class="label">FIG. 1.2</span>Cryogenic / RF stack — 300&nbsp;K rack through MXC, with attenuation down and amplification up.</p>
+  </div>
+  <p class="diagram-explain">Drive signals move down the fridge. Attenuators protect the qubit from room-temperature noise. Readout signals move up. A TWPA and a HEMT amplify the weak probe response. The digitizer turns that response into bits. This stack is real QPU infrastructure. The product stands in for it with <code>NoisySimulatorBackend</code> (FIG.&nbsp;1.5).</p>
+  <p class="sources"><strong>Cite.</strong> P. Krantz et al., Appl. Phys. Rev. 6, 021318 (2019), arXiv:1904.06560; Keysight, “Characterizing Superconducting Qubits” application note — https://www.keysight.com/us/en/assets/3120-1387/application-notes/Characterizing-Superconducting-Qubits.pdf</p>
+</div>
+
+<h3>1.1.3 Control and readout loop</h3>
+<p>Gates are the logical recipe (X, Y, CZ, Rz, and others). Pulses are the physical voltages and microwave envelopes. An AWG and LO emit those envelopes. Fridge wiring carries them to the qubit. The qubit state evolves. A readout chain amplifies the resonator response. A digitizer yields a classical bitstring. The classical PC classifies the bits, logs them, and decides the next pulse sequence. Fidelity is the rate at which those bits match the intended result.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-control-readout.svg" alt="FIG. 1.3 — Control and readout loop"/>
+    <p class="fig-cap"><span class="label">FIG. 1.3</span>Control and readout loop — pulse sequence → AWG → fridge → qubit → readout chain → digitizer → PC.</p>
+  </div>
+  <p class="diagram-explain">Control is continuous and analog on the wire. Readout is discrete and classical in the log. An agent does not speak in volts. It speaks in goals. Every successful goal becomes a pulse schedule and a measured bitstring. Wrong amplitude, frequency, or timing rotates the wrong amount. Fidelity falls.</p>
+  <p class="sources"><strong>Cite.</strong> P. Krantz et al., arXiv:1904.06560; IBM Qiskit Pulse (backend control / Schedule) — https://docs.quantum.ibm.com/api/qiskit/0.46/pulse; Keysight, “Characterizing Superconducting Qubits” — https://www.keysight.com/us/en/assets/3120-1387/application-notes/Characterizing-Superconducting-Qubits.pdf</p>
+</div>
+
+<h3>1.1.4 Calibration as a closed loop on that stack</h3>
+<p>The device moves. Temperature, LO phase, flux bias, and cable response wander. Applied parameters drift away from the true sweet spot. That gap is detuning. As detuning grows, gate fidelity falls. Circuits stop being useful. Calibration is a recurring loop: measure, decide whether to move knobs, apply an update, and remeasure. Knobs include amplitude, frequency, and timing. Observables include gate fidelity, readout fidelity, and (on hardware) T1/T2-class metrics. This simulator reports a fidelity kernel instead of full T1/T2.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-why-calibrate.svg" alt="FIG. 1.4 — Calibration closed loop on the stack"/>
+    <p class="fig-cap"><span class="label">FIG. 1.4</span>Calibration as a closed loop — knobs (amplitude, frequency, timing) and observables (fidelity, readout fidelity; T1/T2 on hardware).</p>
+  </div>
+  <p class="diagram-explain">Drift moves true parameters. Detuning is the measurable gap. Fidelity decay is why you care. Stop when best fidelity meets the threshold (default 0.88) or iterations end. Without remeasurement against a threshold, calibration is not an agent tool. It is a hope.</p>
+  <p class="sources"><strong>Cite.</strong> N. Wittler, F. Roy, K. Pack, M. Werninghaus, et al., “Integrated Tool Set for Control, Calibration, and Characterization of Quantum Devices Applied to Superconducting Qubits,” Phys. Rev. Applied 15, 034080 (2021) — https://journals.aps.org/prapplied/abstract/10.1103/PhysRevApplied.15.034080</p>
+</div>
+
+<h2>1.2 Where we plug in</h2>
+<p>This system does not replace the fridge. It plugs in above classical control. It sits at the software↔device boundary. Natural-language goals and the orchestrator sit with the operator layer. The <code>QPUAdapter</code> is the contract. Six typed methods carry all device talk. In this prototype, <code>NoisySimulatorBackend</code> stands in for cryo plus electronics. It is a toy 1–2 qubit model with hidden true parameters, drift, and a climbable fidelity kernel. Closed-loop calibration uses measure → decide → apply through that same adapter. The instrument UI keeps physics in view. Three resizable panes: a high-contrast drift grid on the left, a denser 3D device in the middle, and an isometric cryostat plate on the right. Two resizable splitters (capsule handles on hover; about 22–28% minimum per pane) separate them. There are no tabs. PR&nbsp;#2 used tabs labeled drift | device. That flip is past. The 3D cryo device panel is a UI surface. It is not a real fridge. The dock holds the agent ledger.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-our-seam.svg" alt="FIG. 1.5 — Our interface overlay"/>
+    <p class="fig-cap"><span class="label">FIG. 1.5</span>Interface overlay — NL/agent/orchestrator map onto the classical-control box; NoisySimulatorBackend stands in for cryo and electronics.</p>
+  </div>
+  <p class="diagram-explain">The red bar is the product seam. Agents and the UI never reach past it. Swap the noisy simulator for a real AWG driver later. Keep the tools, traces, metrics, and instrument. The dashed loop is calibration. Every get or apply of cal params crosses the adapter. Each apply samples interface latency. The 3D device panel is UI, not hardware.</p>
+  <p class="sources"><strong>Cite.</strong> Product seam (this repo). Pulse-schedule concept: IBM Qiskit Pulse — https://docs.quantum.ibm.com/api/qiskit/0.46/pulse. Calibration-loop pattern: Wittler / Werninghaus et al., Phys. Rev. Applied 15, 034080 (2021).</p>
+</div>
+
+<h2>1.3 Goals</h2>
+<p>A <em>goal</em> is a short natural-language string. An operator or agent submits it. Examples the deterministic planner accepts: “Bring qubit 0 to ready”, “Run a Bell pair and report fidelity”, “Report device health and temperature status”, “Check qubit 0 health and readout status”, “cancel &lt;job-id&gt;”. Goals enter through <code>POST /goals</code> or the UI composer, chips, or ⌘K palette. They are not LLM prompts by default. The planner in <code>orchestrator/planner.py</code> maps them to a list of <code>ToolCall</code> records. Optional LLM planning exists behind <code>CONDUCTOR_ENABLE_LLM</code>. It is off by default. The product path is offline-first.</p>
+
+<h2>1.4 Tools</h2>
+<p>The orchestrator registers five tools: <code>calibrate_qubit</code>, <code>run_bell_pair</code>, <code>get_device_state</code>, <code>get_job_status</code>, <code>cancel_job</code>. Each call produces a <code>ToolResult</code> and a <code>ToolTrace</code> (tool name, args, latency, ok, summary). Traces are the observability product. They show real control-plane decisions. They are not narrative fiction. Heavy paths (<code>calibrate_qubit</code>, <code>run_bell_pair</code>) cross the adapter. The other tools give visibility and guardrails.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-tools.svg" alt="FIG. 1.6"/>
+  <p class="fig-cap"><span class="label">FIG. 1.6</span>The five built-in tools. calibrate_qubit and run_bell_pair are the heavy paths. The others give visibility and guardrails.</p>
+</div>
+
+<h2>1.5 Jobs</h2>
+<p>A <code>QPUJob</code> is a typed record. It has a <code>JobType</code> (calibration | circuit | diagnostic) and a <code>JobStatus</code> (queued → running → succeeded | failed | cancelled). The adapter owns submission and polling. An <code>InMemoryJobStore</code> exists as a seam for durable history later. Jobs survive a UI refresh for the lifetime of the API process.</p>
+
+<h2>1.6 The calibration loop</h2>
+<p>Calibration is measure → decide → apply → remeasure. Continue until <code>best_fid ≥ threshold</code> or iterations end. That loop makes an agent interface viable. Each step has a typed result, a latency sample, and a fidelity point the UI can plot. Without the loop, “calibrate” is a fire-and-forget RPC with no story. Every apply goes through <code>QPUAdapter.apply_calibration_update</code> — the seam in FIG.&nbsp;1.5.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-cal-loop.svg" alt="FIG. 1.7"/>
+  <p class="fig-cap"><span class="label">FIG. 1.7</span>Closed-loop calibration. Interface latency is sampled on every apply. time_to_calibrated is wall time to success. success_rate counts attempts.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-mental-model.svg" alt="FIG. 1.8"/>
+  <p class="fig-cap"><span class="label">FIG. 1.8</span>Software stack map: NL goal → orchestrator → calibration/jobs → QPUAdapter → simulator or stub. UI talks HTTP/SSE to the control plane.</p>
+</div>
+
+<h2>1.7 Readiness vs calibrated</h2>
+<p>Two predicates matter. <em>Device readiness</em> (<code>is_ready</code>) requires every qubit’s readout fidelity ≥ 0.82. <em>Calibration success</em> requires the service’s best fidelity ≥ 0.88 (default). A device can be “ready” by the weak predicate while a strict calibration goal still runs. The UI shows both: READY/CAL NEEDED in the toolbar, and the climb HUD threshold line at 0.88. The stage’s 3D device panel (tab <strong>device</strong>) gives a spatial reading of the same health story. The dock ledger narrates that story in tool traces.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-thresholds.svg" alt="FIG. 1.9"/>
+  <p class="fig-cap"><span class="label">FIG. 1.9</span>The fidelity number line. The simulator clamps reported fidelity to [0.55, 0.999]. Demo caps can pin the ceiling near 0.69 to force failure.</p>
+</div>
+<p class="sources"><strong>Sources.</strong> adapter/base.py (QPUAdapter); adapter/noisy_sim.py; orchestrator/orchestrator.py (tools, ToolTrace); orchestrator/planner.py (plan_from_goal); models/types.py (Job*, READINESS_*); calibration/service.py; ui/app/page.tsx; ui/components/viz/Device3D*.tsx. Architecture literature: P. Krantz et al., Appl. Phys. Rev. 6, 021318 (2019), https://arxiv.org/abs/1904.06560 (FIGS. 1.1–1.3); IBM Qiskit Pulse, https://docs.quantum.ibm.com/api/qiskit/0.46/pulse (FIGS. 1.3, 1.5); N. Wittler / M. Werninghaus et al., Phys. Rev. Applied 15, 034080 (2021) (FIG. 1.4); Keysight, “Characterizing Superconducting Qubits,” https://www.keysight.com/us/en/assets/3120-1387/application-notes/Characterizing-Superconducting-Qubits.pdf (FIGS. 1.2–1.3).</p>
+
+<h1 class="part"><span class="part-num">Part 2</span>Theory of the interface</h1>
+
+<p class="lede">This part states why an NL-goal and tool-using agent layer on a narrow QPU adapter is the right seam for calibration-heavy quantum ops. It also states where this system’s honesty line cuts. It is the intellectual core of the book.</p>
+
+<h2>2.1 The problem the interface solves</h2>
+<p>Quantum hardware drifts. Before a circuit is worth running, someone — human or agent — must decide whether to calibrate, which knobs to move, whether the move helped, and how that correlates with downstream job quality. Vendor pulse APIs expose the knobs. They do not expose the <em>decision loop</em> as a first-class, observable object. Chat-only LLM UIs expose language. They do not expose continuous detuning, fidelity climb, or a tool ledger operators can audit.</p>
+<p>The AI→QPU integration layer asserts a third surface: <strong>goals in, typed tool traces out, device physics behind an adapter</strong>. Calibration is not a side effect of “run circuit”. It is an explicit tool with a success predicate and three metrics.</p>
+
+<div class="rule-of-thumb"><strong>Rule of thumb</strong>
+If an operator cannot point at a ToolTrace row and a fidelity history for a calibration attempt, the control plane is not yet agent-ready. It is still a pulse console with a chatbot taped on.
+</div>
+
+<h2>2.2 NL goals and tool-using agents vs bare pulse APIs</h2>
+<p>Bare pulse APIs are necessary and not enough. They are the contract a driver must honour (load waveforms, arm triggers, commit cal tables). They are the wrong API for an agent that reasons in tasks: “bring Q0 to ready”, “don’t run Bell until ready”, “cancel the stuck diagnostic”. Agents need a small catalog of tools with stable names and JSON-shaped results. Humans need the same catalog as chips and a composer, not as a 200-method SDK.</p>
+<p>This system’s planner is deliberately simple and deterministic. That is a feature for a founder demo: the mapping from goal text to tools is auditable in one function. When <code>CONDUCTOR_ENABLE_LLM=1</code>, an optional OpenAI planner may emit the same <code>ToolCall</code> schema. The execution path, traces, and metrics do not change. The interface’s value is the tool surface and the loop, not the quality of the NL parser.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-three-layers.svg" alt="FIG. 2.1"/>
+  <p class="fig-cap"><span class="label">FIG. 2.1</span>Three concerns, one direction. Intent (agent) decides. Contract (adapter) admits only typed operations. Physics/noise (backend) is replaceable.</p>
+</div>
+
+<h2>2.3 Intent vs device contract vs physics</h2>
+<p>Separating the three layers is the design claim.</p>
+<ol>
+<li><strong>Intent</strong> lives in the orchestrator and planner. It answers: what should we do next, given a goal? It records ToolTraces. It must not embed vendor pulse details.</li>
+<li><strong>Device contract</strong> is <code>QPUAdapter</code>: six methods. Anything that can sit under those methods — noisy sim today, AWG driver tomorrow — is a valid backend. The factory (<code>adapter/factory.py</code>) is the only place that chooses.</li>
+<li><strong>Physics / noise</strong> lives in the backend. Drift rates, fidelity kernels, Bell contrast, firmware temperatures — none of these belong in the planner. On the stub, physics is explicitly “not connected”.</li>
+</ol>
+<p>This separation lets a founder say: “keep the UI and the orchestrator; swap the adapter.” Without it, every UI widget hard-codes simulator assumptions. The project then fails at the first real fridge.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-adapter-contract.svg" alt="FIG. 2.2"/>
+  <p class="fig-cap"><span class="label">FIG. 2.2</span>The six-method waist. submit/poll/cancel for jobs; get_device_state for health; get/apply calibration for the loop.</p>
+</div>
+
+<h2>2.4 Closed-loop calibration as the viability reason</h2>
+<p>Open-loop “set these params” is not enough for agents. Agents need a stop condition and a progress signal. The CalibrationService supplies both: a threshold (default 0.88) and a per-iteration fidelity history. The algorithm is gradient-free on purpose — coordinate jitter with an annealing-flavoured acceptor — because this system’s job is to exercise the <em>control-plane loop</em>, not to win a tuner bake-off. Strategy objects can replace the sampler later. The metrics and traces stay.</p>
+<p>Each apply samples <code>interface_latency</code>. Successes accumulate <code>time_to_calibrated</code>. Attempts accumulate the success rate. Those three numbers are the dials a skeptical quantum+ML founder should watch in the demo. If they move for the wrong reasons (or never move), the loop is fake.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-cal-loop.svg" alt="FIG. 2.3"/>
+  <p class="fig-cap"><span class="label">FIG. 2.3</span>Viability diagram: without remeasurement against an explicit threshold, calibration is not an agent tool — it is a hope.</p>
+</div>
+
+<h2>2.5 Observability and trust surfaces</h2>
+<p>Trust in a control plane is not a green checkmark. It is a set of surfaces an operator can reconcile:</p>
+<ul>
+<li><strong>Fidelity history</strong> — climb chart with threshold reference line (UI HUD + in-rail details).</li>
+<li><strong>mK / coherence / readout</strong> — device state snapshot from <code>get_device_state</code>.</li>
+<li><strong>Param drift / detuning</strong> — <code>get_detuning</code> exposes |applied − true| on the sim (the problem calibration solves). The WebGPU surface places cyan (true) and amber (applied) markers on a Δfreq × Δamp landscape.</li>
+<li><strong>Tool ledger</strong> — ToolTrace rows: which tool, which args, latency, summary. The dock ledger is this list rendered as turns.</li>
+</ul>
+<p>If any one of these is missing, agents can lie politely. With all four, a failure (fid cap, max iters, stub backend) is legible.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-drift.svg" alt="FIG. 2.4"/>
+  <p class="fig-cap"><span class="label">FIG. 2.4</span>Drift model on the noisy simulator. True params wander. Applied params step when calibration commits. Detuning is the gap.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-fidelity-surface.svg" alt="FIG. 2.5"/>
+  <p class="fig-cap"><span class="label">FIG. 2.5</span>What the instrument stage means. The landscape peaks at the hidden true target. Colour bands follow the iOS palette thresholds.</p>
+</div>
+
+<h2>2.6 Why instrument UI (stage + dock) beats ChatGPT-only chat</h2>
+<p>Chat is a fine composer. It is a poor primary surface for a drifting physical system. Quantum ops need continuous state in the visual field: readiness, temperatures, detuning, the spatial relationship of applied vs true. A chat transcript buries those in prose and scrolls them away. The system’s UI makes the stage the hero (~65% of the vertical field, full-bleed under the dock) with tabs for the WebGPU drift landscape and the 3D device panel. Language stays in a bottom-third progressive dock (~33vh) with chat bubbles, expanded suggestion chips (Calibrate Q0, Bell pair, Q0 readiness, Device status, Improve Bell, Diagnose Q0), and a high-contrast composer flush at the bottom. Frost uses a dedicated <code>.stage-blur</code> sibling with solid stacked bands (no <code>backdrop-filter</code> on the dock) so Safari keeps the upper panes sharp.</p>
+<p>Details expand in-rail. Nothing steals the stage with a modal. ⌘K is available for power users but does not animate open (Emil Kowalski skill constraint). Toasts (Sonner) confirm terminal outcomes without becoming the narrative channel.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-why-instrument.svg" alt="FIG. 2.6"/>
+  <p class="fig-cap"><span class="label">FIG. 2.6</span>Chat-only vs instrument. The right column is what this system ships in ui/app/page.tsx.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-ui-layout.svg" alt="FIG. 2.7"/>
+  <p class="fig-cap"><span class="label">FIG. 2.7</span>Layout sketch of the instrument: frosted toolbar, stage with HUD, progressive-blur dock with ledger and composer.</p>
+</div>
+
+<h2>2.7 Limits: sim vs hardware, toy timings, what changes on a real QPU</h2>
+<div class="honesty"><strong>Honesty</strong>
+This is a control-plane demo, not a physics engine. Fidelity is a smooth function of parameter error with a wide basin so a simple search can climb. Drift is accelerated for demo feel. Interface latency on an in-process simulator is not predictive of RPC/firmware latency. Bell “shots” are a Python loop, not ADC captures. Temperatures in mK are a theatrical function of fidelity, not a sensor.
+</div>
+<p>On a real QPU, the following change — and the design claims they can change behind the adapter without rewriting the orchestrator or UI:</p>
+<ul>
+<li><strong>apply_calibration_update</strong> commits a versioned cal table / AWG params and may run a verification sequence taking seconds to minutes.</li>
+<li><strong>get_device_state</strong> reads monitor services, FPGA temps, PLL lock, link status — the stub already sketches these fields in its notes string.</li>
+<li><strong>get_detuning</strong> comes from spectroscopy / Ramsey, not from a hidden vector the process itself owns. The sim’s omniscient detuning is a teaching tool.</li>
+<li><strong>submit_job</strong> for circuits validates schedules, loads waveform memory, arms triggers, waits for completion.</li>
+<li><strong>Timings and success rates</strong> become operational SLOs, not sub-second toys.</li>
+<li><strong>Persistence</strong> — InMemoryJobStore must become Postgres (or equivalent) with retention and goal_id correlation.</li>
+</ul>
+<div class="rule-of-thumb"><strong>Rule of thumb</strong>
+Judge this system by whether a founder can see calibration as a recurring decision with observable cost. Judge a production port by whether the same ToolTraces and metrics still make sense when each apply takes real wall time on real hardware.
+</div>
+
+<div class="figure ">
+  <img src="diagrams/fig-failure-modes.svg" alt="FIG. 2.8"/>
+  <p class="fig-cap"><span class="label">FIG. 2.8</span>Failure modes the interface must render honestly: demo fidelity cap, max-iteration exhaustion, and the always-cold hardware stub.</p>
+</div>
+
+<h2>2.8 Summary claim</h2>
+<p>The interface works because it (1) lifts NL goals into a tiny tool catalog, (2) confines device diversity to a six-method adapter, (3) makes calibration a closed loop with explicit thresholds and metrics, (4) publishes trust surfaces (fidelity, mK, drift, 3D device view, ledger), and (5) uses an instrument UI that keeps physics in the visual field while language stays secondary. Everything else in this book is the engineering of that claim on main @ <code>b05005c</code>.</p>
+
+<p class="sources"><strong>Sources.</strong> README.md (thesis; real vs simulated); adapter/base.py; adapter/noisy_sim.py; adapter/hardware_stub.py; adapter/factory.py; calibration/service.py; observability/metrics.py; orchestrator/*.py; api/server.py; ui/app/page.tsx; ui/components/viz/calibration-surface.tsx; ui/lib/api.ts</p>

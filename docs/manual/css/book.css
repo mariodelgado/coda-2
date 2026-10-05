@@ -1,0 +1,420 @@
+/* Coda 2 Technical Manual — print stylesheet (letter) */
+@page {
+  size: letter;
+  margin: 0.75in 0.7in 0.85in 0.7in;
+  @top-left {
+    content: "CODA 2 / TECHNICAL MANUAL";
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 8pt;
+    color: #64748b;
+    letter-spacing: 0.04em;
+  }
+  @top-right {
+    content: string(chapter-title);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 8pt;
+    color: #64748b;
+  }
+  @bottom-center {
+    content: counter(page);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #475569;
+  }
+}
+@page :first {
+  margin: 0;
+  @top-left { content: none; }
+  @top-right { content: none; }
+  @bottom-center { content: none; }
+}
+@page front {
+  margin: 0.75in 0.7in 0.85in 0.7in;
+  @top-left { content: none; }
+  @top-right { content: none; }
+  @bottom-center {
+    content: counter(page, lower-roman);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #475569;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+  font-family: "Georgia", "Times New Roman", Times, serif;
+  font-size: 10.5pt;
+  line-height: 1.45;
+  color: #0f172a;
+  background: #fff;
+  margin: 0;
+  counter-reset: page fig tbl;
+}
+
+/* Poster cover (Atoms-for-Peace / Mid-Century plate) */
+.plate {
+  page: auto;
+  page-break-after: always;
+  page-break-inside: avoid;
+  margin: 0;
+  padding: 0;
+  width: 8.5in;
+  height: 11in;
+  max-height: 11in;
+  overflow: hidden;
+  background: #c5d5d8;
+  color: #1a1a1a;
+}
+.plate img.cover-art,
+.plate object.cover-art,
+.plate svg.cover-art {
+  display: block;
+  width: 8.5in;
+  height: 11in;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/* CEO / product-intent front section */
+.product-intent {
+  page: front;
+  page-break-after: always;
+}
+.product-intent .thesis {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13pt;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #0f172a;
+  border-left: 3px solid #5a8fb5;
+  padding: 0.12in 0.16in;
+  margin: 0.18in 0 0.22in 0;
+  background: #eef4f6;
+}
+.glance {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  padding: 0.12in 0.16in;
+  margin: 0.16in 0 0.2in 0;
+}
+.glance strong.glance-label {
+  display: block;
+  font-size: 8.5pt;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #475569;
+  margin-bottom: 6pt;
+}
+.glance ul {
+  margin: 0;
+  padding-left: 1.1em;
+}
+.glance li {
+  margin: 0 0 4pt 0;
+  font-size: 10pt;
+  color: #1e293b;
+  line-height: 1.4;
+}
+
+.front-matter { page: front; }
+.front-matter .page-break { page-break-before: always; }
+
+h1.part {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 22pt;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+  margin: 0 0 0.15in 0;
+  padding-bottom: 0.08in;
+  border-bottom: 2px solid #0f172a;
+  string-set: chapter-title content(text);
+  page-break-before: always;
+}
+h1.part .part-num {
+  display: block;
+  font-size: 9pt;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #64748b;
+  font-weight: 500;
+  margin-bottom: 0.08in;
+}
+h2 {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13pt;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0.28in 0 0.1in 0;
+  page-break-after: avoid;
+}
+h3 {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 11pt;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0.2in 0 0.08in 0;
+  page-break-after: avoid;
+}
+h4 {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 10pt;
+  font-weight: 600;
+  color: #334155;
+  margin: 0.15in 0 0.06in 0;
+}
+p { margin: 0 0 0.12in 0; orphans: 3; widows: 3; }
+.lede {
+  font-size: 11.5pt;
+  color: #1e293b;
+  margin-bottom: 0.18in;
+  line-height: 1.5;
+}
+.rule-of-thumb {
+  border-left: 3px solid #007AFF;
+  background: #f1f5f9;
+  padding: 0.1in 0.14in;
+  margin: 0.16in 0;
+  font-size: 10pt;
+}
+.rule-of-thumb strong {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 8.5pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #007AFF;
+  display: block;
+  margin-bottom: 4pt;
+}
+.honesty {
+  border-left: 3px solid #FF9500;
+  background: #fff7ed;
+  padding: 0.1in 0.14in;
+  margin: 0.16in 0;
+  font-size: 10pt;
+}
+.honesty strong {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 8.5pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c2410c;
+  display: block;
+  margin-bottom: 4pt;
+}
+.sources {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 8pt;
+  color: #64748b;
+  margin: 0.14in 0 0.2in 0;
+  line-height: 1.35;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 0.08in;
+}
+code, .mono {
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 8.5pt;
+  background: #f1f5f9;
+  padding: 1px 4px;
+  border-radius: 2px;
+}
+pre {
+  font-family: "SF Mono", "Menlo", "Consolas", monospace;
+  font-size: 8pt;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 0.12in 0.14in;
+  border-radius: 4px;
+  overflow: hidden;
+  line-height: 1.4;
+  margin: 0.12in 0 0.16in 0;
+  page-break-inside: avoid;
+}
+pre .cmt { color: #94a3b8; }
+pre .kw { color: #7dd3fc; }
+pre .str { color: #86efac; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 8.5pt;
+  margin: 0.12in 0 0.08in 0;
+  page-break-inside: avoid;
+}
+th {
+  text-align: left;
+  background: #0f172a;
+  color: #f8fafc;
+  padding: 5pt 6pt;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+td {
+  padding: 4.5pt 6pt;
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: top;
+}
+tr:nth-child(even) td { background: #f8fafc; }
+caption, .table-cap, .fig-cap {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 8pt;
+  color: #475569;
+  text-align: left;
+  margin: 0.06in 0 0.14in 0;
+  line-height: 1.35;
+}
+.fig-cap .label {
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-right: 6pt;
+}
+.figure {
+  margin: 0.18in 0 0.1in 0;
+  page-break-inside: avoid;
+  text-align: center;
+}
+.figure img, .figure svg {
+  max-width: 100%;
+  height: auto;
+}
+.figure.full img { width: 100%; }
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2in;
+  margin: 0.12in 0;
+}
+.swatch {
+  display: inline-block;
+  width: 10pt;
+  height: 10pt;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 4pt;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+.swatch.slate { background: #475569; }
+.swatch.blue { background: #007AFF; }
+.swatch.orange { background: #FF9500; }
+.swatch.green { background: #34C759; }
+.swatch.red { background: #FF3B30; }
+.swatch.gray { background: #8E8E93; }
+
+ul, ol { margin: 0 0 0.14in 0; padding-left: 0.22in; }
+li { margin-bottom: 0.04in; }
+.toc { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 10pt; }
+.toc .toc-part {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dotted #cbd5e1;
+  padding: 5pt 0;
+  color: #0f172a;
+  text-decoration: none;
+}
+.toc .toc-part .n { color: #64748b; margin-right: 8pt; font-variant-numeric: tabular-nums; }
+.toc .section {
+  font-size: 9pt;
+  color: #475569;
+  padding: 2pt 0 2pt 0.2in;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px dotted #e2e8f0;
+}
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.12in;
+  margin: 0.14in 0;
+}
+.metric-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 0.1in;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.metric-card .k {
+  font-size: 7.5pt;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+.metric-card .v {
+  font-size: 16pt;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+  margin-top: 2pt;
+}
+.metric-card .d { font-size: 8pt; color: #64748b; margin-top: 2pt; }
+.endpoint {
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 9pt;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 3pt 8pt;
+  border-radius: 3px;
+  display: inline-block;
+  margin-bottom: 4pt;
+}
+.endpoint .method { color: #86efac; font-weight: 700; margin-right: 8pt; }
+.endpoint .method.post { color: #7dd3fc; }
+.endpoint .method.get { color: #86efac; }
+.callout-fail {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  padding: 0.1in 0.12in;
+  margin: 0.12in 0;
+  border-radius: 3px;
+  font-size: 9.5pt;
+}
+.callout-ok {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  padding: 0.1in 0.12in;
+  margin: 0.12in 0;
+  border-radius: 3px;
+  font-size: 9.5pt;
+}
+.page-break { page-break-before: always; }
+.keep { page-break-inside: avoid; }
+.small { font-size: 9pt; color: #475569; }
+.roman-footer { /* handled by @page front */ }
+
+/* Mid-century diagram plates (Atoms-for-Peace / Swiss) */
+.diagram-plate {
+  margin: 0.22in 0 0.28in 0;
+  page-break-inside: avoid;
+  border-top: 1px solid #c5d5d8;
+  padding-top: 0.12in;
+}
+.diagram-plate .figure {
+  margin-bottom: 0.06in;
+}
+.diagram-plate .figure img {
+  width: 100%;
+  border: 1px solid #a8bbc0;
+  background: #c5d5d8;
+}
+.diagram-explain {
+  font-family: "Georgia", "Times New Roman", Times, serif;
+  font-size: 10pt;
+  line-height: 1.45;
+  color: #1e293b;
+  margin: 0.06in 0 0.08in 0;
+  padding: 0.1in 0.14in;
+  background: #eef4f6;
+  border-left: 3px solid #5a8fb5;
+}
+.diagram-explain code {
+  font-size: 8pt;
+}
+/* Mid-century swatches for conventions table */
+.swatch.seafoam { background: #c5d5d8; }
+.swatch.olive { background: #7a8a4a; }
+.swatch.blue-mid { background: #5a8fb5; }
+.swatch.red-accent { background: #c41e1e; }

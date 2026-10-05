@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 220" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="720" height="220" fill="#fff"/>
+  <text x="16" y="22" font-size="10" fill="#475569" letter-spacing="1.2">TWO THRESHOLDS - READINESS VS CALIBRATION SUCCESS</text>
+  <line x1="60" y1="140" x2="200" y2="140" stroke="#FF3B30" stroke-width="8"/>
+  <line x1="200" y1="140" x2="380" y2="140" stroke="#FF9500" stroke-width="8"/>
+  <line x1="380" y1="140" x2="480" y2="140" stroke="#007AFF" stroke-width="8"/>
+  <line x1="480" y1="140" x2="660" y2="140" stroke="#34C759" stroke-width="8"/>
+  <text x="60" y="170" font-size="8" fill="#475569">0.55 floor</text>
+  <text x="200" y="170" font-size="8" fill="#FF9500">0.82 readiness</text>
+  <text x="380" y="170" font-size="8" fill="#007AFF">0.88 cal target</text>
+  <text x="640" y="170" text-anchor="end" font-size="8" fill="#34C759">~0.99</text>
+  <text x="130" y="110" text-anchor="middle" font-size="9" fill="#FF3B30">stuck / capped</text>
+  <text x="290" y="110" text-anchor="middle" font-size="9" fill="#FF9500">device not ready</text>
+  <text x="430" y="110" text-anchor="middle" font-size="9" fill="#007AFF">ready; climbing</text>
+  <text x="570" y="110" text-anchor="middle" font-size="9" fill="#34C759">calibrated</text>
+  <text x="60" y="200" font-size="8" fill="#475569">READINESS_READOUT_FIDELITY_THRESHOLD=0.82 - CalibrationService.fidelity_threshold=0.88 - sim clamp [0.55, 0.999]</text>
+</svg>

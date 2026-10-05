@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 300" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="720" height="300" fill="#0b1220"/>
+  <text x="16" y="24" font-size="10" fill="#94a3b8" letter-spacing="1.2">FIDELITY LANDSCAPE - dfreq x damp (UI MEANING)</text>
+  <ellipse cx="280" cy="160" rx="180" ry="100" fill="#1e293b" stroke="#8E8E93" stroke-width="1"/>
+  <ellipse cx="300" cy="145" rx="120" ry="70" fill="#334155" stroke="#FF9500" stroke-width="1" opacity="0.9"/>
+  <ellipse cx="320" cy="130" rx="60" ry="35" fill="#1e3a5f" stroke="#007AFF" stroke-width="1.5"/>
+  <circle cx="320" cy="130" r="10" fill="#007AFF"/>
+  <circle cx="250" cy="175" r="8" fill="#FF9500"/>
+  <text x="320" y="118" text-anchor="middle" font-size="9" fill="#007AFF" font-weight="600">true</text>
+  <text x="250" y="198" text-anchor="middle" font-size="9" fill="#FF9500" font-weight="600">applied</text>
+  <text x="280" y="270" text-anchor="middle" font-size="9" fill="#64748b">peak fidelity near true - falloff with ||d||^2</text>
+  <rect x="500" y="50" width="200" height="210" rx="6" fill="#111827"/>
+  <text x="520" y="78" font-size="10" fill="#e2e8f0" font-weight="600">Colour mapping</text>
+  <rect x="520" y="95" width="14" height="14" rx="2" fill="#007AFF"/>
+  <text x="545" y="107" font-size="9" fill="#cbd5e1">f &gt;= 0.88  high / true</text>
+  <rect x="520" y="120" width="14" height="14" rx="2" fill="#FF9500"/>
+  <text x="545" y="132" font-size="9" fill="#cbd5e1">f &gt;= 0.75  mid / applied</text>
+  <rect x="520" y="145" width="14" height="14" rx="2" fill="#8E8E93"/>
+  <text x="545" y="157" font-size="9" fill="#cbd5e1">else  low</text>
+  <text x="520" y="190" font-size="9" fill="#94a3b8">Source: calibration-</text>
+  <text x="520" y="205" font-size="9" fill="#94a3b8">surface.tsx estimate-</text>
+  <text x="520" y="220" font-size="9" fill="#94a3b8">Fidelity(dx,dy,base)</text>
+  <text x="520" y="245" font-size="8" fill="#64748b">WebGPU with WebGL fallback</text>
+</svg>

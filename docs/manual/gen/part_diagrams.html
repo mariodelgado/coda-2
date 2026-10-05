@@ -1,0 +1,55 @@
+<h1 class="part"><span class="part-num">Diagrams</span>How language becomes physics</h1>
+
+<p class="lede">Six mid-century plates. Each figure has a caption and a short explanation. A CEO or engineer can read each once. The visual language matches the cover: seafoam, olive, translucent blues, one red accent, extended sans, geometric clarity.</p>
+
+<p>These plates restate the system claim without dark UI chrome. Natural language becomes typed decisions. Decisions become numbers. Numbers cross a narrow adapter firewall into replaceable physics. Fidelity and traces flow back into an instrument. The stage (physics) stays above the dock (agency).</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-whole-machine.svg" alt="PLATE 01 — The whole machine"/>
+    <p class="fig-cap"><span class="label">PLATE 01</span>The whole machine — intent to instrument, with fidelity back.</p>
+  </div>
+  <p class="diagram-explain">An operator states a goal. An agent maps it onto five tools and emits traces. The adapter is the waist: only six typed methods reach the backend. The backend may be the noisy simulator (default) or a hardware-shaped stub. Results — fidelity, detuning, readiness — return into the instrument UI. The human can see whether the loop worked. The dashed red arc is the product feedback path.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-cal-loop.svg" alt="PLATE 02 — Calibration loop"/>
+    <p class="fig-cap"><span class="label">PLATE 02</span>Closed-loop calibration — measure, decide against 0.88, apply, remeasure.</p>
+  </div>
+  <p class="diagram-explain">Calibration is viable as an agent tool only because it is a loop. Measure fidelity. Decide whether best fidelity has crossed the service threshold (0.88) or whether to sample a neighbor. Apply an update through the adapter (this samples interface latency). Remeasure. Exit on success, exhausted iterations, or a demo fidelity cap. Hardened calibration (PR&nbsp;#2) widens the sim kernel and strengthens early exploration. Founder-demo seeds converge. The adapter seam does not change.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-language-firewall.svg" alt="PLATE 03 — Language to physics firewall"/>
+    <p class="fig-cap"><span class="label">PLATE 03</span>Language → decisions → numbers → contract → physics. Firewall at the adapter.</p>
+  </div>
+  <p class="diagram-explain">Prose stops at the red bar. The planner (deterministic by default; optional LLM behind <code>CONDUCTOR_ENABLE_LLM</code>) turns a goal into ToolCalls. Tools produce numbers — qubit ids, parameter deltas, thresholds. Only those typed payloads cross the QPUAdapter. That firewall lets backends swap without rewriting the agent. It also stops the agent from inventing illegal pulse calls.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-stage-dock.svg" alt="PLATE 04 — Stage vs dock"/>
+    <p class="fig-cap"><span class="label">PLATE 04</span>Stage holds physics; dock holds agency. On current main the stage is three panes — drift | device 3D | cryostat — with two resizable splitters. No tabs.</p>
+  </div>
+  <p class="diagram-explain">Chat is a fine composer. It is a poor primary surface for a drifting device. The instrument keeps continuous state in the visual field. The stage shows three panes at once. Left: a high-contrast drift grid, coplanar with the fidelity surface, with true/applied markers. Center: the 3D device (qubits, chiplets, resonators) with a readout card for fidelity, T1, T2, and mK. Right: the isometric dilution-fridge plate with a status strip and the state chip. Two iPadOS Split View–style separators, with capsule handles on hover, resize the panes. There is no glass inset and no tab flip. PR&nbsp;#2 first used tabs labeled drift | device. That control is past. The device and cryostat panes are UI. They are not a fridge sensor. The dock over the bottom-third frost holds the transcript, workflow chips, and composer — agency under physics, not instead of it. See FIG. A.0 for the live screenshot.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-metrics.svg" alt="PLATE 05 — Metrics scoreboard"/>
+    <p class="fig-cap"><span class="label">PLATE 05</span>The three founder-facing dials: time-to-cal, success rate, interface latency.</p>
+  </div>
+  <p class="diagram-explain">If calibration is a product, its cost must be observable. <em>Time-to-calibrated</em> is wall seconds from loop start to best fidelity ≥ threshold (successes only). <em>Calibration success rate</em> is successes over attempts. <em>Interface latency</em> is the seconds per <code>apply_calibration_update</code> roundtrip. CalibrationService owns the aggregates. The HTTP <code>/metrics</code> surface rolls percentiles for operators and demos.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-real-vs-sim.svg" alt="PLATE 06 — Real vs stand-in"/>
+    <p class="fig-cap"><span class="label">PLATE 06</span>Real software artifact versus the stand-in noisy simulator.</p>
+  </div>
+  <p class="diagram-explain">Keep the left column. The adapter contract, calibration loop, orchestrator traces, FastAPI plane, and instrument UI (including the 3D device panel) are the durable artifact. The right column is honest scaffolding: a toy 1–2 qubit model with hidden true parameters, random-walk drift, and a climbable fidelity kernel — not a fridge, not an AWG, not a pulse compiler. A shaped stub documents the driver shape and refuses real work. Replace the stand-in behind the same six methods.</p>
+</div>
+
+<p class="sources"><strong>Sources.</strong> adapter/base.py; adapter/noisy_sim.py; calibration/service.py; orchestrator/*; api/server.py; ui/app/page.tsx; ui/components/viz/calibration-surface.tsx; ui/components/viz/Device3D*.tsx (PR&nbsp;#2); cover palette from assets/cover-bloch.svg. Part&nbsp;1 architecture plates: gen_qpu_plates.py.</p>

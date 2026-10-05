@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 480" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="760" height="480" fill="#c5d5d8"/>
+  <defs>
+  <marker id="arr-who" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#1a1a1a"/>
+  </marker>
+  <marker id="arr-who-red" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+    <path d="M0,0 L8,4 L0,8 Z" fill="#c41e1e"/>
+  </marker>
+</defs>
+  <text x="36" y="36" font-size="11" fill="#1a1a1a" letter-spacing="0.28em" font-weight="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">WHO THIS IS FOR</text>
+  <text x="36" y="56" font-size="9" fill="#4a5560" letter-spacing="0.12em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">THREE ROLES  ·  ONE INSTRUMENT</text>
+
+  <circle cx="140" cy="188" r="108" fill="#5a8fb5" fill-opacity="0.16"/>
+  <circle cx="380" cy="188" r="118" fill="#7a8a4a" fill-opacity="0.13"/>
+  <circle cx="620" cy="188" r="112" fill="#3d6a8c" fill-opacity="0.14"/>
+
+  <!-- 01 engineer: hexagon (the seam), left -->
+  <g>
+    <polygon points="140.0,88.0 237.0,144.0 237.0,256.0 140.0,312.0 43.0,256.0 43.0,144.0"
+             fill="#7a8a4a" fill-opacity="0.55" stroke="#1a1a1a" stroke-width="1.4"/>
+    <text x="140" y="162" text-anchor="middle" font-size="9" fill="#2a2a2a" letter-spacing="0.22em">01</text>
+    <text x="140" y="186" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1a1a" letter-spacing="0.08em">ENGINEER</text>
+    <text x="140" y="206" text-anchor="middle" font-size="9" fill="#2a2a2a">control software</text>
+    <text x="140" y="228" text-anchor="middle" font-size="10" fill="#1a1a1a">language to adapter</text>
+    <text x="140" y="246" text-anchor="middle" font-size="10" fill="#1a1a1a">QPUAdapter seam</text>
+    <text x="140" y="264" text-anchor="middle" font-size="10" fill="#1a1a1a">traces · cal loop</text>
+  </g>
+
+  <!-- 02 operator: circle -->
+  <g>
+    <circle cx="380" cy="194" r="100" fill="#5a8fb5" fill-opacity="0.50" stroke="#1a1a1a" stroke-width="1.4"/>
+    <text x="380" y="158" text-anchor="middle" font-size="9" fill="#2a2a2a" letter-spacing="0.22em">02</text>
+    <text x="380" y="182" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">OPERATOR</text>
+    <text x="380" y="200" text-anchor="middle" font-size="9" fill="#2a2a2a">day to day</text>
+    <text x="380" y="222" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a1a">LIVE / READY</text>
+    <text x="380" y="240" text-anchor="middle" font-size="10" fill="#1a1a1a">calibrate · circuits</text>
+    <text x="380" y="258" text-anchor="middle" font-size="10" fill="#1a1a1a">cancel · Δf</text>
+  </g>
+
+  <!-- 03 technical lead: rectangle (integration with their stack), right -->
+  <g>
+    <rect x="528" y="100" width="184" height="188" rx="6" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.4"/>
+    <text x="620" y="128" text-anchor="middle" font-size="9" fill="#4a5560" letter-spacing="0.22em">03</text>
+    <text x="620" y="152" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1a1a" letter-spacing="0.08em">TECH LEAD</text>
+    <text x="620" y="170" text-anchor="middle" font-size="9" fill="#4a5560">your stack</text>
+    <line x1="558" y1="186" x2="682" y2="186" stroke="#7a8a4a" stroke-width="1.2"/>
+    <text x="620" y="210" text-anchor="middle" font-size="10" fill="#1a1a1a">adapter seam</text>
+    <text x="620" y="228" text-anchor="middle" font-size="10" fill="#1a1a1a">three metrics</text>
+    <text x="620" y="246" text-anchor="middle" font-size="10" fill="#1a1a1a">calibrate to READY</text>
+    <text x="620" y="264" text-anchor="middle" font-size="10" fill="#1a1a1a">then a Bell pair</text>
+  </g>
+
+  <line x1="140" y1="312" x2="200" y2="356" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arr-who)"/>
+  <line x1="380" y1="294" x2="380" y2="356" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arr-who)"/>
+  <line x1="620" y1="288" x2="560" y2="356" stroke="#1a1a1a" stroke-width="1.3" marker-end="url(#arr-who)"/>
+
+  <rect x="80" y="364" width="600" height="78" rx="6" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.4"/>
+  <text x="380" y="396" text-anchor="middle" font-size="13" font-weight="700" fill="#1a1a1a" letter-spacing="0.2em">INSTRUMENT</text>
+  <text x="380" y="418" text-anchor="middle" font-size="10" fill="#4a5560">one stage  ·  one dock  ·  one toolbar</text>
+</svg>

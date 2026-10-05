@@ -1,0 +1,145 @@
+<h1 class="part"><span class="part-num">Part 3B</span>Architecture decision records</h1>
+
+<p class="lede">Short ADRs for this system. Each records context, decision, and consequences as shipped on main.</p>
+
+<h2>ADR-001 — Narrow adapter waist</h2>
+<p><strong>Context.</strong> Real QPUs differ wildly in pulse programming models. <strong>Decision.</strong> Six synchronous methods on QPUAdapter. <strong>Consequences.</strong> Orchestrator/UI stay stable; week-1 work is implementing the six methods. Async/hardware batching is a future wrapper concern.</p>
+
+<h2>ADR-002 — Deterministic planner by default</h2>
+<p><strong>Context.</strong> NL goals are convenient; LLM keys are not. <strong>Decision.</strong> Rule-based planner; optional LLM behind env flag. <strong>Consequences.</strong> Demo and CI are offline; goal coverage is intentionally small; expand rules or enable LLM later without changing tools.</p>
+
+<h2>ADR-003 — In-memory everything</h2>
+<p><strong>Context.</strong> Weekend prototype. <strong>Decision.</strong> No database. <strong>Consequences.</strong> Refresh-safe only within process lifetime; persistence is an explicit next step.</p>
+
+<h2>ADR-004 — Instrument UI over dashboard cards</h2>
+<p><strong>Context.</strong> Early Streamlit UI became a card wall. <strong>Decision.</strong> Replace with a Next.js instrument (65/35 at first; now a three-pane stage over a dock). <strong>Consequences.</strong> Higher front-end complexity; clearer founder narrative; WebGPU dependency with WebGL fallback.</p>
+
+<h2>ADR-005 — Expose sim detuning</h2>
+<p><strong>Context.</strong> Calibration needs a visible problem. <strong>Decision.</strong> get_detuning on sim; stage markers. <strong>Consequences.</strong> Teaching oracle; stub must raise; production must replace with measured diagnostics.</p>
+
+<h2>ADR-006 — Domain failures as 200 + flags</h2>
+<p><strong>Context.</strong> Agents should parse tool outcomes. <strong>Decision.</strong> Calibration failure returns HTTP 200 with success/ok false. <strong>Consequences.</strong> Do not key off HTTP status alone for domain errors; UUID errors still 4xx.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-architecture.svg" alt="FIG. 3B.1"/>
+  <p class="fig-cap"><span class="label">FIG. 3B.1</span>Architecture context for ADR-001/004.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 5C</span>Stub driver integration sketch</h1>
+
+<p class="lede">How a real hardware team should read ConductorShapedAdapter — as a checklist, not as runnable firmware.</p>
+
+<table><thead><tr><th>METHOD</th><th>REAL DRIVER SHOULD…</th><th>STUB DOES…</th></tr></thead><tbody><tr><td>submit_job (CIRCUIT)</td><td>Validate/lower pulse_program; allocate AWG; load; arm; collect shots</td><td>FAIL with NotImplemented message + payload_shape</td></tr><tr><td>submit_job (CALIBRATION)</td><td>Write versioned cal table; optional verify sequence</td><td>Accept shape; apply_calibration_update stub fidelity 0.90</td></tr><tr><td>poll_job</td><td>Return queue/run/complete from control system</td><td>Return in-memory record</td></tr><tr><td>cancel_job</td><td>Best-effort abort if non-terminal</td><td>Mark CANCELLED if non-terminal</td></tr><tr><td>get_device_state</td><td>Query monitors, FPGA, env sensors</td><td>Static snapshot; is_ready=False; NOTES disconnected</td></tr><tr><td>get_calibration</td><td>Read committed table</td><td>Last applied or defaults</td></tr><tr><td>apply_calibration_update</td><td>Validate ranges; commit; verify; return measured fid</td><td>Store last applied; fidelity 0.90 message STUB</td></tr><tr><td>get_detuning</td><td>Spectroscopy / Ramsey estimate</td><td>NotImplementedError</td></tr><tr><td>measure_fidelity</td><td>Hardware estimate</td><td>Return 0.55</td></tr></tbody></table><p class="table-cap">Table 5C.1. Stub vs real driver checklist (hardware_stub.py docstring).</p>
+
+<pre>
+# integration sketch
+export CONDUCTOR_QPU_BACKEND=stub   # proves seam
+# then subclass:
+class MyDriver(ConductorShapedAdapter):
+    def submit_job(self, job):
+        ...  # talk to control stack
+# register in factory.create_backend()
+</pre>
+
+<div class="figure ">
+  <img src="diagrams/fig-adapter-contract.svg" alt="FIG. 5C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 5C.1</span>Methods the subclass must honour.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 8C</span>UI component map</h1>
+
+<p class="lede">File-level map of the Next.js tree that implements the instrument.</p>
+
+<table><thead><tr><th>PATH</th><th>RESPONSIBILITY</th></tr></thead><tbody><tr><td>ui/app/page.tsx</td><td>Root instrument: toolbar, three-pane stage (drift · device · cryostat), iPadOS splitters, bottom-third dock with bubbles + expanded chips, turns, polling</td></tr><tr><td>ui/app/layout.tsx</td><td>HTML shell / fonts</td></tr><tr><td>ui/app/globals.css</td><td>Tokens, toolbar, Safari-safe <code>.stage-blur</code> (solid bands), dock tint, high-contrast composer, hairlines</td></tr><tr><td>ui/components/viz/calibration-surface.tsx</td><td>R3F landscape + high-contrast coplanar grid + markers + GPU mode</td></tr>
+<tr><td>ui/components/viz/device-3d.tsx</td><td>Center pane: qubits, chiplets, resonators, readout card (fidelity / T1 / T2)</td></tr>
+<tr><td>ui/components/viz/cryostat-plate.tsx</td><td>Right pane: isometric dilution-fridge plate + status strip</td></tr>
+<tr><td>ui/components/stage/stage-state-chip.tsx</td><td>Bottom-right StageStateChip lifecycle badge</td></tr><tr><td>ui/components/viz/calibration-surface-lazy.tsx</td><td>Dynamic import boundary</td></tr><tr><td>ui/components/command/command-palette.tsx</td><td>⌘K actions</td></tr><tr><td>ui/components/inspector/right-inspector.tsx</td><td>Legacy/alternate inspector pieces</td></tr><tr><td>ui/components/stage/hero-viewer.tsx</td><td>Stage helper</td></tr><tr><td>ui/components/timeline/filmstrip.tsx</td><td>Timeline alternate</td></tr><tr><td>ui/components/metrics-cards.tsx</td><td>Metrics presentation helper</td></tr><tr><td>ui/lib/api.ts</td><td>Fetch wrapper + types</td></tr><tr><td>ui/lib/store.ts</td><td>zustand (command open, etc.)</td></tr></tbody></table><p class="table-cap">Table 8C.1. UI file map. page.tsx is the composition root for the shipped three-pane layout (drift · device · cryostat + dock).</p>
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-home.png" alt="FIG. 8C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 8C.1</span>Full home screenshot for component orientation. Left: calibration-surface.tsx (drift). Center: device-3d.tsx. Right: cryostat-plate.tsx. Bottom: dock in page.tsx.</p>
+</div>
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-dock-transcript.png" alt="FIG. 8C.2"/>
+  <p class="fig-cap"><span class="label">FIG. 8C.2</span>Dock after two turns — you / agent bubbles, tool pills (<code>calibrate_qubit</code>, <code>run_bell_pair</code>), workflow chips, composer.</p>
+</div>
+
+<h2>8C.1 State fields on a Turn</h2>
+
+<table><thead><tr><th>FIELD</th><th>MEANING</th></tr></thead><tbody><tr><td>id</td><td>Client-generated UUID for the ledger row</td></tr><tr><td>goal</td><td>Submitted string</td></tr><tr><td>status</td><td>running | succeeded | failed</td></tr><tr><td>traces</td><td>ToolTrace[] from GoalResponse</td></tr><tr><td>results</td><td>ToolResult-like array</td></tr><tr><td>fidelityHistory</td><td>{iter, fidelity}[] extracted from data.history</td></tr><tr><td>calThreshold</td><td>From data.threshold or 0.88</td></tr><tr><td>lastCalParams</td><td>params object if present</td></tr><tr><td>bellCounts</td><td>counts object if present</td></tr><tr><td>error</td><td>Failure message</td></tr><tr><td>createdAt</td><td>Client timestamp for ledger clock</td></tr></tbody></table><p class="table-cap">Table 8C.2. Turn interface in page.tsx.</p>
+<h1 class="part"><span class="part-num">Part 10C</span>Operator runbook (90 seconds)</h1>
+
+<p class="lede">Compressed runbook matching the README’s 2-minute founder demo, expanded with failure checks.</p>
+<ol>
+<li><strong>Boot.</strong> <code>make setup</code> once. Then <code>make run-api</code> and <code>make run-ui-dev</code>.</li>
+<li><strong>Verify LIVE.</strong> Toolbar badge green; if red banner, API is down.</li>
+<li><strong>Watch drift.</strong> Cyan vs amber; Δf readout moves slowly.</li>
+<li><strong>Calibrate Q0.</strong> Expect climb HUD; ledger turn; threshold toast if crossed.</li>
+<li><strong>Inspect traces.</strong> Open ledger row — tool names must be real (<code>calibrate_qubit</code>), not prose.</li>
+<li><strong>Bell pair.</strong> Counts appear; stage remains primary.</li>
+<li><strong>Q0 readiness / Device status / Diagnose Q0.</strong> <code>get_device_state</code> fills fidelity/readiness when Bell alone is not enough.</li>
+<li><strong>Improve Bell.</strong> Precise (more shots) Bell after calibrate.</li>
+<li><strong>Fail path.</strong> ⌘K force fail; recalibrate; confirm success=false behaviour.</li>
+<li><strong>Cancel path.</strong> Start long job; stop; confirm CANCELLED.</li>
+<li><strong>Metrics.</strong> Refresh; confirm attempts/successes moved.</li>
+<li><strong>Stub sanity (optional).</strong> Restart API with <code>CONDUCTOR_QPU_BACKEND=stub</code>; confirm never-ready and circuit failure messaging.</li>
+</ol>
+
+<div class="figure ">
+  <img src="diagrams/fig-seq-calibrate.svg" alt="FIG. 10C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 10C.1</span>Happy-path calibrate sequence.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-seq-bell.svg" alt="FIG. 10C.2"/>
+  <p class="fig-cap"><span class="label">FIG. 10C.2</span>Bell sequence.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-failure-modes.svg" alt="FIG. 10C.3"/>
+  <p class="fig-cap"><span class="label">FIG. 10C.3</span>Failure modes to hit in steps 7–8 and stub check.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 2C</span>Theory — observability as a trust protocol</h1>
+
+<p class="lede">Extends Part 2: why traces + metrics + drift form a protocol, not a dashboard aesthetic.</p>
+
+<h2>2C.1 Three audiences, one ledger</h2>
+<p>A <strong>founder</strong> watching the demo needs to see that calibration costs time and sometimes fails. An <strong>operator</strong> needs to see whether the device is ready and what the last tool did. An <strong>agent</strong> needs machine-readable ToolResults and stable tool names. The ToolTrace buffer and /traces endpoint serve all three if the UI does not invent a parallel narrative channel.</p>
+
+<h2>2C.2 What would falsify the design</h2>
+<ul>
+<li>Calibration “success” without a fidelity history that crossed the threshold.</li>
+<li>UI READY state disagreeing with /device/state.is_ready for the same poll.</li>
+<li>Traces that do not match tools actually invoked (LLM fiction).</li>
+<li>Interface latency that never samples because applies are skipped.</li>
+<li>A hardware port that requires rewriting page.tsx to show drift.</li>
+</ul>
+<div class="rule-of-thumb"><strong>Rule of thumb</strong>
+If swapping the adapter requires redesigning the ledger, the waist was too wide. If swapping the planner requires redesigning metrics, the metrics were tied to NL rather than to tools.
+</div>
+
+<div class="figure ">
+  <img src="diagrams/fig-three-layers.svg" alt="FIG. 2C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 2C.1</span>Intent / contract / physics — falsification targets live at the seams.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-mental-model.svg" alt="FIG. 2C.2"/>
+  <p class="fig-cap"><span class="label">FIG. 2C.2</span>Stack map for trust-protocol discussion.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 6C</span>Metrics algebra</h1>
+
+<p class="lede">Formal-ish definitions matching CalibrationMetrics and MetricsAggregator.</p>
+<pre>
+calibration_success_rate = successes / attempts          # 0 if attempts=0
+avg_time_to_calibrated   = total_time_to_cal_s / successes  # 0 if successes=0
+avg_interface_latency    = total_interface_latency_s / latency_samples
+
+aggregator.p50_ms = percentile_50(latencies_ms)
+aggregator.p95_ms = percentile_95(latencies_ms)
+aggregator.avg_fidelity = mean(fidelity_samples)
+</pre>
+<p>Note: orchestrator records tool latencies separately from calibration interface latency. /metrics returns both. UI may emphasise calibration block for the founder narrative.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-metrics.svg" alt="FIG. 6C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 6C.1</span>The three primary dials.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 11C</span>Licence and third-party</h1>
+
+<p>This system is MIT-licensed (LICENSE in repo root). UI depends on Next.js, React, three.js, recharts, cmdk, sonner, motion, and shadcn/Radix components — each under their respective licences. Emil Kowalski skills are vendored under <code>.cursor/skills</code> for design guidance; they are not runtime dependencies beyond the libraries chosen.</p>
+<p>This manual’s diagrams are original to the manual source tree under <code>docs/manual/diagrams</code>. Screenshots capture the live three-pane UI (<code>docs/manual/assets/ui/manual-3pane-*.png</code>). TinyNeuro’s manual was studied for structure only; no TinyNeuro content is reproduced.</p>

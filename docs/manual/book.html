@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Coda 2 — AI→QPU Integration Layer Technical Manual</title>
+<link rel="stylesheet" href="css/book.css"/>
+</head>
+<body>
+
+<section class="plate">
+  <img class="cover-art" src="assets/cover-bloch.svg" alt="Coda 2 — AI→QPU Integration Layer Technical Manual — Intelligence at the quantum scale"/>
+</section>
+
+<section class="front-matter">
+<h1 class="part" style="page-break-before:auto"><span class="part-num">Front matter</span>Who this is for</h1>
+<p class="lede">Coda 2 is a three-pane instrument for a quantum processing unit: parameter-drift landscape on the left, the 3D device in the center, the cryostat plate on the right, and a chat dock across the bottom. It is a control plane, and it is a stage. Three roles use one instrument. They do not do the same job.</p>
+
+<h2>Beyond a chat window</h2>
+<p>A normal ChatGPT element is a transcript. You type, a model replies, and any physics lives only in sentences that scroll away. Coda 2 is instrument-first. The first thing you learn is the stage: drift on the left, the device in the center, the cryostat on the right. Language is one channel, not the only surface. Physics stays in view while you talk. The chips in the dock are one-click goals.</p>
+<ul>
+<li><strong>Visual</strong> — the three panes: left drift landscape, center 3D device with the readout card, right cryostat plate.</li>
+<li><strong>Text</strong> — natural-language goals and the agent transcript in the dock.</li>
+<li><strong>Math</strong> — fidelity, Δf, T1 / T2, ToolTraces, and the metrics.</li>
+</ul>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-home.png" alt="FIG. A.0 — The Coda 2 three-pane stage: drift landscape, 3D device, cryostat plate, chat dock"/>
+  <p class="fig-cap"><span class="label">FIG. A.0</span>The instrument. Left pane: the parameter-drift landscape (orange applied, blue true, coplanar with the fidelity surface). Center pane: the 3D device — qubit spheres Q0 and Q1, chiplets, resonators, and a readout card at top right with Q0 / Q1 fidelity, T1, T2, err, and mK. Right pane: an isometric dilution-refrigerator plate, labelled FIG 1 · DILUTION FRIDGE, with a status strip under it and a state chip at the far right. The dock sits at the bottom over a bottom-third frost.</p>
+</div>
+<p>A chat-only UI can accept the same sentence and still hide the machine. Here the stage does not yield to the transcript. You drag the splitters, read the numbers, and send a goal without leaving the instrument.</p>
+
+<h2>Three roles</h2>
+<p>Read the table. Then read the note for your role. The plate shows the same three stations. Each station uses one instrument.</p>
+
+<table>
+<thead><tr><th>ROLE</th><th>WHAT YOU DO</th><th>WHAT YOU USE</th></tr></thead>
+<tbody>
+<tr><td><strong>Quantum control engineer</strong></td><td>Builds and maintains the path from natural language to the agent to the adapter.</td><td>The QPUAdapter seam. ToolTraces. The calibration loop. The three metrics.</td></tr>
+<tr><td><strong>QPU operator</strong></td><td>Calibrates, checks readiness, runs circuits, and cancels jobs.</td><td>LIVE and READY. Chips and the composer. When to recalibrate. How to read Δf, fidelity, and the three panes.</td></tr>
+<tr><td><strong>Technical lead</strong></td><td>Evaluates the product for their stack. Optional. The question is whether their driver can sit behind the adapter.</td><td>The operator path: calibrate, then READY, then a Bell pair. The three metrics. The adapter seam.</td></tr>
+</tbody>
+</table>
+<p class="table-cap">Table A.1. Who uses Coda 2. Pick your row. The later parts go deeper for that role.</p>
+
+<h3>Quantum control engineer</h3>
+<p>You build and maintain the control software. A goal enters as <code>POST /goals</code>. The agent maps the goal to a tool. Every tool call writes a ToolTrace.</p>
+<p>You keep the QPUAdapter seam. The waist is six methods: <code>submit_job</code>, <code>poll_job</code>, <code>cancel_job</code>, <code>get_device_state</code>, <code>get_calibration</code>, <code>apply_calibration_update</code>. The calibration loop measures fidelity, decides, applies an update, and measures again. The three metrics are time-to-calibrated, calibration success rate, and interface latency.</p>
+<p>The default path is offline. It does not need a language-model key. If an optional planner is on, it falls back to the same rules. You extend the tools, or you replace the adapter. You keep the seam.</p>
+
+<h3>QPU operator</h3>
+<p>You run the instrument. You calibrate, check readiness, run circuits, and cancel jobs. You land on the idle home. The toolbar shows LIVE when the UI is connected. It shows READY centered when the device is fit for a circuit. You send a goal with a chip, or you type in the composer. Recalibrate when the state chip falls back to DRIFT, or when Δf grows. High Δf means the controls are off-target.</p>
+<p>Read fidelity as Q0 percent in the toolbar and on the readout card in the center pane. Read the left pane for drift (orange applied versus blue true). Read the right pane for the cryostat plate and the status strip under it. The state chip sits at the far right.</p>
+
+<h3>Technical lead</h3>
+<p>You evaluate Coda 2 for your stack. You are a technical lead or a buyer of the integration. You use the same product the operator uses. You do not run a separate trial.</p>
+<p>You follow one path: calibrate qubit 0, see READY, then run a Bell pair. You read the three metrics. You read the adapter seam. A simulator stands in for the device until a hardware adapter is connected. Your driver replaces that simulator behind the same six methods.</p>
+
+<div class="honesty"><strong>Not for</strong>
+This manual is not a cryogenics handbook. The millikelvin figure is computed from fidelity on the simulator. It is not a fridge sensor. The right-hand plate is an isometric drawing, not a fridge readout. Coda 2 is not an open chat for science or finance. The planner accepts four goal families. If a sentence matches no keyword, the planner checks device state, then it runs a soft calibrate. That is the catalog.
+</div>
+
+<div class="figure full">
+  <img src="diagrams/plate-who-for.svg" alt="FIG. A.1 — Who this is for: engineer, operator, and technical lead use one instrument"/>
+  <p class="fig-cap"><span class="label">FIG. A.1</span>Who this is for. Three stations, one instrument. The engineer builds and maintains the path from language to the adapter. The operator calibrates, checks readiness, runs circuits, and cancels jobs. The technical lead evaluates the product for their stack.</p>
+</div>
+<p class="diagram-explain"><strong>How to read this plate.</strong> Shape is the role. The hexagon is the engineer (the seam). The circle is the operator (a person at the screen). The rectangle is the technical lead (integration with their stack). Arrows run down into one instrument: stage, dock, and toolbar. You do not need a separate legend.</p>
+
+<h2>Four tasks</h2>
+<p>The product does four tasks. They match the deterministic planner (Table 7.2). Each task is a goal in ordinary language, one tool, and a result you can see. A chip is a short way to send the same goal.</p>
+
+<table>
+<thead><tr><th>TASK</th><th>EXAMPLE GOAL / CHIP</th><th>TOOL</th><th>SUCCESS</th></tr></thead>
+<tbody>
+<tr><td><strong>Calibrate / bring ready</strong></td><td>“Bring qubit 0 to ready” / Calibrate Q0 chip</td><td><code>calibrate_qubit</code></td><td>Toolbar READY. <code>device.is_ready</code> is true. The agent affirms.</td></tr>
+<tr><td><strong>Run a circuit (Bell)</strong></td><td>Bell pair chip</td><td><code>run_bell_pair</code></td><td>The agent reports an estimated Bell fidelity. Turn details hold the counts; most shots should be 00 and 11.</td></tr>
+<tr><td><strong>Check device state</strong></td><td>“device state” / health, status, temperature</td><td><code>get_device_state</code></td><td>You read LIVE, READY, and the telemetry. You do not start a circuit.</td></tr>
+<tr><td><strong>Cancel a job</strong></td><td><code>cancel &lt;job-id&gt;</code></td><td><code>cancel_job</code></td><td>That job stops. It does not stay running.</td></tr>
+</tbody>
+</table>
+<p class="table-cap">Table A.2. Four tasks. Same mapping as Table 7.2 in the orchestrator. Keywords: bring / calibrat / ready / tune; bell / circuit / entangl / pair; state / health / status / temperature; cancel plus a job id.</p>
+
+<div class="figure full">
+  <img src="diagrams/plate-four-tasks.svg" alt="FIG. A.2 — Four tasks: calibrate, Bell, status, cancel"/>
+  <p class="fig-cap"><span class="label">FIG. A.2</span>Four tasks. Each card is a goal, one tool, and the result you look for. The line under the cards is the fallback. It is not a fifth task.</p>
+</div>
+<p class="diagram-explain"><strong>Fallback.</strong> If your sentence matches no keyword, the planner calls <code>get_device_state</code>, then <code>calibrate_qubit</code> on qubit 0 with target 0.85. Name the task you want. Do not rely on the fallback.</p>
+
+<h2>Where the operator lands</h2>
+<p>Open the instrument. Do not send a goal yet. This is the idle home. Three panes across the stage: drift on the left, the device in the center, the cryostat plate on the right. LIVE in the toolbar means the UI is talking to the control plane. The dock is empty. Chips sit above the composer. The composer is the lowest control.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-home.png" alt="FIG. A.3 — Idle home where the operator lands: drift, device, cryostat"/>
+  <p class="fig-cap"><span class="label">FIG. A.3</span>Idle home. The operator lands here. Left pane: drift grid (orange applied, blue true). Center pane: 3D device with a readout card at top right (Q0 / Q1 fidelity, T1, T2, err, mK). Right pane: cryostat plate with a status strip under it (READY · Q0 % · mK · Δf) and a state chip at the far right. Toolbar: brand, LIVE, READY centered. Dock: empty transcript hint, six workflow chips, composer.</p>
+</div>
+
+<h3>Task 1 — Calibrate, and bring the qubit to ready</h3>
+<p>Type <code>Bring qubit 0 to ready</code> in the composer, or click the Calibrate Q0 chip. Send. The planner calls <code>calibrate_qubit</code>. Success looks like this: the toolbar shows READY, <code>device.is_ready</code> is true, and the agent says the qubit is fit for a circuit.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-typed.png" alt="FIG. A.4 — Goal typed in the composer over the three-pane stage"/>
+  <p class="fig-cap"><span class="label">FIG. A.4</span>Goal typed. The words sit in the composer above the chips. Nothing on the stage moves until you send, or until you click Calibrate Q0. All three panes stay in view.</p>
+</div>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-ready.png" alt="FIG. A.5 — Calibrate succeeded, READY on the three-pane stage"/>
+  <p class="fig-cap"><span class="label">FIG. A.5</span>Calibrate done. Toolbar shows LIVE and READY. The agent affirms: Q0 climbed to about 0.69 fidelity and is READY for circuits. The cryostat status strip and the state chip at the far right read READY. This is the success still for task 1.</p>
+</div>
+<p class="diagram-explain"><strong>What success means here.</strong> READY on the toolbar matches <code>device.is_ready</code>. Fidelity is up. Δf is smaller than it was at idle. You can try a circuit next. The full step-by-step, with every number named, is the Instrument walkthrough (STE.3).</p>
+
+<h3>Task 2 — Run a circuit (Bell)</h3>
+<p>Prefer READY first. Click the Bell pair chip, or type a goal that says Bell, circuit, or pair. The planner calls <code>run_bell_pair</code>. Success looks like this: the agent reply reports an estimated Bell fidelity — about 0.42 on this seed. The transcript now carries two turns, and a small tool pill marks the run.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-bell.png" alt="FIG. A.6 — After a Bell pair: two turns on the three-pane stage"/>
+  <p class="fig-cap"><span class="label">FIG. A.6</span>Circuit done. The transcript has a second turn: you ask for a Bell pair and report fidelity; the agent answers with the estimate and a <code>run_bell_pair</code> tool pill. All three panes remain visible: drift left, device center, cryostat right.</p>
+</div>
+
+<h3>Task 3 — Check device state</h3>
+<p>Type <code>device state</code>, or a health, status, or temperature word. The planner calls <code>get_device_state</code>. Success looks like this: you can read LIVE, READY, fidelity, and Δf. You do not start a calibration, and you do not start a circuit. Use the idle home (FIG. A.3) before a goal. Use the map (FIG. A.7) after a session. There is no separate status still.</p>
+
+<h3>Task 4 — Cancel a job</h3>
+<p>Type <code>cancel</code> and the job id. The planner calls <code>cancel_job</code>. Success looks like this: that job stops. The session stays open. This book has no cancel still. FIG. A.2, card 04, is the picture for this task.</p>
+
+<h2>Map of the instrument</h2>
+<p>Use this still as a map. The labels are in the list. They are not drawn on the picture.</p>
+<ol>
+<li><strong>Toolbar, top.</strong> Brand and LIVE pill at left, READY centered, ⌘ and refresh at right. LIVE means connected. READY means fit for a circuit. Q0 percent and fid are fidelity. Δf is detuning. High Δf means the controls are off-target.</li>
+<li><strong>Left pane.</strong> Drift grid. Orange is applied (what the control plane wrote). Blue is true (the simulator’s hidden sweet spot). The grid is coplanar with the fidelity surface.</li>
+<li><strong>Center pane.</strong> 3D device: qubit spheres Q0 and Q1, chiplets, resonators, and a readout card at top right with Q0 / Q1 fidelity, T1, T2, err, and mK.</li>
+<li><strong>Right pane.</strong> Isometric dilution-refrigerator plate, labelled FIG 1 · DILUTION FRIDGE, with a status strip under it (READY · Q0 % · mK · Δf). Two splitters separate the three panes; drag one to resize. Each pane keeps a minimum width, roughly 22–28% of the stage.</li>
+<li><strong>Dock, bottom.</strong> Transcript, then workflow chips, then the composer. The composer is the lowest control (high-contrast iOS-dark field: solid #2c2c2e, bright typed text, readable placeholder). The stage continues under the bottom-third progressive frost. A state chip sits at the far right: DRIFT, CALIBRATING, READY, and the other lifecycle states.</li>
+</ol>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-bell.png" alt="FIG. A.7 — Map of the instrument"/>
+  <p class="fig-cap"><span class="label">FIG. A.7</span>Map of the instrument. Top: toolbar (brand, LIVE, READY, ⌘, refresh). Left: drift. Center: device 3D with the readout card. Right: cryostat plate and status strip. Bottom: dock (transcript, workflow chips, composer). No callout arrows — use the five labels above.</p>
+</div>
+
+<div class="rule-of-thumb"><strong>Rule of thumb</strong>
+Four tasks only. Calibrate until READY. Then run Bell. Read state when you are not sure. Cancel when one job must stop. Any other sentence becomes a status check, then a soft calibrate.
+</div>
+
+<p class="sources"><strong>Sources.</strong> Planner keywords: orchestrator/planner.py (Table 7.2). Adapter methods: adapter/base.py. Goals: <code>POST /goals</code> in api/server.py. Stills: <code>assets/ui/manual-3pane-home.png</code>, <code>manual-3pane-typed.png</code>, <code>manual-3pane-ready.png</code>, <code>manual-3pane-bell.png</code>. Plates: <code>diagrams/plate-who-for.svg</code>, <code>diagrams/plate-four-tasks.svg</code>. Tip: main (three-pane chrome).</p>
+</section>
+
+<section class="front-matter product-intent">
+<div class="page-break"></div>
+<h1 class="part" style="page-break-before:auto"><span class="part-num">Front matter</span>Overview</h1>
+<p class="lede">Coda 2 takes a goal in ordinary language and runs it on a quantum processing unit through a typed tool catalog and a QPU adapter. The interaction is meant to go beyond a normal ChatGPT element.</p>
+<p class="thesis">You see and manipulate properties of a quantum computer in the format that fits the moment. <strong>Visual:</strong> a three-pane stage — drift landscape on the left, the 3D device in the center, the cryostat plate on the right. <strong>Text:</strong> natural-language goals and the agent transcript. <strong>Math:</strong> fidelity, Δf, T1 / T2, ToolTraces, and metrics. The product is instrument-first. Physics stays in view. Language is one channel, not the only surface. A chat-only UI would bury those properties in prose and scroll them away.</p>
+<p>An operator states a goal. An agent maps that goal onto a small catalog of typed tools. The tools call the adapter. The screen is an instrument: a live three-pane stage (drift · device · cryostat), and a dock that holds the conversation.</p>
+<p>A simulator stands in for the device until a hardware adapter is connected.</p>
+<p>Day to day the product does four jobs: bring a qubit to ready, run a Bell pair, check device state, and cancel a job. The control plane records time-to-calibrated, calibration success rate, and interface latency. The adapter seam is six methods. The default path is offline and does not need a language-model key. When the optional planner is on, it falls back to the same rules.</p>
+<p>This edition of the product documents package <code>conductor-qpu 0.1.0</code>, <code>main</code> (three-pane chrome), through PR&nbsp;#25–#27. The stage is three panes behind two splitters. The left pane is the drift grid. The center pane is the device. The right pane is the cryostat plate.</p>
+<p class="sources"><strong>Edition.</strong> Coda 2 · package <code>conductor-qpu 0.1.0</code> · main (three-pane chrome, PR&nbsp;#25–#27) · 2026-10-05 (PT)</p>
+</section>
+
+<section class="front-matter">
+<div class="page-break"></div>
+<h1 class="part" style="page-break-before:auto"><span class="part-num">Front matter</span>Instrument walkthrough</h1>
+<p class="lede">Use this section when you operate the app. The screenshots below are a <strong>complete user flow</strong> captured on <strong>main (three-pane chrome)</strong> with the API on :8000, the UI on :3000, and the live narrator writing each agent reply (NVIDIA NIM when keyed, otherwise a template). Every shot shows all three panes: drift landscape on the left, the 3D device in the center, the cryostat plate on the right. The dock is a real chat transcript: your goal as a <em>you</em> bubble on the right, an <em>agent</em> reply on the left with a small tool pill under it, then the workflow chips, and the composer always the <em>lowest</em> control. Each STE step states what you typed or clicked and what the stage did next. Each figure also translates the on-screen numbers into plain English for that frame.</p>
+
+<h2>Dock layout (conversation shape)</h2>
+<p>The stage is three panes with two splitters between them. The dock sits at the bottom, over a bottom-third frost. Read the bottom of every screenshot top-to-bottom:</p>
+<ol>
+<li><strong>Chat transcript</strong> — scrollable turns. Each turn has a <em>you</em> line (the goal) and an <em>agent</em> line (plain-English narration from <code>agent_message</code>). Tiny tool pills may sit under the reply; they are secondary.</li>
+<li><strong>Chips</strong> — Calibrate Q0 · Bell pair · Q0 readiness · Device status · Improve Bell · Diagnose Q0 (one-click goals).</li>
+<li><strong>Composer</strong> — type a goal and send (or ⌘K). Lowest control in the dock.</li>
+</ol>
+<p>The three-pane stage extends <em>under</em> this dock. Panes start roughly equal. Left: high-contrast drift grid, coplanar with the fidelity surface. Center: the 3D device — qubit spheres Q0 and Q1, chiplets, resonators — plus a readout card at top right (Q0 / Q1 fidelity, T1, T2, err, mK). Right: an isometric dilution-refrigerator plate labelled FIG 1 · DILUTION FRIDGE, with a status strip under it (READY · Q0 % · mK · Δf) and a <code>StageStateChip</code> at the far right (DRIFT · CALIBRATING · READY…). Two iPadOS Split View–style splitters separate the three panes. Hover shows a capsule drag handle. Drag to resize. Each pane keeps a minimum width, roughly 22–28% of the stage. There are no traffic lights, no glass inset, and no tabs. A Safari-safe bottom-third progressive frost (stacked solid translucent bands on a dedicated <code>.stage-blur</code> sibling — no <code>backdrop-filter</code> on the dock) softens only the lower third so the viz stays readable under the transcript without frosting the whole stage.</p>
+
+<h2>What every number means</h2>
+<p>Read this table once. Then the STE frames make sense.</p>
+<table>
+<thead><tr><th>LABEL</th><th>WHAT YOU SEE</th><th>WHAT IT MEANS FOR YOU</th></tr></thead>
+<tbody>
+<tr><td><strong>LIVE</strong></td><td>Green pill in the toolbar</td><td>The UI is connected to the control plane. Fresh device data can arrive. If LIVE is missing, check that the API is running.</td></tr>
+<tr><td><strong>READY</strong> / <strong>CAL NEEDED</strong></td><td>Status next to LIVE</td><td><strong>READY</strong> means every qubit’s readout fidelity is at least 0.82. Fit for a circuit attempt. <strong>CAL NEEDED</strong> means calibrate before you trust a circuit.</td></tr>
+<tr><td><strong>Q0 xx%</strong></td><td>Toolbar percentage</td><td>Readout fidelity for qubit 0 as a percent. Higher is better — how often the qubit answers correctly when measured.</td></tr>
+<tr><td><strong>fid 0.xxxx</strong></td><td>Blue number in the toolbar</td><td>Same fidelity as a fraction (0–1). Compare to the 0.88 calibration threshold.</td></tr>
+<tr><td><strong>mK</strong></td><td>Temperature next to Q0</td><td>Reported temperature in millikelvin. Lower is colder. Theatrical here (tied to fidelity), not a fridge sensor.</td></tr>
+<tr><td><strong>Δf</strong></td><td>Orange number</td><td>Frequency detuning. <strong>High Δf = controls are off-target</strong> (mistuned; fidelity will fall). Smaller is better.</td></tr>
+<tr><td><strong>applied</strong> (orange)</td><td>Marker / legend</td><td>Last parameters the control plane wrote — what the AWG would play.</td></tr>
+<tr><td><strong>true</strong> (cyan / blue)</td><td>Marker / legend</td><td>Hidden sweet spot the simulator owns. Calibration moves applied toward true. On real hardware you never see “true” directly.</td></tr>
+<tr><td><strong>blue sphere / ring</strong></td><td>Drift stage cue</td><td><strong>Blue = qubit is calibrated enough to trust</strong> for the next job (near the sweet spot).</td></tr>
+<tr><td><strong>orange sphere</strong></td><td>Drift stage cue</td><td>Applied / off-target marker. When orange sits far from blue, you still need calibration.</td></tr>
+<tr><td><strong>three-pane stage</strong></td><td>Full stage (no tabs)</td><td>Three panes at rest: left = high-contrast drift grid (orange applied, blue true); center = 3D device (qubit spheres Q0 / Q1, chiplets, resonators) with a readout card at top right; right = isometric cryostat plate with a status strip under it. Two iPadOS Split View–style splitters with hover capsule handles. Drag to resize (~22–28% minimum per pane). No glass inset. No tab flip. Bottom-third progressive frost under the chat dock; top ~2/3 stay sharp.</td></tr>
+<tr><td><strong>splitter</strong></td><td>Two vertical separators</td><td>Drag a capsule handle to give one pane more width. Hover reveals the handle. You cannot collapse a pane below its minimum width (roughly 22–28%).</td></tr>
+<tr><td><strong>state chip</strong></td><td>Bottom-right stage badge</td><td>Device lifecycle: OFFLINE → DRIFT → CALIBRATING → RUNNING → READY / FAILED. Grounded on live connection + goal status + <code>is_ready</code>.</td></tr>
+<tr><td><strong>0.88 line</strong></td><td>Orange dashed line on climb charts</td><td>Calibration success line. Stay at or above it and the loop succeeded.</td></tr>
+<tr><td><strong>you / agent</strong></td><td>Chat bubbles in the dock</td><td><em>you</em> is the goal you sent. <em>agent</em> is the operator-facing sentence from the narrator (NVIDIA NIM when configured; otherwise a deterministic template). Always non-empty.</td></tr>
+</tbody>
+</table>
+<p class="table-cap">Table W.1. Operator glossary. Use it to read every STE frame below.</p>
+
+<div class="rule-of-thumb"><strong>Rule of thumb</strong>
+Fidelity is how often the qubit answers correctly — higher is better; ≥&nbsp;0.88 means calibrated for this product. Δf high = controls are off-target. Blue sphere = calibrated enough to trust. READY = fit to try a circuit. LIVE = UI talking to API. Chat bubbles (you right / agent left) above chips; high-contrast composer lowest; empty-state and chips lifted above the tint.
+</div>
+
+<h2>Complete user flow — STE sequence</h2>
+<p>The figures below are one continuous <strong>successful</strong> session: idle → type Calibrate Q0 → agent affirms READY on the three-pane stage → Bell → follow-up. All three panes (drift · device · cryostat) are in every wide shot; the dock close-ups isolate the chips and the transcript. Progressive blur is visible in every shot (grid / viz bleeding through the frosted dock). Captured with the live narrator; toolbar shows <strong>LIVE</strong> and <strong>READY</strong> after calibrate.</p>
+<div class="rule-of-thumb"><strong>Success criterion for this walkthrough</strong>
+Toolbar <strong>READY</strong> is on (<code>device.is_ready == true</code>). The agent bubble affirms that Q0 is READY for circuits. Transcript bubbles sit in the frosted dock directly above chips and composer — not mid-stage.
+</div>
+
+<!-- STE.1 -->
+<h3>STE.1 — Idle home (three-pane stage), empty transcript</h3>
+<p><strong>You do.</strong> Open <code>http://localhost:3000</code> with the API on :8000. Land on the three-pane stage. Do not send a goal yet.</p>
+<p><strong>What happens.</strong> Left pane = high-contrast drift grid, coplanar with the fidelity surface. Center pane = the 3D device (qubit spheres Q0 and Q1, chiplets, resonators) with a readout card at top right (Q0 / Q1 fidelity, T1, T2, err, mK). Right pane = the cryostat plate, labelled FIG 1 · DILUTION FRIDGE, with a status strip under it and a <code>StageStateChip</code> at the far right; at idle it typically reads DRIFT (or OFFLINE if the API is down). Each splitter shows a capsule handle on hover. Dock shows an empty transcript hint (“No messages yet. Try a chip below…”), six workflow chips, and an empty composer (lowest). Toolbar: brand and LIVE at left, READY centered, ⌘ and refresh at right. Viz extends under the progressive-blur dock. There is no glass inset and no tab control.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-home.png" alt="FIG. W.1 — STE.1 idle three-pane home with progressive blur dock"/>
+  <p class="fig-cap"><span class="label">FIG. W.1 · STE.1</span>Idle three-pane stage. Drift grid coplanar on the left. 3D device with the readout card in the center. Cryostat plate with a status strip under it on the right. Two splitters with hover capsule handles. LIVE in the toolbar; READY centered. No traffic lights. No glass inset. No tabs. Empty chat transcript hint above six chips. Composer empty at the bottom of the frosted dock. <code>StageStateChip</code> at the far right. Grid lines bleed through the progressive blur.</p>
+</div>
+<p class="diagram-explain"><strong>Plain English for this frame.</strong> LIVE means the control plane is connected. The left grid is drawn in high contrast and lies in the same tilted plane as the fidelity surface. The tall “mountain” is that surface over frequency and amplitude error — the peak is where the qubit works best. Orange vs blue markers are applied vs true: if they sit apart, controls are still off-target (Δf will look high). The center pane is the device view: two qubit spheres plus chiplets and resonators, with a readout card at top right that repeats fidelity with T1 / T2, err, and mK labels. It is UI, not a fridge. The right pane is a static isometric plate with a live status strip; drag a splitter if you want one pane wider. No chat turn yet because you have not spoken. The frosted dock is translucent on purpose so you keep seeing the physics while you type.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-dock-chips.png" alt="FIG. W.1b — STE.1 dock close-up: empty-state hint, six workflow chips, composer"/>
+  <p class="fig-cap"><span class="label">FIG. W.1b · STE.1</span>Dock close-up. Empty-state hint, the six workflow chips (Calibrate Q0 · Bell pair · Q0 readiness · Device status · Improve Bell · Diagnose Q0), and the composer. ⌘K opens the command palette; Enter sends the typed goal.</p>
+</div>
+
+<!-- STE.2 -->
+<h3>STE.2 — Type a goal in the composer</h3>
+<p><strong>You do.</strong> Click the composer (lowest bar). Type <code>Bring qubit 0 to ready</code>. Do not send yet — or use the <strong>Calibrate Q0</strong> chip instead.</p>
+<p><strong>What happens.</strong> The composer holds your intent. Chips remain above it. Still no transcript turn until send.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-typed.png" alt="FIG. W.2 — STE.2 composer typed goal over the three-pane stage"/>
+  <p class="fig-cap"><span class="label">FIG. W.2 · STE.2</span>Composer typed. Goal text sits in the lowest dock control; the chips row stays above it. All three panes stay in view: drift left, device center, cryostat right. Progressive blur still shows stage content under the frosted bar.</p>
+</div>
+<p class="diagram-explain"><strong>Plain English for this frame.</strong> You are about to ask the agent to make qubit 0 trustworthy. Nothing has changed on the stage yet — typing alone does not move parameters. Send (or the Calibrate Q0 chip) is what starts the loop.</p>
+
+<!-- STE.3 -->
+<h3>STE.3 — Send Calibrate Q0 → READY (success)</h3>
+<p><strong>You do.</strong> Click chip <strong>Calibrate Q0</strong> (or press send on the typed goal).</p>
+<p><strong>What happens.</strong> A <em>you</em> bubble appears with the goal. While tools run, the agent line shows “running…”. The fidelity-climb HUD rises toward the 0.88 line. When the loop finishes successfully, the toolbar flips to <strong>READY</strong> and the agent line affirms that Q0 is READY for circuits. Toolbar Δf shrinks; fid / Q0 % rise. Toast may say “Reached threshold.”</p>
+<p><strong>Agent reply.</strong> The agent bubble gives a READY affirmation: Q0 is fit for circuits. Exact wording comes from the narrator (NVIDIA NIM when configured; otherwise a template) and can change from capture to capture. The affirmation must agree with <code>device.is_ready</code>.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-calibrating.png" alt="FIG. W.3 — STE.3 calibrate in flight; cryostat strip and state chip read CALIBRATING"/>
+  <p class="fig-cap"><span class="label">FIG. W.3 · STE.3</span>Calibrate in flight. Your <em>you</em> bubble (“Bring qubit 0 to ready”) sits above the chips; the agent line shows “running…”; the composer shows a stop button. The cryostat status strip and the <code>StageStateChip</code> at the far right both read CALIBRATING. All three panes stay visible: drift left, device center, cryostat right.</p>
+</div>
+<p class="diagram-explain"><strong>Plain English for this frame.</strong> The loop is running: measure, decide, apply, measure again. When the fidelity-climb HUD is visible, its line is “how often the qubit answers correctly” across calibration steps and the orange dashed line is the pass bar (0.88). When the climb line sits above that bar, calibration succeeded for this product. The CALIBRATING badge is the same lifecycle signal in two places — the strip under the plate and the chip at the far right. If Δf is still non-tiny, controls are closing in on the sweet spot.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-ready.png" alt="FIG. W.4 — STE.3 successful READY with agent affirmation"/>
+  <p class="fig-cap"><span class="label">FIG. W.4 · STE.3 (success)</span>Successful outcome. Toolbar shows LIVE and READY. The agent reports that Q0 climbed to about 0.69 fidelity and is READY for circuits. The cryostat status strip and the <code>StageStateChip</code> at the far right read READY. All three panes stay in view: drift grid left, device with readout card center, cryostat plate right. Bubbles sit above chips; composer stays lowest.</p>
+</div>
+<p class="diagram-explain"><strong>Plain English for this frame.</strong> This is a successful calibrate. Read the toolbar left to right: LIVE = connected; <strong>READY</strong> = the device is fit for a circuit attempt; Q0 % and fid are the live fidelity. The readout card in the center pane repeats fidelity with T1 / T2 / err / mK for the device view. The strip under the cryostat plate repeats the same lifecycle state: READY · Q0 % · mK · Δf. The agent bubble is the narrator’s operator summary of <code>calibrate_qubit</code> — it must agree with READY, not contradict it. Tool pills under the bubble are the audit trail. Do not treat one screenshot’s sentence as a fixed script.</p>
+
+<!-- STE.4 -->
+<h3>STE.4 — Three-pane stage after READY (same conversation)</h3>
+<p><strong>You do.</strong> Nothing — stay on the stage. There is no device tab. Drift (left), device (center), and cryostat (right) are peer panes. Drag a splitter only if you want a different width.</p>
+<p><strong>What happens.</strong> See FIG. W.4. After calibrate, the <code>StageStateChip</code> at the far right reads <strong>READY</strong> and the cryostat status strip reads READY · Q0 % · mK · Δf. Toolbar shows LIVE with READY centered. All three panes stay visible with the same chat transcript. The left grid stays high-contrast and coplanar. The center device keeps its qubit spheres, chiplets, resonators, and the readout card at top right.</p>
+<p class="diagram-explain"><strong>Plain English for this pane set.</strong> The glowing spheres in the center pane are qubit stand-ins. A bright / blue-leaning qubit with high % means “good enough to trust.” Orange emphasis or a low % means “still needs work.” The climb chart (if visible) still compares fidelity to the 0.88 pass bar. The state chip and the strip under the plate are the same lifecycle readout for this session — READY means fit for a circuit attempt. All three panes stay up; you do not flip a tab.</p>
+
+<!-- STE.5 -->
+<h3>STE.5 — Bell pair adds a second turn</h3>
+<p><strong>You do.</strong> Prefer READY first (toolbar green). Click chip <strong>Bell pair</strong> (goal: “Run a Bell pair and report fidelity”). Stay on the three-pane stage — all three panes remain visible while the transcript grows.</p>
+<p><strong>What happens.</strong> A second you/agent turn stacks in the transcript. Toast “Bell complete.” The agent sentence explains shot contrast or estimated fidelity in plain English.</p>
+<p><strong>Agent reply.</strong> The agent states the estimated fidelity — about 0.42 on this seed. Wording varies by capture. READY from calibrate still holds in the toolbar.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-bell.png" alt="FIG. W.7 — STE.5 multi-turn chat after Bell on the three-pane stage"/>
+  <p class="fig-cap"><span class="label">FIG. W.7 · STE.5</span>Multi-turn conversation on the three-pane stage. Transcript stacks calibrate then Bell above the chips; the agent reply carries a <code>run_bell_pair</code> tool pill; composer stays lowest. Drift left, device center, cryostat right, all still live. Progressive blur shows grid bleeding through the dock.</p>
+</div>
+<p class="diagram-explain"><strong>Plain English for this frame.</strong> Bell is a circuit job, not another calibration. The agent reports an estimated Bell fidelity (about 0.42 here) rather than raw shot counts: a toy noisy simulator, an estimate from few shots, and drift all push it down. The tool pill under the reply names the call that ran. High fid in the toolbar still means “answers are trustworthy enough.” Δf still means “are the controls on-target?” — if it climbs again later, re-calibrate before the next circuit. Two chat turns = two goals in one sitting: prepare the qubit, then run the entanglement check.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-dock-transcript.png" alt="FIG. W.8 — STE.5 dock close-up: two-turn transcript, tool pills, chips, composer"/>
+  <p class="fig-cap"><span class="label">FIG. W.8 · STE.5</span>Dock close-up. Two turns: <em>you</em> on the right, <em>agent</em> on the left, a small tool pill under each agent reply (<code>calibrate_qubit</code>, <code>run_bell_pair</code>). The six workflow chips sit below; the composer is the lowest control.</p>
+</div>
+
+<!-- STE.6 -->
+<h3>STE.6 — Follow-up</h3>
+<p><strong>You do.</strong> Type another goal in the composer (still lowest) — for example <code>device state</code> — and send. The transcript grows; the three panes keep updating.</p>
+<p><strong>What happens.</strong> A third turn appends. <code>get_device_state</code> answers from live device data: LIVE, READY, fidelity, T1 / T2, mK, Δf. The drift grid and the device readout card repaint on the next poll; the cryostat status strip keeps the same lifecycle chip.</p>
+<p class="diagram-explain"><strong>Plain English for this step.</strong> Treat the stage as the operator’s home screen after a successful session: physics on three panes, agency in the dock. If LIVE is green and READY is on, you can try another circuit. If the state chip falls back to DRIFT or Δf grows, ask to Calibrate again — the same transcript will append a new turn. FIG. W.7 is the last wide shot; nothing here needs a new frame.</p>
+
+<h2>How chips and NL map to tools</h2>
+<table>
+<thead><tr><th>CHIP / GOAL TEXT</th><th>TOOLS RUN</th><th>OPERATOR OUTCOME</th></tr></thead>
+<tbody>
+<tr><td>Calibrate Q0 · “Bring qubit 0 to ready”</td><td><code>calibrate_qubit</code></td><td>Closed-loop measure → decide → apply until fid ≥ 0.88 or iterations end; on success toolbar READY and agent affirms “READY for circuits”</td></tr>
+<tr><td>Bell pair · “Run a Bell pair and report fidelity”</td><td><code>run_bell_pair</code></td><td>Circuit job; agent explains shot contrast in plain English</td></tr>
+<tr><td>Q0 readiness · “Report qubit 0 readiness and fidelity status”</td><td><code>get_device_state</code></td><td>Surfaces readout fidelity / readiness so Bell fidelity is not the only signal</td></tr>
+<tr><td>Device status · “Report device health and temperature status”</td><td><code>get_device_state</code></td><td>Health / temperature / readiness snapshot</td></tr>
+<tr><td>Improve Bell · “Run a precise Bell pair and report fidelity”</td><td><code>run_bell_pair</code></td><td>More shots (precise); better fidelity estimate after calibrate</td></tr>
+<tr><td>Diagnose Q0 · “Check qubit 0 health and readout status”</td><td><code>get_device_state</code></td><td>Diagnostic-style status when fidelity alone is insufficient</td></tr>
+<tr><td>Free text in the composer</td><td>Deterministic planner (optional LLM planner when enabled)</td><td>Same tool catalog; narrator always returns <code>agent_message</code> (NIM when keyed, else template)</td></tr>
+</tbody>
+</table>
+<p class="table-cap">Table W.2. Chips and natural-language goals map to the tool catalog. Planner stays offline-first; narrator uses NVIDIA NIM when <code>NVIDIA_NIM_API_KEY</code> is set.</p>
+
+<div class="honesty"><strong>Honesty</strong>
+These screenshots show a real control plane talking to a noisy simulator. There is no dilution refrigerator; the right-hand plate is an isometric illustration with live chips laid over it. Temperature in mK is computed from fidelity, not read from a fridge sensor. Detuning “true” is known only because the simulator owns it. Progressive frost is CSS: a dedicated <code>.stage-blur</code> sibling covering the bottom ~33vh with stacked solid translucent gradients (no <code>backdrop-filter</code> on <code>.dock</code> — Safari previously leaked full-stage frost). Transcript, empty state, chips, and the high-contrast composer paint above <code>.dock-tint</code> via <code>z-index:1</code>. The viz fills under the dock on purpose; only the bottom third is softened. Agent replies are generated live (NIM or template); wording varies run to run. On a real QPU the same toolbar labels still apply; the physics behind them changes behind the adapter.
+</div>
+
+<p class="sources"><strong>Sources.</strong> Live UI at :3000 against API :8000 on main (three-pane chrome); captures under <code>docs/manual/assets/ui/</code>: <code>manual-3pane-home.png</code>, <code>manual-3pane-dock-chips.png</code>, <code>manual-3pane-typed.png</code>, <code>manual-3pane-calibrating.png</code>, <code>manual-3pane-ready.png</code>, <code>manual-3pane-bell.png</code>, <code>manual-3pane-dock-transcript.png</code> (STE.1–STE.6); ui/app/page.tsx (three-pane stage, two splitters, chat transcript + composer); ui/app/globals.css (.dock progressive layers); ui/components/viz/calibration-surface.tsx; ui/components/viz/device-3d.tsx (readout card); ui/components/viz/cryostat-plate.tsx (plate + status strip); ui/components/stage/stage-state-chip.tsx; orchestrator/narrator.py; orchestrator/planner.py; calibration/service.py (threshold 0.88); models/types.py (READINESS 0.82); api/server.py (<code>agent_message</code> on <code>POST /goals</code>).</p>
+</section>
+
+</section>
+
+<section class="front-matter">
+<h1 class="part" style="page-break-before:auto"><span class="part-num">Front matter</span>Release notes</h1>
+<p class="lede">One line per release, newest first. This book describes <code>main</code> at <code>3cc9bed</code> (three-pane chrome through PR&nbsp;#27, plus the stage-blur edge fix). Dates are America/Los_Angeles. Older rows keep the AuthorDate previously recorded from git.</p>
+<table><thead><tr><th>RELEASE</th><th>DATE (PT)</th><th>WHERE</th><th>CHANGE</th></tr></thead><tbody><tr><td>0.2.0 / coda-2</td><td>2026-10-04/05</td><td>main @ 3cc9bed</td><td>Three-pane stage (drift · device 3D · cryostat); chat bubbles; high-contrast composer; Safari-safe bottom-third <code>.stage-blur</code> (solid bands); six workflow chips (readiness / status / improve Bell / diagnose); product rename to Coda 2. PR&nbsp;#25–#27.</td></tr><tr><td>0.1.0 / #19–#24</td><td>2026-10-04</td><td>main</td><td>Cryostat plate added as the third pane (#19); cryostat layout polish and Safari frost fixes; larger mid-pane 3D device (#20–#24).</td></tr><tr><td>0.1.0 / #18</td><td>2026-10-03/04</td><td>main @ b05005c</td><td>Higher contrast on the left drift grid. iPadOS Split View–style resizable separator with a capsule drag handle on hover.</td></tr><tr><td>0.1.0 / #17</td><td>2026-10-03/04</td><td>main</td><td>Left drift grid aligned coplanar with the fidelity surface (shared tilted group).</td></tr><tr><td>0.1.0 / #16</td><td>2026-10-03/04</td><td>main</td><td>Richer right Device3D: chiplets, resonators, and a live fidelity / T1 / T2 strip.</td></tr><tr><td>0.1.0 / #15</td><td>2026-10-03/04</td><td>main</td><td>Drift framing shifted up and zoomed out.</td></tr><tr><td>0.1.0 / #14 / #13</td><td>2026-10-03/04</td><td>main</td><td>Zoom-out steps for the left drift camera.</td></tr><tr><td>0.1.0 / #12</td><td>2026-10-02</td><td>main @ 6a1e168</td><td>True side-by-side stage: equal peer panes (left param-drift, right 3D device); no glass inset.</td></tr><tr><td>0.1.0 / #11</td><td>2026-10-02</td><td>main</td><td>Combined drift+device stage (no tabs); glass drift inset; remove macOS traffic lights; founder-demo toolbar polish.</td></tr><tr><td>0.1.0 / #10</td><td>2026-10-02</td><td>main</td><td>Device HUD: clear label overlaps; bottom-right StageStateChip (OFFLINE→DRIFT→CALIBRATING→RUNNING→READY/FAILED).</td></tr><tr><td>0.1.0 / #9</td><td>2026-10-02</td><td>main</td><td>Narrator honors post-goal device.is_ready; READY affirmation when calibration succeeds.</td></tr><tr><td>0.1.0 / #2</td><td>2026-10-02 10:27</td><td>main</td><td>3D device panel; hardened calibration; optional LLM planner with fallback; founder-demo Makefile polish.</td></tr><tr><td>0.1.0 / #1</td><td>2026-10-01 23:22</td><td>main</td><td>Squash-merge: QPUAdapter + NoisySimulatorBackend, CalibrationService, Orchestrator (5 tools), FastAPI control plane, Next.js instrument UI (65/35, WebGPU drift), three metrics, demos, pytest.</td></tr><tr><td>0.1.0 (PR)</td><td>2026-10-01</td><td>PR #1</td><td>Multiple commits squashed: Streamlit → Next.js+shadcn; ToolTrace observability; founder README; detuning card; demo guardrails; progressive-blur dock.</td></tr><tr><td>init</td><td>2026-09-29 00:32</td><td>main</td><td>Initial commit (empty / scaffold).</td></tr></tbody></table><p class="table-cap">Table R.1. Releases on main. “Where” is the git ref that landed the change. The #12 ref is the commit that landed that release. It is not the tip of this book.</p>
+<p>PR #1’s squash commit message enumerates the delivered surface: adapter interface and toy 1–2 qubit simulator with drift; iterative gradient-free calibration targeting a fidelity threshold; orchestrator with deterministic planner (offline, no LLM keys); FastAPI endpoints for goals, jobs, metrics, health, SSE, and direct calibrate/circuit; Next.js UI replacing an earlier Streamlit prototype; demos for calibration and Bell; metrics <code>time_to_calibrated</code>, <code>calibration_success_rate</code>, <code>interface_latency</code>; pytest covering contract, convergence, API happy path, and failure paths.</p>
+<p>Later amendments inside the same PR added structured ToolTrace emission on every orchestrator call, a detuning/drift narrative in the UI, cancel guardrails, and the instrument layout (stage hero + progressive-blur dock). The book documents the merged result only — not intermediate PR commits as separate releases.</p>
+<p>PR&nbsp;#2 (merged 2026-10-02 PT) keeps the adapter seam and adds founder-demo outcomes: a React Three Fiber <em>device</em> tab beside the existing drift landscape; calibration hardening so typical drift seeds climb past 0.88; an optional LLM planner with JSON extraction and hard fallback to <code>plan_from_goal</code>; and Makefile targets for founder demos (including LLM and stub modes). Default path remains deterministic and offline. The device tab from PR&nbsp;#2 is historical. Current UI is the three-pane stage (#19 onward), not a tab flip.</p>
+
+<div class="page-break"></div>
+<h2>Metrics this system is designed to expose</h2>
+<p>This system has a single shipping revision. The numbers below are the <em>contract</em> of what the control plane measures. Typical demo ranges come from the default noisy simulator (seeded). They are not a multi-week A/B study.</p>
+<table><thead><tr><th>METRIC</th><th>DEFINITION</th><th>WHERE SET / READ</th><th>TYPICAL DEMO RANGE</th></tr></thead><tbody><tr><td>time_to_calibrated</td><td>Wall seconds from calibrate() start to best_fid ≥ threshold (successes only)</td><td>CalibrationMetrics.total_time_to_cal_s / successes</td><td>Sub-second to a few seconds on sim</td></tr><tr><td>calibration_success_rate</td><td>successes / attempts (running)</td><td>CalibrationMetrics</td><td>Often high on sim; 0 when fid-capped</td></tr><tr><td>interface_latency</td><td>Seconds per apply_calibration_update roundtrip</td><td>sampled each iteration</td><td>Near-zero on in-process sim</td></tr><tr><td>readiness</td><td>all qubits readout_fidelity ≥ 0.82</td><td>DeviceState.is_ready</td><td>Boolean; notes string</td></tr><tr><td>service threshold</td><td>best_fid ≥ 0.88 for CalibrationResult.success</td><td>CalibrationService.fidelity_threshold</td><td>API wires 0.88 / max 60</td></tr></tbody></table><p class="table-cap">Table R.2. Metrics contract. Sim timings are toy; real QPU wall times will dominate.</p><div class="figure ">
+  <img src="diagrams/fig-metrics.svg" alt="FIG. R.1"/>
+  <p class="fig-cap"><span class="label">FIG. R.1</span>The three product metrics. CalibrationService owns the first two aggregates and the latency samples; MetricsAggregator additionally rolls latency percentiles and fidelity samples for the HTTP /metrics surface.</p>
+</div>
+<h2>What is real vs simulated</h2>
+<div class="honesty"><strong>Honesty</strong>
+The control plane (adapter contract, orchestrator, traces, FastAPI, Next.js UI, metrics) is real software. The device is a <em>NoisySimulatorBackend</em>: a toy 1–2 qubit model with a hidden true parameter vector, random-walk and sinusoidal drift, and a monotonic-but-noisy fidelity function of ‖applied − true‖. Bell counts are a cheap stochastic simulation. There is no dilution refrigerator. There is no AWG. There is no pulse compiler. A <code>ConductorShapedAdapter</code> stub documents the shape of a real driver and refuses real work.
+</div>
+</section>
+
+<section class="front-matter">
+<div class="page-break"></div>
+<h1 class="part" style="page-break-before:auto"><span class="part-num">Front matter</span>How to read this book</h1>
+<p class="lede">This manual is an engineering book for Coda 2, the AI→QPU integration layer. It is not a marketing deck. Start with <strong>Who this is for</strong> (readers and the four tasks). Then use the <strong>Instrument walkthrough</strong> (screenshots and flows). Then read Part 1 (mental model) and Part 2 (theory of the interface) before the reference chapters. Everything cites module paths under <code>src/conductor_qpu/</code> or <code>ui/</code> on main (three-pane chrome).</p>
+
+<h2>Part map</h2>
+<div class="toc">
+  <div class="toc-part"><span><span class="n">A</span> Who this is for</span><span>readers, four tasks, instrument map</span></div>
+  <div class="toc-part"><span><span class="n">W</span> Instrument walkthrough</span><span>screenshots, readouts, flows</span></div>
+  <div class="toc-part"><span><span class="n">1</span> Mental model</span><span>QPU architecture, seam, goals, loop</span></div>
+  <div class="toc-part"><span><span class="n">2</span> Theory of the interface</span><span>why this solution works</span></div>
+  <div class="toc-part"><span><span class="n">D</span> Diagrams</span><span>how language becomes physics</span></div>
+  <div class="toc-part"><span><span class="n">3</span> System architecture</span><span>components and data flow</span></div>
+  <div class="toc-part"><span><span class="n">4</span> Control plane / API</span><span>every FastAPI endpoint</span></div>
+  <div class="toc-part"><span><span class="n">5</span> Adapter &amp; noisy simulator</span><span>contracts, noise, state</span></div>
+  <div class="toc-part"><span><span class="n">6</span> Calibration &amp; metrics</span><span>algorithm, thresholds, failures</span></div>
+  <div class="toc-part"><span><span class="n">7</span> Orchestrator &amp; tools</span><span>catalog, traces, planner</span></div>
+  <div class="toc-part"><span><span class="n">8</span> Operator UI</span><span>three-pane stage, dock, chips</span></div>
+  <div class="toc-part"><span><span class="n">9</span> Operations</span><span>install, Makefile, demos, tests</span></div>
+  <div class="toc-part"><span><span class="n">10</span> Worked walkthroughs</span><span>Calibrate Q0, Bell, fail paths</span></div>
+  <div class="toc-part"><span><span class="n">11</span> Reference</span><span>env, packages, glossary, figures</span></div>
+</div>
+
+<h2>Conventions</h2>
+<table><thead><tr><th>MARK</th><th>MEANING</th></tr></thead><tbody><tr><td><code>path/to/file.py</code></td><td>Exact path in the repo relative to package root or ui/</td></tr><tr><td>FIG. n.m</td><td>Captioned figure (SVG diagram or screenshot)</td></tr><tr><td>Table n.m</td><td>Reference table</td></tr><tr><td><span class="swatch slate"></span> Slate</td><td>Control plane / orchestrator in diagrams</td></tr><tr><td><span class="swatch blue"></span> Blue #007AFF</td><td>True / target / high fidelity (iOS system blue)</td></tr><tr><td><span class="swatch orange"></span> Orange #FF9500</td><td>Applied calibration / mid band / threshold line</td></tr><tr><td><span class="swatch green"></span> Green #34C759</td><td>Success / READY / LIVE</td></tr><tr><td><span class="swatch red"></span> Red #FF3B30</td><td>Failure / cancel / capped fidelity (UI diagrams)</td></tr>
+<tr><td>Seafoam / olive / blue / red</td><td>Mid-century plate palette (#c5d5d8, #7a8a4a, #5a8fb5, #c41e1e) — Diagrams part + cover</td></tr><tr><td>Rule of thumb</td><td>Operator-facing design rule</td></tr><tr><td>Honesty</td><td>Explicit limit of this system (sim vs hardware)</td></tr><tr><td>Sources</td><td>Code paths and symbols that back the claim</td></tr></tbody></table><p class="table-cap">Table C.1. Typographic and colour conventions used throughout.</p><div class="figure ">
+  <img src="diagrams/fig-colour-legend.svg" alt="FIG. C.1"/>
+  <p class="fig-cap"><span class="label">FIG. C.1</span>Diagram colour legend. Matches the UI’s iOS system palette used in calibration-surface.tsx and the status chrome.</p>
+</div>
+<h2>Numbers you will see often</h2>
+<ul>
+<li><strong>0.82</strong> — <code>READINESS_READOUT_FIDELITY_THRESHOLD</code>: device <code>is_ready</code> iff every qubit’s readout fidelity is above this.</li>
+<li><strong>0.88</strong> — default <code>CalibrationService.fidelity_threshold</code> and API wiring; also the planner’s default <code>target_fidelity</code> for “bring to ready”.</li>
+<li><strong>0.55</strong> — lower clamp on simulator fidelity; also the stub’s <code>measure_fidelity</code> return (permanently below threshold).</li>
+<li><strong>60</strong> — API server’s <code>max_iterations</code> for CalibrationService.</li>
+<li><strong>3 panes</strong> — drift | device 3D | cryostat across the stage; the dock overlays the bottom third over a progressive frost (top ~2/3 stays sharp).</li>
+</ul>
+<p class="sources"><strong>Sources.</strong> src/conductor_qpu/models/types.py (READINESS_*); calibration/service.py; api/server.py (_calibration construction); ui/app/page.tsx; ui/components/viz/calibration-surface.tsx.</p>
+</section>
+
+<h1 class="part"><span class="part-num">Part 1</span>Mental model</h1>
+
+<p class="lede">Start with the machine. Then look at the plug. A QPU is a set of two-level systems. Classical pulses steer them. Readout returns classical bits. The device drifts. This software sits above that stack. Natural-language goals and an orchestrator call a narrow <code>QPUAdapter</code>. The backend stands in for cryo and electronics. Four nouns remain clear once that seam is visible: goals, tools, jobs, and the calibration loop.</p>
+
+<h2>1.1 How a QPU works</h2>
+<p>A quantum processing unit is not a CPU with exotic opcodes. It is a small set of engineered two-level systems (qubits). Microwave and baseband electronics couple to those qubits. A cryogenic environment keeps thermal noise low so coherence lasts. Classical software decides which pulses to send. The physics decides what you get back. The primer below is the minimum model an operator or agent author needs.</p>
+
+<h3>1.1.1 Qubit modality — superconducting transmon</h3>
+<p>This manual uses a superconducting transmon as the example modality. A transmon is a Josephson junction with a large shunt capacitor. That circuit forms a weakly anharmonic oscillator. The two lowest levels are the computational states <code>|0⟩</code> and <code>|1⟩</code>. A readout resonator couples to the qubit. A microwave drive (XY) rotates the state. A flux or Z bias sets the qubit frequency when the junction is tunable. Other modalities (spin, trapped ion) differ in device physics. They still use pulses for control and a classical result for readout.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-qubit-bloch.svg" alt="FIG. 1.1 — Qubit modality: superconducting transmon"/>
+    <p class="fig-cap"><span class="label">FIG. 1.1</span>Qubit modality — superconducting transmon with readout resonator, XY drive, and flux/Z bias.</p>
+  </div>
+  <p class="diagram-explain">The chip holds a transmon and a readout resonator. The Josephson junction sets the nonlinearity. The shunt capacitor sets the charging energy. XY microwave pulses rotate the state. Flux bias sets frequency on tunable devices. Readout probes the resonator and returns a classical bit. This figure shows real QPU physics. This product uses a noisy simulator — see FIG.&nbsp;1.5.</p>
+  <p class="sources"><strong>Cite.</strong> P. Krantz et al., “A quantum engineer’s guide to superconducting qubits,” Appl. Phys. Rev. 6, 021318 (2019); arXiv:1904.06560 — https://arxiv.org/abs/1904.06560</p>
+</div>
+
+<h3>1.1.2 Cryogenic and RF stack</h3>
+<p>Room-temperature racks hold the AWG, DAC, local oscillator, mixers, digitizer, and control PC. Drive lines go down through the dilution refrigerator. Stages typically run at about 300&nbsp;K, 4&nbsp;K, still (~1&nbsp;K), and the mixing chamber (MXC, ~10–20&nbsp;mK). Attenuators on the drive path cut thermal noise into the qubit. The readout path amplifies a weak response: a TWPA near the sample, then a HEMT at 4&nbsp;K, then room-temperature electronics. The sample package sits at the MXC.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-qpu-stack.svg" alt="FIG. 1.2 — Cryogenic / RF stack"/>
+    <p class="fig-cap"><span class="label">FIG. 1.2</span>Cryogenic / RF stack — 300&nbsp;K rack through MXC, with attenuation down and amplification up.</p>
+  </div>
+  <p class="diagram-explain">Drive signals move down the fridge. Attenuators protect the qubit from room-temperature noise. Readout signals move up. A TWPA and a HEMT amplify the weak probe response. The digitizer turns that response into bits. This stack is real QPU infrastructure. The product stands in for it with <code>NoisySimulatorBackend</code> (FIG.&nbsp;1.5).</p>
+  <p class="sources"><strong>Cite.</strong> P. Krantz et al., Appl. Phys. Rev. 6, 021318 (2019), arXiv:1904.06560; Keysight, “Characterizing Superconducting Qubits” application note — https://www.keysight.com/us/en/assets/3120-1387/application-notes/Characterizing-Superconducting-Qubits.pdf</p>
+</div>
+
+<h3>1.1.3 Control and readout loop</h3>
+<p>Gates are the logical recipe (X, Y, CZ, Rz, and others). Pulses are the physical voltages and microwave envelopes. An AWG and LO emit those envelopes. Fridge wiring carries them to the qubit. The qubit state evolves. A readout chain amplifies the resonator response. A digitizer yields a classical bitstring. The classical PC classifies the bits, logs them, and decides the next pulse sequence. Fidelity is the rate at which those bits match the intended result.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-control-readout.svg" alt="FIG. 1.3 — Control and readout loop"/>
+    <p class="fig-cap"><span class="label">FIG. 1.3</span>Control and readout loop — pulse sequence → AWG → fridge → qubit → readout chain → digitizer → PC.</p>
+  </div>
+  <p class="diagram-explain">Control is continuous and analog on the wire. Readout is discrete and classical in the log. An agent does not speak in volts. It speaks in goals. Every successful goal becomes a pulse schedule and a measured bitstring. Wrong amplitude, frequency, or timing rotates the wrong amount. Fidelity falls.</p>
+  <p class="sources"><strong>Cite.</strong> P. Krantz et al., arXiv:1904.06560; IBM Qiskit Pulse (backend control / Schedule) — https://docs.quantum.ibm.com/api/qiskit/0.46/pulse; Keysight, “Characterizing Superconducting Qubits” — https://www.keysight.com/us/en/assets/3120-1387/application-notes/Characterizing-Superconducting-Qubits.pdf</p>
+</div>
+
+<h3>1.1.4 Calibration as a closed loop on that stack</h3>
+<p>The device moves. Temperature, LO phase, flux bias, and cable response wander. Applied parameters drift away from the true sweet spot. That gap is detuning. As detuning grows, gate fidelity falls. Circuits stop being useful. Calibration is a recurring loop: measure, decide whether to move knobs, apply an update, and remeasure. Knobs include amplitude, frequency, and timing. Observables include gate fidelity, readout fidelity, and (on hardware) T1/T2-class metrics. This simulator reports a fidelity kernel instead of full T1/T2.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-why-calibrate.svg" alt="FIG. 1.4 — Calibration closed loop on the stack"/>
+    <p class="fig-cap"><span class="label">FIG. 1.4</span>Calibration as a closed loop — knobs (amplitude, frequency, timing) and observables (fidelity, readout fidelity; T1/T2 on hardware).</p>
+  </div>
+  <p class="diagram-explain">Drift moves true parameters. Detuning is the measurable gap. Fidelity decay is why you care. Stop when best fidelity meets the threshold (default 0.88) or iterations end. Without remeasurement against a threshold, calibration is not an agent tool. It is a hope.</p>
+  <p class="sources"><strong>Cite.</strong> N. Wittler, F. Roy, K. Pack, M. Werninghaus, et al., “Integrated Tool Set for Control, Calibration, and Characterization of Quantum Devices Applied to Superconducting Qubits,” Phys. Rev. Applied 15, 034080 (2021) — https://journals.aps.org/prapplied/abstract/10.1103/PhysRevApplied.15.034080</p>
+</div>
+
+<h2>1.2 Where we plug in</h2>
+<p>This system does not replace the fridge. It plugs in above classical control. It sits at the software↔device boundary. Natural-language goals and the orchestrator sit with the operator layer. The <code>QPUAdapter</code> is the contract. Six typed methods carry all device talk. In this prototype, <code>NoisySimulatorBackend</code> stands in for cryo plus electronics. It is a toy 1–2 qubit model with hidden true parameters, drift, and a climbable fidelity kernel. Closed-loop calibration uses measure → decide → apply through that same adapter. The instrument UI keeps physics in view. Three resizable panes: a high-contrast drift grid on the left, a denser 3D device in the middle, and an isometric cryostat plate on the right. Two resizable splitters (capsule handles on hover; about 22–28% minimum per pane) separate them. There are no tabs. PR&nbsp;#2 used tabs labeled drift | device. That flip is past. The 3D cryo device panel is a UI surface. It is not a real fridge. The dock holds the agent ledger.</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-our-seam.svg" alt="FIG. 1.5 — Our interface overlay"/>
+    <p class="fig-cap"><span class="label">FIG. 1.5</span>Interface overlay — NL/agent/orchestrator map onto the classical-control box; NoisySimulatorBackend stands in for cryo and electronics.</p>
+  </div>
+  <p class="diagram-explain">The red bar is the product seam. Agents and the UI never reach past it. Swap the noisy simulator for a real AWG driver later. Keep the tools, traces, metrics, and instrument. The dashed loop is calibration. Every get or apply of cal params crosses the adapter. Each apply samples interface latency. The 3D device panel is UI, not hardware.</p>
+  <p class="sources"><strong>Cite.</strong> Product seam (this repo). Pulse-schedule concept: IBM Qiskit Pulse — https://docs.quantum.ibm.com/api/qiskit/0.46/pulse. Calibration-loop pattern: Wittler / Werninghaus et al., Phys. Rev. Applied 15, 034080 (2021).</p>
+</div>
+
+<h2>1.3 Goals</h2>
+<p>A <em>goal</em> is a short natural-language string. An operator or agent submits it. Examples the deterministic planner accepts: “Bring qubit 0 to ready”, “Run a Bell pair and report fidelity”, “Report device health and temperature status”, “Check qubit 0 health and readout status”, “cancel &lt;job-id&gt;”. Goals enter through <code>POST /goals</code> or the UI composer, chips, or ⌘K palette. They are not LLM prompts by default. The planner in <code>orchestrator/planner.py</code> maps them to a list of <code>ToolCall</code> records. Optional LLM planning exists behind <code>CONDUCTOR_ENABLE_LLM</code>. It is off by default. The product path is offline-first.</p>
+
+<h2>1.4 Tools</h2>
+<p>The orchestrator registers five tools: <code>calibrate_qubit</code>, <code>run_bell_pair</code>, <code>get_device_state</code>, <code>get_job_status</code>, <code>cancel_job</code>. Each call produces a <code>ToolResult</code> and a <code>ToolTrace</code> (tool name, args, latency, ok, summary). Traces are the observability product. They show real control-plane decisions. They are not narrative fiction. Heavy paths (<code>calibrate_qubit</code>, <code>run_bell_pair</code>) cross the adapter. The other tools give visibility and guardrails.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-tools.svg" alt="FIG. 1.6"/>
+  <p class="fig-cap"><span class="label">FIG. 1.6</span>The five built-in tools. calibrate_qubit and run_bell_pair are the heavy paths. The others give visibility and guardrails.</p>
+</div>
+
+<h2>1.5 Jobs</h2>
+<p>A <code>QPUJob</code> is a typed record. It has a <code>JobType</code> (calibration | circuit | diagnostic) and a <code>JobStatus</code> (queued → running → succeeded | failed | cancelled). The adapter owns submission and polling. An <code>InMemoryJobStore</code> exists as a seam for durable history later. Jobs survive a UI refresh for the lifetime of the API process.</p>
+
+<h2>1.6 The calibration loop</h2>
+<p>Calibration is measure → decide → apply → remeasure. Continue until <code>best_fid ≥ threshold</code> or iterations end. That loop makes an agent interface viable. Each step has a typed result, a latency sample, and a fidelity point the UI can plot. Without the loop, “calibrate” is a fire-and-forget RPC with no story. Every apply goes through <code>QPUAdapter.apply_calibration_update</code> — the seam in FIG.&nbsp;1.5.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-cal-loop.svg" alt="FIG. 1.7"/>
+  <p class="fig-cap"><span class="label">FIG. 1.7</span>Closed-loop calibration. Interface latency is sampled on every apply. time_to_calibrated is wall time to success. success_rate counts attempts.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-mental-model.svg" alt="FIG. 1.8"/>
+  <p class="fig-cap"><span class="label">FIG. 1.8</span>Software stack map: NL goal → orchestrator → calibration/jobs → QPUAdapter → simulator or stub. UI talks HTTP/SSE to the control plane.</p>
+</div>
+
+<h2>1.7 Readiness vs calibrated</h2>
+<p>Two predicates matter. <em>Device readiness</em> (<code>is_ready</code>) requires every qubit’s readout fidelity ≥ 0.82. <em>Calibration success</em> requires the service’s best fidelity ≥ 0.88 (default). A device can be “ready” by the weak predicate while a strict calibration goal still runs. The UI shows both: READY/CAL NEEDED in the toolbar, and the climb HUD threshold line at 0.88. The stage’s 3D device panel (tab <strong>device</strong>) gives a spatial reading of the same health story. The dock ledger narrates that story in tool traces.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-thresholds.svg" alt="FIG. 1.9"/>
+  <p class="fig-cap"><span class="label">FIG. 1.9</span>The fidelity number line. The simulator clamps reported fidelity to [0.55, 0.999]. Demo caps can pin the ceiling near 0.69 to force failure.</p>
+</div>
+<p class="sources"><strong>Sources.</strong> adapter/base.py (QPUAdapter); adapter/noisy_sim.py; orchestrator/orchestrator.py (tools, ToolTrace); orchestrator/planner.py (plan_from_goal); models/types.py (Job*, READINESS_*); calibration/service.py; ui/app/page.tsx; ui/components/viz/Device3D*.tsx. Architecture literature: P. Krantz et al., Appl. Phys. Rev. 6, 021318 (2019), https://arxiv.org/abs/1904.06560 (FIGS. 1.1–1.3); IBM Qiskit Pulse, https://docs.quantum.ibm.com/api/qiskit/0.46/pulse (FIGS. 1.3, 1.5); N. Wittler / M. Werninghaus et al., Phys. Rev. Applied 15, 034080 (2021) (FIG. 1.4); Keysight, “Characterizing Superconducting Qubits,” https://www.keysight.com/us/en/assets/3120-1387/application-notes/Characterizing-Superconducting-Qubits.pdf (FIGS. 1.2–1.3).</p>
+
+<h1 class="part"><span class="part-num">Part 2</span>Theory of the interface</h1>
+
+<p class="lede">This part states why an NL-goal and tool-using agent layer on a narrow QPU adapter is the right seam for calibration-heavy quantum ops. It also states where this system’s honesty line cuts. It is the intellectual core of the book.</p>
+
+<h2>2.1 The problem the interface solves</h2>
+<p>Quantum hardware drifts. Before a circuit is worth running, someone — human or agent — must decide whether to calibrate, which knobs to move, whether the move helped, and how that correlates with downstream job quality. Vendor pulse APIs expose the knobs. They do not expose the <em>decision loop</em> as a first-class, observable object. Chat-only LLM UIs expose language. They do not expose continuous detuning, fidelity climb, or a tool ledger operators can audit.</p>
+<p>The AI→QPU integration layer asserts a third surface: <strong>goals in, typed tool traces out, device physics behind an adapter</strong>. Calibration is not a side effect of “run circuit”. It is an explicit tool with a success predicate and three metrics.</p>
+
+<div class="rule-of-thumb"><strong>Rule of thumb</strong>
+If an operator cannot point at a ToolTrace row and a fidelity history for a calibration attempt, the control plane is not yet agent-ready. It is still a pulse console with a chatbot taped on.
+</div>
+
+<h2>2.2 NL goals and tool-using agents vs bare pulse APIs</h2>
+<p>Bare pulse APIs are necessary and not enough. They are the contract a driver must honour (load waveforms, arm triggers, commit cal tables). They are the wrong API for an agent that reasons in tasks: “bring Q0 to ready”, “don’t run Bell until ready”, “cancel the stuck diagnostic”. Agents need a small catalog of tools with stable names and JSON-shaped results. Humans need the same catalog as chips and a composer, not as a 200-method SDK.</p>
+<p>This system’s planner is deliberately simple and deterministic. That is a feature for a founder demo: the mapping from goal text to tools is auditable in one function. When <code>CONDUCTOR_ENABLE_LLM=1</code>, an optional OpenAI planner may emit the same <code>ToolCall</code> schema. The execution path, traces, and metrics do not change. The interface’s value is the tool surface and the loop, not the quality of the NL parser.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-three-layers.svg" alt="FIG. 2.1"/>
+  <p class="fig-cap"><span class="label">FIG. 2.1</span>Three concerns, one direction. Intent (agent) decides. Contract (adapter) admits only typed operations. Physics/noise (backend) is replaceable.</p>
+</div>
+
+<h2>2.3 Intent vs device contract vs physics</h2>
+<p>Separating the three layers is the design claim.</p>
+<ol>
+<li><strong>Intent</strong> lives in the orchestrator and planner. It answers: what should we do next, given a goal? It records ToolTraces. It must not embed vendor pulse details.</li>
+<li><strong>Device contract</strong> is <code>QPUAdapter</code>: six methods. Anything that can sit under those methods — noisy sim today, AWG driver tomorrow — is a valid backend. The factory (<code>adapter/factory.py</code>) is the only place that chooses.</li>
+<li><strong>Physics / noise</strong> lives in the backend. Drift rates, fidelity kernels, Bell contrast, firmware temperatures — none of these belong in the planner. On the stub, physics is explicitly “not connected”.</li>
+</ol>
+<p>This separation lets a founder say: “keep the UI and the orchestrator; swap the adapter.” Without it, every UI widget hard-codes simulator assumptions. The project then fails at the first real fridge.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-adapter-contract.svg" alt="FIG. 2.2"/>
+  <p class="fig-cap"><span class="label">FIG. 2.2</span>The six-method waist. submit/poll/cancel for jobs; get_device_state for health; get/apply calibration for the loop.</p>
+</div>
+
+<h2>2.4 Closed-loop calibration as the viability reason</h2>
+<p>Open-loop “set these params” is not enough for agents. Agents need a stop condition and a progress signal. The CalibrationService supplies both: a threshold (default 0.88) and a per-iteration fidelity history. The algorithm is gradient-free on purpose — coordinate jitter with an annealing-flavoured acceptor — because this system’s job is to exercise the <em>control-plane loop</em>, not to win a tuner bake-off. Strategy objects can replace the sampler later. The metrics and traces stay.</p>
+<p>Each apply samples <code>interface_latency</code>. Successes accumulate <code>time_to_calibrated</code>. Attempts accumulate the success rate. Those three numbers are the dials a skeptical quantum+ML founder should watch in the demo. If they move for the wrong reasons (or never move), the loop is fake.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-cal-loop.svg" alt="FIG. 2.3"/>
+  <p class="fig-cap"><span class="label">FIG. 2.3</span>Viability diagram: without remeasurement against an explicit threshold, calibration is not an agent tool — it is a hope.</p>
+</div>
+
+<h2>2.5 Observability and trust surfaces</h2>
+<p>Trust in a control plane is not a green checkmark. It is a set of surfaces an operator can reconcile:</p>
+<ul>
+<li><strong>Fidelity history</strong> — climb chart with threshold reference line (UI HUD + in-rail details).</li>
+<li><strong>mK / coherence / readout</strong> — device state snapshot from <code>get_device_state</code>.</li>
+<li><strong>Param drift / detuning</strong> — <code>get_detuning</code> exposes |applied − true| on the sim (the problem calibration solves). The WebGPU surface places cyan (true) and amber (applied) markers on a Δfreq × Δamp landscape.</li>
+<li><strong>Tool ledger</strong> — ToolTrace rows: which tool, which args, latency, summary. The dock ledger is this list rendered as turns.</li>
+</ul>
+<p>If any one of these is missing, agents can lie politely. With all four, a failure (fid cap, max iters, stub backend) is legible.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-drift.svg" alt="FIG. 2.4"/>
+  <p class="fig-cap"><span class="label">FIG. 2.4</span>Drift model on the noisy simulator. True params wander. Applied params step when calibration commits. Detuning is the gap.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-fidelity-surface.svg" alt="FIG. 2.5"/>
+  <p class="fig-cap"><span class="label">FIG. 2.5</span>What the instrument stage means. The landscape peaks at the hidden true target. Colour bands follow the iOS palette thresholds.</p>
+</div>
+
+<h2>2.6 Why instrument UI (stage + dock) beats ChatGPT-only chat</h2>
+<p>Chat is a fine composer. It is a poor primary surface for a drifting physical system. Quantum ops need continuous state in the visual field: readiness, temperatures, detuning, the spatial relationship of applied vs true. A chat transcript buries those in prose and scrolls them away. The system’s UI makes the stage the hero (~65% of the vertical field, full-bleed under the dock) with tabs for the WebGPU drift landscape and the 3D device panel. Language stays in a bottom-third progressive dock (~33vh) with chat bubbles, expanded suggestion chips (Calibrate Q0, Bell pair, Q0 readiness, Device status, Improve Bell, Diagnose Q0), and a high-contrast composer flush at the bottom. Frost uses a dedicated <code>.stage-blur</code> sibling with solid stacked bands (no <code>backdrop-filter</code> on the dock) so Safari keeps the upper panes sharp.</p>
+<p>Details expand in-rail. Nothing steals the stage with a modal. ⌘K is available for power users but does not animate open (Emil Kowalski skill constraint). Toasts (Sonner) confirm terminal outcomes without becoming the narrative channel.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-why-instrument.svg" alt="FIG. 2.6"/>
+  <p class="fig-cap"><span class="label">FIG. 2.6</span>Chat-only vs instrument. The right column is what this system ships in ui/app/page.tsx.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-ui-layout.svg" alt="FIG. 2.7"/>
+  <p class="fig-cap"><span class="label">FIG. 2.7</span>Layout sketch of the instrument: frosted toolbar, stage with HUD, progressive-blur dock with ledger and composer.</p>
+</div>
+
+<h2>2.7 Limits: sim vs hardware, toy timings, what changes on a real QPU</h2>
+<div class="honesty"><strong>Honesty</strong>
+This is a control-plane demo, not a physics engine. Fidelity is a smooth function of parameter error with a wide basin so a simple search can climb. Drift is accelerated for demo feel. Interface latency on an in-process simulator is not predictive of RPC/firmware latency. Bell “shots” are a Python loop, not ADC captures. Temperatures in mK are a theatrical function of fidelity, not a sensor.
+</div>
+<p>On a real QPU, the following change — and the design claims they can change behind the adapter without rewriting the orchestrator or UI:</p>
+<ul>
+<li><strong>apply_calibration_update</strong> commits a versioned cal table / AWG params and may run a verification sequence taking seconds to minutes.</li>
+<li><strong>get_device_state</strong> reads monitor services, FPGA temps, PLL lock, link status — the stub already sketches these fields in its notes string.</li>
+<li><strong>get_detuning</strong> comes from spectroscopy / Ramsey, not from a hidden vector the process itself owns. The sim’s omniscient detuning is a teaching tool.</li>
+<li><strong>submit_job</strong> for circuits validates schedules, loads waveform memory, arms triggers, waits for completion.</li>
+<li><strong>Timings and success rates</strong> become operational SLOs, not sub-second toys.</li>
+<li><strong>Persistence</strong> — InMemoryJobStore must become Postgres (or equivalent) with retention and goal_id correlation.</li>
+</ul>
+<div class="rule-of-thumb"><strong>Rule of thumb</strong>
+Judge this system by whether a founder can see calibration as a recurring decision with observable cost. Judge a production port by whether the same ToolTraces and metrics still make sense when each apply takes real wall time on real hardware.
+</div>
+
+<div class="figure ">
+  <img src="diagrams/fig-failure-modes.svg" alt="FIG. 2.8"/>
+  <p class="fig-cap"><span class="label">FIG. 2.8</span>Failure modes the interface must render honestly: demo fidelity cap, max-iteration exhaustion, and the always-cold hardware stub.</p>
+</div>
+
+<h2>2.8 Summary claim</h2>
+<p>The interface works because it (1) lifts NL goals into a tiny tool catalog, (2) confines device diversity to a six-method adapter, (3) makes calibration a closed loop with explicit thresholds and metrics, (4) publishes trust surfaces (fidelity, mK, drift, 3D device view, ledger), and (5) uses an instrument UI that keeps physics in the visual field while language stays secondary. Everything else in this book is the engineering of that claim on main @ <code>b05005c</code>.</p>
+
+<p class="sources"><strong>Sources.</strong> README.md (thesis; real vs simulated); adapter/base.py; adapter/noisy_sim.py; adapter/hardware_stub.py; adapter/factory.py; calibration/service.py; observability/metrics.py; orchestrator/*.py; api/server.py; ui/app/page.tsx; ui/components/viz/calibration-surface.tsx; ui/lib/api.ts</p>
+
+<h1 class="part"><span class="part-num">Diagrams</span>How language becomes physics</h1>
+
+<p class="lede">Six mid-century plates. Each figure has a caption and a short explanation. A CEO or engineer can read each once. The visual language matches the cover: seafoam, olive, translucent blues, one red accent, extended sans, geometric clarity.</p>
+
+<p>These plates restate the system claim without dark UI chrome. Natural language becomes typed decisions. Decisions become numbers. Numbers cross a narrow adapter firewall into replaceable physics. Fidelity and traces flow back into an instrument. The stage (physics) stays above the dock (agency).</p>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-whole-machine.svg" alt="PLATE 01 — The whole machine"/>
+    <p class="fig-cap"><span class="label">PLATE 01</span>The whole machine — intent to instrument, with fidelity back.</p>
+  </div>
+  <p class="diagram-explain">An operator states a goal. An agent maps it onto five tools and emits traces. The adapter is the waist: only six typed methods reach the backend. The backend may be the noisy simulator (default) or a hardware-shaped stub. Results — fidelity, detuning, readiness — return into the instrument UI. The human can see whether the loop worked. The dashed red arc is the product feedback path.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-cal-loop.svg" alt="PLATE 02 — Calibration loop"/>
+    <p class="fig-cap"><span class="label">PLATE 02</span>Closed-loop calibration — measure, decide against 0.88, apply, remeasure.</p>
+  </div>
+  <p class="diagram-explain">Calibration is viable as an agent tool only because it is a loop. Measure fidelity. Decide whether best fidelity has crossed the service threshold (0.88) or whether to sample a neighbor. Apply an update through the adapter (this samples interface latency). Remeasure. Exit on success, exhausted iterations, or a demo fidelity cap. Hardened calibration (PR&nbsp;#2) widens the sim kernel and strengthens early exploration. Founder-demo seeds converge. The adapter seam does not change.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-language-firewall.svg" alt="PLATE 03 — Language to physics firewall"/>
+    <p class="fig-cap"><span class="label">PLATE 03</span>Language → decisions → numbers → contract → physics. Firewall at the adapter.</p>
+  </div>
+  <p class="diagram-explain">Prose stops at the red bar. The planner (deterministic by default; optional LLM behind <code>CONDUCTOR_ENABLE_LLM</code>) turns a goal into ToolCalls. Tools produce numbers — qubit ids, parameter deltas, thresholds. Only those typed payloads cross the QPUAdapter. That firewall lets backends swap without rewriting the agent. It also stops the agent from inventing illegal pulse calls.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-stage-dock.svg" alt="PLATE 04 — Stage vs dock"/>
+    <p class="fig-cap"><span class="label">PLATE 04</span>Stage holds physics; dock holds agency. On current main the stage is three panes — drift | device 3D | cryostat — with two resizable splitters. No tabs.</p>
+  </div>
+  <p class="diagram-explain">Chat is a fine composer. It is a poor primary surface for a drifting device. The instrument keeps continuous state in the visual field. The stage shows three panes at once. Left: a high-contrast drift grid, coplanar with the fidelity surface, with true/applied markers. Center: the 3D device (qubits, chiplets, resonators) with a readout card for fidelity, T1, T2, and mK. Right: the isometric dilution-fridge plate with a status strip and the state chip. Two iPadOS Split View–style separators, with capsule handles on hover, resize the panes. There is no glass inset and no tab flip. PR&nbsp;#2 first used tabs labeled drift | device. That control is past. The device and cryostat panes are UI. They are not a fridge sensor. The dock over the bottom-third frost holds the transcript, workflow chips, and composer — agency under physics, not instead of it. See FIG. A.0 for the live screenshot.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-metrics.svg" alt="PLATE 05 — Metrics scoreboard"/>
+    <p class="fig-cap"><span class="label">PLATE 05</span>The three founder-facing dials: time-to-cal, success rate, interface latency.</p>
+  </div>
+  <p class="diagram-explain">If calibration is a product, its cost must be observable. <em>Time-to-calibrated</em> is wall seconds from loop start to best fidelity ≥ threshold (successes only). <em>Calibration success rate</em> is successes over attempts. <em>Interface latency</em> is the seconds per <code>apply_calibration_update</code> roundtrip. CalibrationService owns the aggregates. The HTTP <code>/metrics</code> surface rolls percentiles for operators and demos.</p>
+</div>
+
+<div class="diagram-plate keep">
+  <div class="figure full">
+    <img src="diagrams/plate-real-vs-sim.svg" alt="PLATE 06 — Real vs stand-in"/>
+    <p class="fig-cap"><span class="label">PLATE 06</span>Real software artifact versus the stand-in noisy simulator.</p>
+  </div>
+  <p class="diagram-explain">Keep the left column. The adapter contract, calibration loop, orchestrator traces, FastAPI plane, and instrument UI (including the 3D device panel) are the durable artifact. The right column is honest scaffolding: a toy 1–2 qubit model with hidden true parameters, random-walk drift, and a climbable fidelity kernel — not a fridge, not an AWG, not a pulse compiler. A shaped stub documents the driver shape and refuses real work. Replace the stand-in behind the same six methods.</p>
+</div>
+
+<p class="sources"><strong>Sources.</strong> adapter/base.py; adapter/noisy_sim.py; calibration/service.py; orchestrator/*; api/server.py; ui/app/page.tsx; ui/components/viz/calibration-surface.tsx; ui/components/viz/Device3D*.tsx (PR&nbsp;#2); cover palette from assets/cover-bloch.svg. Part&nbsp;1 architecture plates: gen_qpu_plates.py.</p>
+
+<h1 class="part"><span class="part-num">Part 3</span>System architecture</h1>
+
+<p class="lede">The system is a FastAPI control plane process plus a Next.js instrument client. Between them: REST and SSE. Under the API sit the orchestrator, calibration service, job store, and a backend. An environment variable selects the backend.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-architecture.svg" alt="FIG. 3.1"/>
+  <p class="fig-cap"><span class="label">FIG. 3.1</span>Component diagram. UI on :3000; API on :8000; runtime seam holds Orchestrator, CalibrationService, QPUAdapter, InMemoryJobStore.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-package.svg" alt="FIG. 3.2"/>
+  <p class="fig-cap"><span class="label">FIG. 3.2</span>Package layout under src/conductor_qpu and the sibling ui/ tree.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-dataflow.svg" alt="FIG. 3.3"/>
+  <p class="fig-cap"><span class="label">FIG. 3.3</span>Request path for a calibration goal from UI through API, orchestrator, calibration service, and adapter.</p>
+</div>
+
+<h2>3.1 Process topology</h2>
+<p>Two processes in development:</p>
+<ol>
+<li><code>python -m conductor_qpu.api</code> (Makefile <code>run-api</code>) — uvicorn serving <code>conductor_qpu.api.server:app</code> on <code>0.0.0.0:8000</code>.</li>
+<li><code>cd ui &amp;&amp; npm run dev</code> (Makefile <code>run-ui-dev</code>) — Next.js on <code>:3000</code>. CORS on the API allows localhost:3000.</li>
+</ol>
+<p>Python demos (<code>make demo</code>, <code>make founder-demo</code>) construct adapter + calibration + orchestrator in-process and need no HTTP server.</p>
+
+<h2>3.2 Object graph at API startup</h2>
+<p>Module import of <code>api/server.py</code> builds singletons:</p>
+<pre>
+_backend     = create_backend()          # env CONDUCTOR_QPU_BACKEND
+_calibration = CalibrationService(
+                 adapter=_backend,
+                 fidelity_threshold=0.88,
+                 max_iterations=60)
+_job_store   = InMemoryJobStore()
+_orchestrator = Orchestrator(
+                 adapter=_backend,
+                 calibration=_calibration,
+                 job_store=_job_store)
+_metrics     = MetricsAggregator()
+</pre>
+<p>There is no dependency-injection container. Tests construct their own graphs. The UI never imports Python — it speaks HTTP via <code>ui/lib/api.ts</code>.</p>
+
+<h2>3.3 Data stores</h2>
+<p>All state is in-memory for this prototype:</p>
+<ul>
+<li>Adapter job dict (<code>NoisySimulatorBackend._job_store</code> or stub equivalent).</li>
+<li><code>InMemoryJobStore</code> (bounded to 4096) — present for the seam; the API’s <code>/jobs</code> list currently reads the backend’s <code>list_recent_jobs</code>.</li>
+<li>Orchestrator <code>_last_traces</code> buffer — last goal’s traces.</li>
+<li>CalibrationMetrics counters on the service instance.</li>
+<li>MetricsAggregator deques (latency ms, fidelities) with maxlen 512.</li>
+</ul>
+<div class="honesty"><strong>Honesty</strong>
+Nothing survives process restart. The README’s week-1 plan calls out Postgres (or equivalent) with retention and goal_id correlation as the persistence swap.
+</div>
+
+<h2>3.4 Backend selection</h2>
+
+<table><thead><tr><th>CONDUCTOR_QPU_BACKEND</th><th>CLASS</th><th>BEHAVIOUR</th></tr></thead><tbody><tr><td>sim (default)</td><td>NoisySimulatorBackend</td><td>2-qubit drifting toy; full demo path</td></tr><tr><td>stub | hardware | shaped | conductor</td><td>ConductorShapedAdapter</td><td>Shape-only; circuits fail; fidelity 0.55; never ready</td></tr></tbody></table><p class="table-cap">Table 3.1. Factory mapping in adapter/factory.py.</p>
+<p class="sources"><strong>Sources.</strong> api/server.py; adapter/factory.py; jobs/store.py; ui/lib/api.ts</p>
+<h1 class="part"><span class="part-num">Part 4</span>Control plane / API</h1>
+
+<p class="lede">This part lists every HTTP endpoint from <code>src/conductor_qpu/api/server.py</code>. This book describes main @ <code>b05005c</code>. PR&nbsp;#13–#18 change stage framing only. They do not revise this route list. Schemas are Pydantic v2 models or ad-hoc dicts as noted. Errors use FastAPI <code>HTTPException</code>.</p>
+
+<h2>4.1 Cross-cutting</h2>
+<ul>
+<li><strong>CORS</strong> — allow_origins includes http://localhost:3000 and :8000 (and 127.0.0.1 variants); credentials allowed; methods/headers *.</li>
+<li><strong>OpenAPI</strong> — <code>docs_url="/docs"</code>, title field still reads the package-era string “Conductor QPU”, version 0.1.0 (the product name is Coda 2).</li>
+<li><strong>Auth</strong> — none. Local prototype only.</li>
+</ul>
+
+<h2>4.2 Health and readiness predicate</h2>
+
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/health</span><p>Returns <code>{status: ok, service: conductor-qpu}</code>. Used by the UI connection check.</p></div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/readiness_predicate</span><p>Returns the exact predicate name <code>all_qubits_readout_fidelity_above</code>, threshold 0.82, and description string. Founders can point at numbers, not vague claims.</p></div>
+<h2>4.3 Goals</h2>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/goals</span>
+<p><strong>Body</strong> <code>GoalRequest { goal: str }</code>. Runs <code>_orchestrator.run_goal</code>, records latencies into MetricsAggregator, returns <code>GoalResponse { goal, results[], traces[], metrics }</code>. Each result is <code>{ok, data, latency_s, error}</code>. Traces are the structured ToolTrace dicts for this execution.</p>
+</div>
+<h2>4.4 Calibration and circuits (direct)</h2>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/calibrate</span>
+<p><strong>Body</strong> <code>{ qubit_id?: int=0, target_fidelity?: float }</code>. Calls <code>_calibration.calibrate</code> directly (bypasses planner, still uses the service). Records fidelity in aggregator. Returns success, fidelity, iterations, duration_s, params subset, history.</p>
+</div>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/circuit/bell</span>
+<p><strong>Body</strong> <code>{ shots?: int=1024, qubits?: [0,1] }</code>. Builds a CIRCUIT QPUJob, submits to backend, polls once, returns job_id, counts, metrics — or error.</p>
+</div>
+<h2>4.5 Device</h2>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/device/state</span>
+<p>Snapshot: is_ready, readiness_score, qubits, temperatures_mk, coherence_us, readout_fidelity, notes, timestamp, readiness_predicate object.</p>
+</div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/device/detuning/{qubit_id}</span>
+<p>Returns detuning dict (frequency_error, amplitude_error, phase_error, readout_error_delta) plus applied params. 404 if unknown qubit. On the stub this raises NotImplementedError → 500 unless caught; the sim implements it.</p>
+</div>
+<h2>4.6 Jobs, traces, metrics</h2>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/jobs</span><p>Query <code>limit</code> (default 50). Lists recent jobs from backend <code>list_recent_jobs</code>. Documented non-durable.</p></div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/jobs/{job_id}</span><p>400 invalid UUID; 404 unknown. Returns status, type, timestamps, result data, metrics, error.</p></div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/traces</span><p>Most recent orchestrator tool traces (<code>get_last_traces()</code>).</p></div>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/metrics</span><p>Union of orchestrator.get_metrics(), MetricsAggregator.snapshot(), and calibration.metrics.to_dict().</p></div>
+<h2>4.7 SSE</h2>
+<div class="keep"><span class="endpoint"><span class="method get">GET</span>/sse/jobs/{job_id}</span>
+<p>Server-Sent Events. Polls backend every 200 ms, emits <code>event: update</code> when status changes, stops on terminal status, or <code>event: timeout</code> after ~24 s (120 iterations). <code>event: error</code> if job missing.</p>
+</div>
+<h2>4.8 Demo / guardrail endpoints</h2>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/demo/fail_next_cal</span>
+<p>If backend has <code>set_demo_fid_cap</code>, sets cap to 0.69 so subsequent calibration cannot reach 0.88. Returns <code>{ok, fid_cap, note}</code>.</p>
+</div>
+<div class="keep"><span class="endpoint"><span class="method post">POST</span>/demo/start_long_job</span>
+<p>Starts a long-running diagnostic that stays RUNNING until cancel (sim helper). Returns <code>{job_id}</code>. Used to demo cancel in the UI.</p>
+</div>
+<h2>4.9 Error table</h2>
+<table><thead><tr><th>SITUATION</th><th>STATUS</th><th>DETAIL</th></tr></thead><tbody><tr><td>Malformed job UUID</td><td>400</td><td>invalid job_id</td></tr><tr><td>Unknown job</td><td>404</td><td>job not found</td></tr><tr><td>Unknown qubit (detuning)</td><td>404</td><td>ValueError text</td></tr><tr><td>Backend down (UI)</td><td>—</td><td>UI sets backendDown; toast; banner “make run-api”</td></tr><tr><td>Calibration capped</td><td>200 with success:false</td><td>Not an HTTP error — domain failure in body</td></tr><tr><td>Stub circuit</td><td>job FAILED</td><td>error explains hardware not connected</td></tr></tbody></table><p class="table-cap">Table 4.1. Error and failure signalling. Domain failures are often 200 + ok:false / success:false so agents can read them as tool results.</p>
+<p class="sources"><strong>Sources.</strong> api/server.py (all routes); ui/lib/api.ts (client mapping)</p>
+<h1 class="part"><span class="part-num">Part 5</span>Adapter & noisy simulator</h1>
+
+<p class="lede">The adapter is the narrow waist. This part documents the abstract contract, the noisy simulator’s dynamics, and the hardware-shaped stub.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-adapter-contract.svg" alt="FIG. 5.1"/>
+  <p class="fig-cap"><span class="label">FIG. 5.1</span>Contract reminder.</p>
+</div>
+
+<h2>5.1 QPUAdapter (base.py)</h2>
+<p>Abstract methods: <code>submit_job</code>, <code>poll_job</code>, <code>cancel_job</code>, <code>get_device_state</code>, <code>get_calibration</code>, <code>apply_calibration_update</code>. Synchronous by prototype choice; production ports may go async without changing the orchestrator’s conceptual model if a thin sync wrapper remains.</p>
+
+<h2>5.2 CalibrationParams and DeviceState</h2>
+
+<table><thead><tr><th>FIELD</th><th>ROLE</th></tr></thead><tbody><tr><td>qubit_id</td><td>Which qubit the params apply to</td></tr><tr><td>frequency</td><td>Fake GHz-scale drive frequency</td></tr><tr><td>amplitude</td><td>Drive amplitude</td></tr><tr><td>phase</td><td>Radians</td></tr><tr><td>t1, t2</td><td>Relaxation / dephasing (µs, theatrical)</td></tr><tr><td>readout_error</td><td>Bit-flip probability on measurement</td></tr></tbody></table><p class="table-cap">Table 5.1. CalibrationParams fields (models/types.py). Units are illustrative; only relative distance to true params matters on the sim.</p>
+
+<p><code>DeviceState</code> carries temperatures_mk, coherence_us (T1,T2) per qubit, readout_fidelity, is_ready, notes. <code>readiness_score()</code> averages readout fidelities into 0..1.</p>
+
+<h2>5.3 NoisySimulatorBackend</h2>
+<p>Construction: <code>num_qubits</code> clamped to 1..2, seed (default 42), drift_rate (default 0.002). Maintains <code>_true_params</code> and <code>_applied_params</code> per qubit, an RLock, and an in-memory job store.</p>
+<h3>Drift</h3>
+<p><code>_apply_drift</code> runs on state reads / polls when ≥50 ms elapsed. True params take a Gaussian step scaled by drift_rate and a sinusoidal term <code>sin(now*0.7+q)</code>, with clamps per field. This is the lab dynamic the UI visualises: calibration chases a moving target.</p>
+<h3>Fidelity kernel</h3>
+<p><code>_fidelity_from_params</code> builds a squared-error penalty across frequency, amplitude, phase, T1/T2 shortfalls, and readout error, then maps through <code>0.94*exp(-1.8*err)+0.05</code>, clamped to [0.55, 0.999]. Optional <code>_demo_fid_cap</code> can further ceiling the value for failure demos.</p>
+<h3>Bell simulation</h3>
+<p><code>_simulate_bell_readout</code> draws ideal 00/11, applies readout flips, and depolarises by contrast derived from joint fidelity. Returns counts dict.</p>
+<h3>Job handling</h3>
+<p>Calibration jobs run a small local loop (threshold 0.88, max 25) when submitted directly; the preferred path is the CalibrationService via the orchestrator (full metrics + traces). Circuit jobs run Bell (or stub success for unknown circuit names). Cancel flips non-terminal jobs to CANCELLED.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-drift.svg" alt="FIG. 5.2"/>
+  <p class="fig-cap"><span class="label">FIG. 5.2</span>True vs applied over time on the simulator.</p>
+</div>
+
+<h2>5.4 ConductorShapedAdapter</h2>
+<p>Documents what a real AWG/DAC/FPGA driver would look like. Circuits fail with an explicit NotImplemented error string. Calibration “succeeds” at fidelity 0.90 but notes that nothing was committed. <code>is_ready</code> is always False. <code>measure_fidelity</code> returns 0.55. <code>get_detuning</code> raises NotImplementedError. Use <code>CONDUCTOR_QPU_BACKEND=stub</code> and <code>make founder-demo-stub</code> to exercise the seam.</p>
+
+<p class="sources"><strong>Sources.</strong> adapter/base.py; adapter/noisy_sim.py; adapter/hardware_stub.py; adapter/factory.py; models/types.py; tests/test_adapter_contract.py; tests/test_adapter_selection.py</p>
+<h1 class="part"><span class="part-num">Part 6</span>Calibration & metrics</h1>
+
+<p class="lede">CalibrationService is an iterative, gradient-free tuner that records the three founder metrics. This part specifies the algorithm, thresholds, failure modes, and what tests assert.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-metrics.svg" alt="FIG. 6.1"/>
+  <p class="fig-cap"><span class="label">FIG. 6.1</span>Metric definitions again — they are the product dials.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-cal-loop.svg" alt="FIG. 6.2"/>
+  <p class="fig-cap"><span class="label">FIG. 6.2</span>Loop structure as implemented in calibration/service.py.</p>
+</div>
+
+<h2>6.1 Algorithm</h2>
+<ol>
+<li>Read current params; measure initial fidelity; history starts at (0, fid).</li>
+<li>For iteration 1..max_iterations:
+  <ul>
+  <li>Compute temperature schedule <code>temp = max(0.015, 0.55*(1-progress))</code>.</li>
+  <li>Choose exploration scale (wide early; widen further if patience half-exhausted).</li>
+  <li>Sample neighbour via Gaussian jitter on frequency, amplitude, phase, t1, t2, readout_error with field clamps.</li>
+  <li>Call <code>adapter.apply_calibration_update(candidate)</code>; record interface latency.</li>
+  <li>Accept if better than best; else accept worse with probability <code>exp((f-best)/temp)</code>.</li>
+  <li>Update best/no_improve; append history; optional on_step callback.</li>
+  <li>Break if best_fid ≥ threshold.</li>
+  <li>If no_improve ≥ patience: restart around best, sometimes with a wide redraw.</li>
+  </ul>
+</li>
+<li>Update CalibrationMetrics attempts/successes/time.</li>
+</ol>
+
+<h2>6.2 Defaults (API process)</h2>
+
+<table><thead><tr><th>PARAMETER</th><th>API DEFAULT</th><th>NOTES</th></tr></thead><tbody><tr><td>fidelity_threshold</td><td>0.88</td><td>Planner default target matches</td></tr><tr><td>max_iterations</td><td>60</td><td>Tests may use 30–80</td></tr><tr><td>patience</td><td>12</td><td>Service default</td></tr><tr><td>seed</td><td>123</td><td>Service default RNG</td></tr><tr><td>READINESS threshold</td><td>0.82</td><td>Separate predicate on DeviceState</td></tr></tbody></table><p class="table-cap">Table 6.1. Thresholds and loop limits.</p>
+
+<h2>6.3 Failure modes</h2>
+
+<div class="figure ">
+  <img src="diagrams/fig-failure-modes.svg" alt="FIG. 6.3"/>
+  <p class="fig-cap"><span class="label">FIG. 6.3</span>Three classes of failure the demos and tests cover.</p>
+</div>
+
+<ul>
+<li><strong>Fidelity cap</strong> — <code>POST /demo/fail_next_cal</code> or <code>set_demo_fid_cap</code>. Service reports success=False; fidelity stays below 0.88; attempts still increment.</li>
+<li><strong>Max iterations / patience cycling</strong> — if the basin cannot be climbed in time (or cap intervenes), final message reflects non-convergence.</li>
+<li><strong>Stub backend</strong> — measure_fidelity 0.55 permanently; useful to prove UI/orchestrator don’t assume sim omniscience.</li>
+</ul>
+
+<h2>6.4 Test and demo numbers</h2>
+<p><code>tests/test_calibration_converges.py</code> asserts fidelity can reach ≥0.80 on the noisy sim with threshold 0.86, and that metrics fields are populated across multi-qubit attempts. <code>tests/test_failure_paths.py</code> asserts capped runs end with success=False and that long-running jobs cancel to CANCELLED. Demos print the three metrics to stdout; they do not claim statistical significance across seeds.</p>
+<div class="honesty"><strong>Honesty</strong>
+Historical flakiness: early in development, fidelity could stick near the 0.55 floor while the threshold sat at 0.88 — the wide-basin kernel and exploration schedule exist specifically so the founder demo climbs reliably without becoming a fake always-success path. Caps remain to demonstrate honest failure.
+</div>
+
+<p class="sources"><strong>Sources.</strong> calibration/service.py; observability/metrics.py; tests/test_calibration_converges.py; tests/test_failure_paths.py; demo_scripts/run_calibration_demo.py; demo_scripts/founder_demo.py</p>
+<h1 class="part"><span class="part-num">Part 7</span>Orchestrator & tools</h1>
+
+<p class="lede">The orchestrator is a thin agent runtime. It registers tools, calls tools, runs goals through a planner, and exposes traces and metrics. No LLM is required on the default path.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-tools.svg" alt="FIG. 7.1"/>
+  <p class="fig-cap"><span class="label">FIG. 7.1</span>Tool catalog.</p>
+</div>
+
+<h2>7.1 ToolCall, ToolResult, ToolTrace</h2>
+
+<table><thead><tr><th>TYPE</th><th>FIELDS</th><th>ROLE</th></tr></thead><tbody><tr><td>ToolCall</td><td>tool, args</td><td>Planner output step</td></tr><tr><td>ToolResult</td><td>ok, data, latency_s, error?</td><td>Tool return value</td></tr><tr><td>ToolTrace</td><td>timestamp, tool, args, latency_s, ok, summary</td><td>UI timeline / ledger observability</td></tr></tbody></table><p class="table-cap">Table 7.1. Orchestrator dataclasses (orchestrator/orchestrator.py).</p>
+
+<p>Summaries are derived: fidelity=…, 00/11 counts, ready=… score=…, or first keys. Traces reset at the start of each <code>run_goal</code>.</p>
+
+<h2>7.2 Planner rules</h2>
+<p><code>plan_from_goal</code> normalises whitespace/case and matches keywords:</p>
+
+<table><thead><tr><th>INTENT KEYWORDS</th><th>TOOL PLAN</th></tr></thead><tbody><tr><td>bring, calibrat, ready, tune</td><td>calibrate_qubit(qubit_id parsed 0|1, target 0.88 or 0.92 if high/strict)</td></tr><tr><td>bell, circuit, entangl, pair</td><td>run_bell_pair(shots 1024|256 few/quick|4096 many/precise)</td></tr><tr><td>state, health, status, ready?, temperature</td><td>get_device_state</td></tr><tr><td>cancel …</td><td>cancel_job(job_id token)</td></tr><tr><td>default (no match)</td><td>get_device_state then calibrate_qubit(0, 0.85)</td></tr></tbody></table><p class="table-cap">Table 7.2. Deterministic planner mapping (planner.py).</p>
+
+<p><code>plan()</code> tries <code>maybe_llm_plan</code> first when <code>CONDUCTOR_ENABLE_LLM</code> is truthy and openai imports; otherwise <code>plan_from_goal</code>. LLM failures return None and fall through. The API’s <code>POST /goals</code> uses <code>Orchestrator.run_goal</code>, which imports <code>plan_from_goal</code> as its default planner function (note: the server also imports <code>plan</code> but run_goal defaults to plan_from_goal unless a planner callable is passed).</p>
+
+<h2>7.3 Early stop</h2>
+<p>If a step’s tool is <code>calibrate_qubit</code> or <code>run_bell_pair</code> and <code>ok</code> is False, <code>run_goal</code> breaks the plan early. Visibility tools do not abort the sequence.</p>
+
+<h2>7.4 Metrics surface from orchestrator</h2>
+<p><code>get_metrics()</code> returns calibration metrics dict, per-tool call counts and avg latency, optional adapter <code>get_stats()</code> (total_jobs, total_shots on the sim), and an interface_latency_p50_hint aliased from avg interface latency.</p>
+
+<p class="sources"><strong>Sources.</strong> orchestrator/orchestrator.py; orchestrator/planner.py</p>
+<h1 class="part"><span class="part-num">Part 8</span>Operator UI</h1>
+
+<p class="lede">The UI is a Next.js App Router instrument panel. It is not a chat app with a chart widget. The stage is the product: three panes — <strong>drift | device 3D | cryostat</strong>. The dock is the agent surface.</p>
+
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-home.png" alt="FIG. 8.1 — Coda 2 three-pane instrument at rest"/>
+  <p class="fig-cap"><span class="label">FIG. 8.1</span>Screenshot: the three-pane instrument at rest. Left: parameter-drift landscape (orange applied, blue true). Center: 3D device with qubit spheres and the readout card. Right: isometric dilution-fridge plate with its status strip and the StageStateChip. Bottom: dock with empty-state hint, six workflow chips, and the composer.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-ui-layout.svg" alt="FIG. 8.2"/>
+  <p class="fig-cap"><span class="label">FIG. 8.2</span>Schematic of the same chrome. Toolbar on top. Three panes separated by two splitters. Dock over the bottom-third frost.</p>
+</div>
+<p>Current UI (<code>main</code>, three-pane chrome through PR&nbsp;#25–#27): three panes at rest. Left is a high-contrast drift grid, coplanar with the fidelity surface. Center is Device3D: qubit spheres, chiplets, resonators, and a readout card (Q0/Q1 fidelity, T1, T2, err, mK). Right is the isometric cryostat plate with a status strip (state · Q0 % · mK · Δf). Two iPadOS Split View–style separators resize the panes; hover shows a capsule drag handle; each pane keeps a minimum width (roughly 22–28% of the stage). No traffic lights. No glass inset. No tabs. Earlier releases shipped a single drift stage (65/35) and then a two-pane drift | device split; both are historical.</p>
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-dock-chips.png" alt="FIG. 8.3"/>
+  <p class="fig-cap"><span class="label">FIG. 8.3</span>Screenshot crop: dock region — empty-state hint, six workflow chips (Calibrate Q0 · Bell pair · Q0 readiness · Device status · Improve Bell · Diagnose Q0), and the high-contrast composer with ⌘K.</p>
+</div>
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-calibrating.png" alt="FIG. 8.4"/>
+  <p class="fig-cap"><span class="label">FIG. 8.4</span>Screenshot: during a run. All three panes stay live. The you-bubble sits right, the agent shows “running…”, the composer swaps in a stop button, and the cryostat strip and state chip read CALIBRATING.</p>
+</div>
+
+<h2>8.1 Layout rules</h2>
+<ul>
+<li>Full-viewport black shell (<code>h-screen w-screen</code>).</li>
+<li>Toolbar without traffic lights: brand, LIVE badge, READY centered, ⌘K and refresh on the right.</li>
+<li>Three-pane stage at rest. Left: high-contrast drift grid, coplanar with the fidelity surface. Center: Device3D (qubits, chiplets, resonators, readout card). Right: isometric cryostat plate with status strip.</li>
+<li>Two iPadOS Split View–style separators. Hover shows a capsule drag handle. Drag to resize. Each pane keeps a minimum width.</li>
+<li>No glass inset. No tabs. (PR&nbsp;#2 labels drift | device were tabs. That control is gone.)</li>
+<li>Bottom-right <code>StageStateChip</code> (OFFLINE → DRIFT → CALIBRATING → RUNNING → READY / FAILED).</li>
+<li>Content area: stage absolute inset-0; dock overlaid at bottom over a Safari-safe bottom-third frost (<code>.stage-blur</code>, no <code>backdrop-filter</code>) so the canvases extend underneath and the top two-thirds stay sharp.</li>
+<li>Composer max width ~42rem, centered; six workflow chips above it.</li>
+<li>Dock transcript uses you (right) / agent (left) bubbles above chips, with small tool pills under agent replies. No card wall on first paint.</li>
+</ul>
+
+<h2>8.2 Drift visualisation</h2>
+<p><code>calibration-surface.tsx</code> builds a PlaneGeometry heightfield from <code>estimateFidelity(dx,dy,base)</code>, peaked at the true offset implied by live detuning. Cyan marker = true; amber = applied at origin of the applied frame. Colours: ≥0.88 blue, ≥0.75 orange, else gray. On current main the left grid is high contrast and shares the tilted group with that surface, so the grid and the mountain sit coplanar. WebGPU via async <code>three/webgpu</code> renderer when <code>navigator.gpu</code> exists; else WebGL + banner.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-fidelity-surface.svg" alt="FIG. 8.5"/>
+  <p class="fig-cap"><span class="label">FIG. 8.5</span>Semantic map of the stage surface.</p>
+</div>
+
+<h2>8.3 Composer, chips, ledger, details</h2>
+<p>Workflow chips: Calibrate Q0, Bell pair, Q0 readiness, Device status, Improve Bell, Diagnose Q0 — each submits a goal string through <code>api.postGoal</code>. Turns append to local state with status running→succeeded/failed, traces, fidelityHistory, bellCounts. The dock transcript stacks you/agent bubbles above chips; selecting a turn expands details (fidelity climb, tool traces, optional counts). The primary operator path stays first-class: a natural-language goal or a chip, then calibrate, then READY, then a Bell circuit.</p>
+
+<h2>8.4 Command palette and demos</h2>
+<p>⌘K opens cmdk actions: goals, refresh, force fail next calibration, start long job. Demo actions hit <code>/demo/*</code> endpoints. Cancel uses goal <code>cancel {jobId}</code> or stop button on running jobs.</p>
+
+<h2>8.5 Polling</h2>
+<p>Device + metrics refresh every 6.5 s when connected. Active running jobs poll every 850 ms; SSE also attaches via EventSource to <code>/sse/jobs/{id}</code>.</p>
+
+<h2>8.6 Design stack</h2>
+
+<table><thead><tr><th>CONCERN</th><th>LIBRARY</th></tr></thead><tbody><tr><td>Command palette</td><td>cmdk (no open animation)</td></tr><tr><td>Toasts</td><td>sonner</td></tr><tr><td>Motion</td><td>motion (transform/opacity, ease [0.23,1,0.32,1])</td></tr><tr><td>Charts</td><td>recharts</td></tr><tr><td>3D</td><td>three + @react-three/fiber + drei</td></tr><tr><td>State</td><td>zustand</td></tr><tr><td>Primitives</td><td>shadcn/ui + Radix</td></tr></tbody></table><p class="table-cap">Table 8.1. UI dependencies (see ui/README.md).</p>
+<p class="sources"><strong>Sources.</strong> ui/app/page.tsx; ui/components/viz/calibration-surface.tsx; ui/components/viz/device-3d.tsx; ui/components/viz/cryostat-plate.tsx; ui/components/stage/stage-state-chip.tsx; ui/components/command/command-palette.tsx; ui/lib/api.ts; ui/README.md</p>
+<h1 class="part"><span class="part-num">Part 9</span>Operations</h1>
+
+<p class="lede">Install, run, demo, and test this system on a developer machine. Python ≥3.11, Node ≥18, no API keys required for the default path.</p>
+
+<h2>9.1 Setup</h2>
+<pre>
+git clone https://github.com/mariodelgado/ai-to-qpu-spike
+cd ai-to-qpu-spike
+make setup          # pip install -e ".[dev]" + cd ui && npm install
+</pre>
+
+<h2>9.2 Run full stack</h2>
+<pre>
+# Terminal A
+make run-api        # FastAPI http://localhost:8000
+# Terminal B
+make run-ui-dev     # Next.js http://localhost:3000
+# open http://localhost:3000
+</pre>
+<p>Optional: <code>NEXT_PUBLIC_API_BASE=http://localhost:8000</code>. Production UI: <code>make run-ui</code> (build + start).</p>
+
+<h2>9.3 Makefile targets</h2>
+
+<table><thead><tr><th>TARGET</th><th>ACTION</th></tr></thead><tbody><tr><td>setup</td><td>Python editable install + npm install</td></tr><tr><td>install</td><td>pip install -e ".[dev]"</td></tr><tr><td>demo</td><td>calibration + circuit Python demos</td></tr><tr><td>demo-calibration / demo-circuit</td><td>Individual demos</td></tr><tr><td>founder-demo</td><td>Scriptable orchestrator demo</td></tr><tr><td>founder-demo-stub</td><td>Same against ConductorShapedAdapter</td></tr><tr><td>test</td><td>pytest tests/ -v</td></tr><tr><td>lint / format</td><td>ruff check / format</td></tr><tr><td>run-api</td><td>uvicorn API :8000</td></tr><tr><td>run-ui / run-ui-dev</td><td>Next.js prod / dev :3000</td></tr><tr><td>clean</td><td>Build artifacts, caches, demo_outputs</td></tr></tbody></table><p class="table-cap">Table 9.1. Makefile surface.</p>
+
+<h2>9.4 Tests</h2>
+<p>Expected areas: adapter contract, adapter selection via env, API happy path, calibration convergence, failure paths (cap, cancel). Guarantees stated in README: pytest green, <code>make demo</code> works, offline, no keys.</p>
+
+<h2>9.5 Environment variables</h2>
+
+<table><thead><tr><th>VARIABLE</th><th>DEFAULT</th><th>EFFECT</th></tr></thead><tbody><tr><td>CONDUCTOR_QPU_BACKEND</td><td>sim</td><td>sim vs stub/hardware/shaped/conductor</td></tr><tr><td>CONDUCTOR_ENABLE_LLM</td><td>0</td><td>Enable optional OpenAI planner</td></tr><tr><td>CONDUCTOR_LLM_MODEL</td><td>gpt-4o-mini</td><td>Model when LLM planner on</td></tr><tr><td>NEXT_PUBLIC_API_BASE</td><td>http://localhost:8000</td><td>UI API base</td></tr><tr><td>FOUNDER_DEMO_FAIL</td><td>—</td><td>If 1, founder_demo caps fidelity</td></tr></tbody></table><p class="table-cap">Table 9.2. Environment knobs.</p>
+<p class="sources"><strong>Sources.</strong> Makefile; pyproject.toml; ui/package.json; README.md</p>
+<h1 class="part"><span class="part-num">Part 10</span>Worked walkthroughs</h1>
+
+<p class="lede">Step sequences for the founder demo paths. Pair with the screenshots in Part 8.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-seq-calibrate.svg" alt="FIG. 10.1"/>
+  <p class="fig-cap"><span class="label">FIG. 10.1</span>Sequence: Calibrate Q0 from chip click through GoalResponse and surface update.</p>
+</div>
+
+<h2>10.1 Calibrate Q0</h2>
+<ol>
+<li>API and UI running; toolbar shows LIVE.</li>
+<li>Observe cyan/amber separation on the stage (drift).</li>
+<li>Click <strong>Calibrate Q0</strong> (goal: “Bring qubit 0 to ready”).</li>
+<li>Ledger turn appears running; fidelity climb HUD may populate as history returns.</li>
+<li>On completion, toast “Reached threshold” if last fidelity ≥ threshold; surface markers should move closer if the loop helped.</li>
+<li>Click the ledger row: in-rail chart + tool traces (<code>calibrate_qubit</code> summary fidelity=…).</li>
+</ol>
+
+<div class="figure ">
+  <img src="diagrams/fig-seq-bell.svg" alt="FIG. 10.2"/>
+  <p class="fig-cap"><span class="label">FIG. 10.2</span>Sequence: Bell pair.</p>
+</div>
+
+<h2>10.2 Bell pair</h2>
+<ol>
+<li>Click <strong>Bell pair</strong>.</li>
+<li>Orchestrator plans <code>run_bell_pair</code>; adapter returns counts.</li>
+<li>Ledger shows 00/01/10/11 summary; toast “Bell complete”.</li>
+<li>Status bar continues to reflect latest device snapshot on poll.</li>
+</ol>
+
+<h2>10.3 Forced calibration failure</h2>
+<ol>
+<li>⌘K → “Force fail next calibration” (POST /demo/fail_next_cal, cap 0.69).</li>
+<li>Run Calibrate Q0.</li>
+<li>Expect success=false domain result; fidelity below 0.88; toast shows completed fidelity or failure path; metrics attempts increment.</li>
+</ol>
+
+<h2>10.4 Cancel long job</h2>
+<ol>
+<li>⌘K → “Start long job (cancel me)”.</li>
+<li>Turn shows running; stop button available.</li>
+<li>Stop/cancel → job CANCELLED; toast “Cancel requested”.</li>
+</ol>
+
+<h2>10.5 Scriptable founder demo (no UI)</h2>
+<pre>
+make founder-demo
+# or
+CONDUCTOR_QPU_BACKEND=stub make founder-demo-stub
+python -m demo_scripts.founder_demo --fail
+</pre>
+<p>Prints steps, traces, three metrics, readiness; exits 0.</p>
+
+<p class="sources"><strong>Sources.</strong> README.md (2-minute founder demo); demo_scripts/founder_demo.py; ui/app/page.tsx (submitGoal, commandActions)</p>
+<h1 class="part"><span class="part-num">Part 11</span>Reference</h1>
+
+<h2>11.1 Python package</h2>
+<p><code>conductor-qpu</code> 0.1.0, MIT, requires Python ≥3.11. Runtime deps: numpy, scipy, fastapi, uvicorn, pydantic, httpx, python-multipart. Dev: pytest, pytest-asyncio, ruff, mypy. Optional llm: openai. Scripts: <code>conductor-qpu-api</code>, <code>conductor-qpu-ui</code>.</p>
+
+<h2>11.2 Glossary</h2>
+
+<table><thead><tr><th>TERM</th><th>DEFINITION</th></tr></thead><tbody><tr><td>Adapter</td><td>QPUAdapter implementation sitting under the control plane</td></tr><tr><td>Applied params</td><td>Last calibration vector written to the backend</td></tr><tr><td>True params</td><td>Hidden simulator state; source of detuning</td></tr><tr><td>Detuning</td><td>Per-field |applied − true| exposed for teaching/ops</td></tr><tr><td>Goal</td><td>NL string mapped to ToolCalls</td></tr><tr><td>ToolTrace</td><td>Structured record of one tool invocation</td></tr><tr><td>Readiness</td><td>all readout_fidelity ≥ 0.82</td></tr><tr><td>Calibration success</td><td>best_fid ≥ service threshold (0.88 default)</td></tr><tr><td>time_to_calibrated</td><td>Wall time to successful threshold cross</td></tr><tr><td>interface_latency</td><td>apply_calibration_update roundtrip sample</td></tr><tr><td>Stage</td><td>Primary WebGPU/WebGL visual surface</td></tr><tr><td>Dock</td><td>Bottom progressive-blur agent/ledger band</td></tr><tr><td>Stub</td><td>ConductorShapedAdapter — shape only, not connected</td></tr></tbody></table><p class="table-cap">Table G.1. Glossary.</p>
+
+<h2>11.3 Figure index</h2>
+
+<table><thead><tr><th>FIGURE</th><th>TITLE</th></tr></thead><tbody><tr><td>A.1–A.2</td><td>Front plates: who this is for; four tasks</td></tr><tr><td>A.3–A.7</td><td>Front stills: idle home, typed goal, READY, Bell ledger, instrument map</td></tr><tr><td>R.1</td><td>The three metrics</td></tr><tr><td>C.1</td><td>Colour legend</td></tr><tr><td>1.1–1.5</td><td>QPU primer plates: Bloch, control/readout, why calibrate, stack, our seam</td></tr><tr><td>1.6–1.9</td><td>Tools, cal loop, software stack map, thresholds</td></tr><tr><td>2.1–2.8</td><td>Theory diagrams (layers, contract, loop, drift, surface, UI rationale, layout, failures)</td></tr>
+<tr><td>D.01–D.06</td><td>Mid-century plates: whole machine, cal loop, language firewall, stage/dock, metrics, real vs sim</td></tr><tr><td>3.1–3.3</td><td>Architecture, package, dataflow</td></tr><tr><td>5.1–5.2</td><td>Adapter contract, drift</td></tr><tr><td>6.1–6.3</td><td>Metrics, loop, failures</td></tr><tr><td>7.1</td><td>Tool catalog</td></tr><tr><td>8.1–8.5</td><td>UI layout, screenshots, surface semantics</td></tr><tr><td>10.1–10.2</td><td>Calibrate Q0 and Bell sequences</td></tr></tbody></table><p class="table-cap">Table F.1. Figure index (primary).</p>
+
+<h2>11.4 Week-1 port checklist (from README)</h2>
+<ol>
+<li>Implement QPUAdapter against vendor SDK / internal driver.</li>
+<li>Persist jobs + traces (Postgres); add goal_id.</li>
+<li>Calibration policy object (strategies, cost model, multi-qubit readiness, calibrate-or-not recommendation).</li>
+<li>Narrow plan+execute+observe API or MCP tool surface.</li>
+<li>Real detuning from diagnostics.</li>
+<li>Guardrails: kill switches, max iterations, backoff, refuse circuit below fidelity X.</li>
+</ol>
+
+<h2>11.5 Closing</h2>
+<p>This manual describes the AI→QPU integration layer on main @ <code>b05005c</code> (2026-10-03/04 PT, through PR&nbsp;#18). It is a control-plane integration layer with a noisy simulator behind a real seam. The theory of the interface — goals, tools, closed-loop calibration, trust surfaces, instrument UI — is the durable claim. The simulator numbers are not.</p>
+<p class="sources"><strong>Repository.</strong> https://github.com/mariodelgado/ai-to-qpu-spike · Engineering Edition · October 2026</p>
+
+
+<h1 class="part"><span class="part-num">Part 2B</span>Theory addendum — design alternatives rejected</h1>
+
+<p class="lede">A short record of alternatives considered and rejected while shaping the AI→QPU interface. This is part of the theory of the interface. Knowing what was not chosen clarifies what was.</p>
+
+<h2>2B.1 “Just wrap the vendor SDK in LangChain tools”</h2>
+<p>Rejected as the primary architecture. Vendor SDKs expose dozens to hundreds of calls with pulse-level detail. Dumping them into an LLM tool list creates brittle agents that invent illegal parameter combinations and hide calibration as an incidental side effect of “run_experiment”. This system instead offers five tools and a planner, with calibration as an explicit tool that returns history and metrics. A production system may still wrap vendor calls — but behind the adapter, not as the agent’s entire world.</p>
+
+<h2>2B.2 “ChatGPT as the only UI”</h2>
+<p>Rejected for ops. Language is excellent for composing goals and explaining failures after the fact. It is poor for continuous physical state. Detuning is a spatial relationship; fidelity climb is a time series against a threshold; readiness is a predicate over multiple qubits. Those belong on an instrument stage. Chat remains available via the composer and ⌘K, subordinated to the stage.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-why-instrument.svg" alt="FIG. 2B.1"/>
+  <p class="fig-cap"><span class="label">FIG. 2B.1</span>Reprise: chat-only vs instrument — the rejected alternative on the left.</p>
+</div>
+
+<h2>2B.3 “One-shot Bayesian optimisation as the calibration product”</h2>
+<p>Rejected for this system’s thesis. Advanced tuners matter and should plug in as CalibrationService strategies. Shipping a fancy optimiser first would confuse the demo: founders would argue about acquisition functions instead of asking whether the control plane makes calibration a recurring, observable decision. The gradient-free loop is intentionally simple; the metrics and traces are the product.</p>
+
+<h2>2B.4 “Hide the simulator’s true params forever”</h2>
+<p>Partially rejected. Omniscient detuning is unrealistic for hardware — and the stub correctly refuses it. For teaching and founder demos, exposing <code>get_detuning</code> on the sim makes the problem visible on the stage (cyan vs amber). The honesty line in the README states this clearly: the dynamics are representative; the oracle is not.</p>
+
+<h2>2B.5 “Require LLM keys for the happy path”</h2>
+<p>Rejected. Offline-first is a constraint of this system: <code>make demo</code> and the UI must work with zero external services. Optional LLM planning is gated. This keeps CI deterministic and founder laptops unblocked.</p>
+
+<div class="rule-of-thumb"><strong>Rule of thumb</strong>
+Prefer a boring planner and an honest loop over a clever planner and an opaque loop. Agents can get smarter later; fake observability cannot be fixed by a better model.
+</div>
+
+<h1 class="part"><span class="part-num">Part 4B</span>API schemas and payload examples</h1>
+
+<p class="lede">Concrete JSON shapes as returned by the FastAPI surface. Field names match <code>api/server.py</code> and <code>ui/lib/api.ts</code>.</p>
+
+<h2>4B.1 POST /goals</h2>
+<pre>
+// request
+{ "goal": "Bring qubit 0 to ready" }
+
+// response (shape)
+{
+  "goal": "Bring qubit 0 to ready",
+  "results": [
+    {
+      "ok": true,
+      "data": {
+        "fidelity": 0.9012,
+        "iterations": 14,
+        "params": {"frequency": 5.02, "amplitude": 0.51, "readout_error": 0.04},
+        "duration_s": 0.0123,
+        "history": [[0, 0.71], [1, 0.74], /* … */],
+        "initial_fidelity": 0.71,
+        "threshold": 0.88
+      },
+      "latency_s": 0.013,
+      "error": null
+    }
+  ],
+  "traces": [
+    {
+      "ts": 1727827200.1,
+      "tool": "calibrate_qubit",
+      "args": {"qubit_id": 0, "target_fidelity": 0.88},
+      "latency_s": 0.013,
+      "ok": true,
+      "summary": "fidelity=0.9012"
+    }
+  ],
+  "metrics": { /* MetricsAggregator.snapshot() */ }
+}
+</pre>
+
+<h2>4B.2 GET /device/state</h2>
+<pre>
+{
+  "is_ready": false,
+  "readiness_score": 0.812,
+  "qubits": [0, 1],
+  "temperatures_mk": {"0": 24.1, "1": 23.8},
+  "coherence_us": {"0": [41.2, 24.5], "1": [40.1, 23.9]},
+  "readout_fidelity": {"0": 0.81, "1": 0.814},
+  "notes": "Calibration recommended",
+  "timestamp": "2026-10-01T23:00:00.000000",
+  "readiness_predicate": {
+    "name": "all_qubits_readout_fidelity_above",
+    "readout_fidelity_threshold": 0.82,
+    "description": "All qubits must have readout_fidelity &gt;= threshold."
+  }
+}
+</pre>
+
+<h2>4B.3 GET /device/detuning/0</h2>
+<pre>
+{
+  "qubit_id": 0,
+  "detuning": {
+    "frequency_error": 0.0312,
+    "amplitude_error": 0.014,
+    "phase_error": 0.08,
+    "readout_error_delta": 0.01
+  },
+  "applied": {
+    "frequency": 5.0,
+    "amplitude": 0.48,
+    "phase": 0.01,
+    "readout_error": 0.06
+  }
+}
+</pre>
+
+<h2>4B.4 GET /metrics</h2>
+<pre>
+{
+  "orchestrator": {
+    "calibration": {
+      "attempts": 2.0,
+      "successes": 1.0,
+      "calibration_success_rate": 0.5,
+      "avg_time_to_calibrated_s": 0.02,
+      "avg_interface_latency_s": 0.0001
+    },
+    "tools": {
+      "calibrate_qubit": {"calls": 2.0, "avg_latency_s": 0.015}
+    },
+    "adapter": {"total_jobs": 3.0, "total_shots": 1024.0},
+    "interface_latency_p50_hint": 0.0001
+  },
+  "aggregator": {
+    "interface_latency_ms": {"count": 2, "p50": 12.0, "p95": 15.0},
+    "fidelity": {"count": 1, "avg": 0.9012, "last": 0.9012},
+    "job_outcomes": {"succeeded": 0, "failed": 0, "cancelled": 0},
+    "timestamp": 1727827200.0
+  },
+  "calibration": { /* same shape as orchestrator.calibration */ }
+}
+</pre>
+
+<h2>4B.5 SSE event shapes</h2>
+<pre>
+event: update
+data: {"job_id":"…","status":"running","result":null,"metrics":null}
+
+event: update
+data: {"job_id":"…","status":"succeeded","result":{"counts":{…}},"metrics":{…}}
+
+event: timeout
+data: {"job_id":"…"}
+
+event: error
+data: {"error":"not found"}
+</pre>
+
+<h2>4B.6 Direct calibrate / bell</h2>
+
+<table><thead><tr><th>ENDPOINT</th><th>NOTABLE RESPONSE FIELDS</th></tr></thead><tbody><tr><td>POST /calibrate</td><td>success, fidelity, iterations, duration_s, params{qubit_id,frequency,amplitude,readout_error}, history</td></tr><tr><td>POST /circuit/bell</td><td>job_id, counts{00,01,10,11}, metrics{estimated_fidelity,shots,p00,p11} or error</td></tr><tr><td>POST /demo/fail_next_cal</td><td>ok, fid_cap=0.69, note</td></tr><tr><td>POST /demo/start_long_job</td><td>job_id</td></tr></tbody></table><p class="table-cap">Table 4B.1. Direct and demo endpoints — response highlights.</p>
+<h1 class="part"><span class="part-num">Part 5B</span>Simulator physics notes</h1>
+
+<p class="lede">Additional detail on the noisy simulator’s fidelity kernel, drift update, and Bell contrast — enough to reimplement or replace without reading the UI.</p>
+
+<h2>5B.1 Error terms</h2>
+<p>Let <code>p</code> be applied params and <code>t</code> true params for qubit <code>q</code>. Define:</p>
+<ul>
+<li><code>df = |p.frequency - t.frequency|</code></li>
+<li><code>da = |p.amplitude - t.amplitude|</code></li>
+<li><code>dp =</code> absolute wrapped phase difference on <code>[0, π]</code></li>
+<li><code>dt1 = max(0, t.t1 - p.t1) / max(1, t.t1)</code> (penalise claiming too-long T1)</li>
+<li><code>dt2</code> analogous for T2</li>
+<li><code>dr = |p.readout_error - t.readout_error|</code></li>
+</ul>
+<p>Composite error:</p>
+<pre>
+err = 0.9*df² + 0.7*da² + 0.5*dp² + 0.35*dt1² + 0.35*dt2² + 0.85*dr²
+fid = clamp(0.94*exp(-1.8*err) + 0.05, 0.55, 0.999)
+</pre>
+<p>Optional demo cap: <code>fid = min(fid, cap)</code> before clamp upper bound still applies via min with cap then clamp.</p>
+
+<h2>5B.2 Drift step</h2>
+<p>On each drift application with elapsed <code>dt</code> and <code>steps = max(1, int(dt*20))</code>:</p>
+<pre>
+f_drift = drift_rate * (1 + 0.3*sin(now*0.7 + q))
+frequency += N(0, f_drift * steps)   # clamped [4.2, 5.9]
+amplitude += N(0, 0.0008 * steps)    # clamped [0.25, 0.75]
+phase     += N(0, 0.002 * steps)
+t1, t2, readout_error similarly with their sigmas and clamps
+</pre>
+
+<h2>5B.3 Bell contrast</h2>
+<pre>
+joint_f = (f0 + f1) / 2
+contrast = clamp(0.5 + 0.48*(joint_f - 0.6)/0.4, 0.02, 0.98)
+</pre>
+<p>Ideal bits are 00 or 11 with equal probability; readout flips each bit with the applied readout_error; with probability <code>1 - contrast</code> the outcome is forced to odd parity (01 or 10).</p>
+
+<h2>5B.4 Device state theatre</h2>
+<p>Temperature: <code>18 + (1-f)*35 + noise</code> mK. Coherence scales with fidelity. Readout fidelity card: <code>1 - readout_error*(1.3 - 0.3*f)</code> clamped. Ready iff all readout fidelities &gt; 0.82.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-drift.svg" alt="FIG. 5B.1"/>
+  <p class="fig-cap"><span class="label">FIG. 5B.1</span>Drift cartoon corresponding to §5B.2.</p>
+</div>
+<p class="sources"><strong>Sources.</strong> adapter/noisy_sim.py (_apply_drift, _fidelity_from_params, _simulate_bell_readout, get_device_state)</p>
+<h1 class="part"><span class="part-num">Part 6B</span>Calibration search parameters</h1>
+
+<p class="lede">Exact neighbour sampling and acceptance rules as coded — for anyone replacing the strategy while keeping metrics.</p>
+
+<table><thead><tr><th>FIELD</th><th>REL STEP (scale&gt;1)</th><th>REL STEP (else)</th><th>CLAMP</th></tr></thead><tbody><tr><td>frequency</td><td>0.032</td><td>0.018</td><td>[4.20, 5.90]</td></tr><tr><td>amplitude</td><td>0.065</td><td>0.035</td><td>[0.24, 0.76]</td></tr><tr><td>phase</td><td>0.28</td><td>0.28</td><td>[-π, π]</td></tr><tr><td>t1</td><td>0.10</td><td>0.10</td><td>[15, 88]</td></tr><tr><td>t2</td><td>0.11</td><td>0.11</td><td>[10, 68]</td></tr><tr><td>readout_error</td><td>0.22</td><td>0.13</td><td>[0.002, 0.16]</td></tr></tbody></table><p class="table-cap">Table 6B.1. _sample_neighbor relative Gaussian scales (multiplied by scale and applied as abs delta).</p>
+
+<h2>6B.1 Scale schedule</h2>
+<ul>
+<li>Iterations &lt; 8: base_scale 1.6</li>
+<li>&lt; 20: 1.1</li>
+<li>else: 0.85</li>
+<li>If no_improve &gt; patience/2: force base_scale 1.8</li>
+<li>Final scale = base_scale * (0.6 + 0.8*U[0,1])</li>
+</ul>
+
+<h2>6B.2 Metrics update rules</h2>
+<ul>
+<li>Every apply: <code>total_interface_latency_s += latency</code>; <code>latency_samples += 1</code>.</li>
+<li>Every finished calibrate() call: <code>attempts += 1</code>.</li>
+<li>On success only: <code>successes += 1</code>; <code>total_time_to_cal_s += duration_s</code>.</li>
+<li>Averages divide by successes (time) or latency_samples (latency); success rate uses attempts.</li>
+</ul>
+
+<h1 class="part"><span class="part-num">Part 8B</span>UI chrome and progressive blur</h1>
+
+<p class="lede">Implementation notes for the instrument chrome beyond the React tree — so a designer or engineer can preserve the 65/35 contract.</p>
+
+<h2>8B.1 Why the stage extends under the dock</h2>
+<p>Progressive blur via <code>backdrop-filter</code> only works if there is content behind the frosted layer. The stage is therefore positionally full-bleed; the dock is an overlay with a gradient mask that is stronger near the composer and fades toward the stage. First paint must never be an empty chat void.</p>
+
+<h2>8B.2 Palette tokens (conceptual)</h2>
+
+<table><thead><tr><th>TOKEN</th><th>HEX</th><th>USE</th></tr></thead><tbody><tr><td>--true / system blue</td><td>#007AFF</td><td>True marker, high fidelity, goal text accents</td></tr><tr><td>--applied / system orange</td><td>#FF9500</td><td>Applied marker, threshold lines, CAL NEEDED</td></tr><tr><td>--success</td><td>#34C759</td><td>LIVE badge, success fidelity text</td></tr><tr><td>--fail</td><td>#FF3B30</td><td>Failed turns, backend errors</td></tr><tr><td>label gray</td><td>#8E8E93 / zinc</td><td>Secondary labels, low fidelity band</td></tr><tr><td>hairline</td><td>white/10 borders</td><td>iOS-like separators</td></tr></tbody></table><p class="table-cap">Table 8B.1. iOS system palette as used in UI and diagrams.</p>
+
+<h2>8B.3 Motion constraints</h2>
+<p>Animate only transform/opacity. Ease-out cubic-bezier(0.23, 1, 0.32, 1). ⌘K open has no animation. NumberFlow may be used on metrics cards in alternate layouts; the instrument toolbar uses mono text updates on poll.</p>
+
+<h2>8B.4 Connection failure UX</h2>
+<p>On health check failure: <code>connected=false</code>, <code>backendDown=true</code>, red banner “Cannot reach backend — make run-api”, composer disabled, toast on submit failure. This is a control-plane honesty surface: the UI must not pretend the device is live.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-ui-layout.svg" alt="FIG. 8B.1"/>
+  <p class="fig-cap"><span class="label">FIG. 8B.1</span>Layout reference for chrome work.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 9B</span>Test matrix</h1>
+
+<p class="lede">What each test module guards. Keep these green when changing the adapter or calibration loop.</p>
+
+<table><thead><tr><th>MODULE</th><th>ASSERTIONS (SUMMARY)</th></tr></thead><tbody><tr><td>test_adapter_contract.py</td><td>Adapter methods exist and behave: submit/poll/cancel, state, calibration apply returns fidelity</td></tr><tr><td>test_adapter_selection.py</td><td>factory env selects sim vs stub</td></tr><tr><td>test_api_happy_path.py</td><td>Health, goals, device, metrics HTTP paths succeed against TestClient</td></tr><tr><td>test_calibration_converges.py</td><td>Service can improve fidelity on noisy sim; metrics populated</td></tr><tr><td>test_failure_paths.py</td><td>Fid cap → success False; long job cancel → CANCELLED</td></tr></tbody></table><p class="table-cap">Table 9B.1. Pytest modules under tests/.</p>
+
+<h2>9B.1 Running</h2>
+<pre>
+make test
+# equivalent
+pytest tests/ -v --tb=short
+</pre>
+<p>asyncio mode auto via pyproject. Prefer short tracebacks in CI logs.</p>
+
+<h2>9B.2 Demo scripts as smoke tests</h2>
+<p><code>demo_scripts/run_calibration_demo.py</code> and <code>run_circuit_demo.py</code> print human-readable climbs and counts. <code>founder_demo.py</code> exercises orchestrator goals end-to-end including optional <code>--fail</code>. They are not substitutes for pytest but catch packaging/import regressions quickly via <code>make demo</code>.</p>
+
+<h1 class="part"><span class="part-num">Part 4C</span>Endpoint catalog (complete)</h1>
+<table><thead><tr><th>METHOD</th><th>PATH</th><th>AUTH</th><th>PRIMARY CONSUMER</th></tr></thead><tbody><tr><td>GET</td><td>/health</td><td>none</td><td>UI connection check</td></tr><tr><td>GET</td><td>/readiness_predicate</td><td>none</td><td>UI / founders</td></tr><tr><td>GET</td><td>/device/state</td><td>none</td><td>UI poll 6.5s</td></tr><tr><td>GET</td><td>/device/detuning/{qubit_id}</td><td>none</td><td>UI drift surface</td></tr><tr><td>POST</td><td>/goals</td><td>none</td><td>UI composer/chips/⌘K</td></tr><tr><td>POST</td><td>/calibrate</td><td>none</td><td>Direct/API clients</td></tr><tr><td>POST</td><td>/circuit/bell</td><td>none</td><td>Direct/API clients</td></tr><tr><td>GET</td><td>/jobs</td><td>none</td><td>UI job list</td></tr><tr><td>GET</td><td>/jobs/{job_id}</td><td>none</td><td>UI poll</td></tr><tr><td>GET</td><td>/sse/jobs/{job_id}</td><td>none</td><td>UI EventSource</td></tr><tr><td>GET</td><td>/traces</td><td>none</td><td>Debug / UI</td></tr><tr><td>GET</td><td>/metrics</td><td>none</td><td>UI metrics refresh</td></tr><tr><td>POST</td><td>/demo/fail_next_cal</td><td>none</td><td>⌘K demo</td></tr><tr><td>POST</td><td>/demo/start_long_job</td><td>none</td><td>⌘K demo</td></tr><tr><td>GET</td><td>/docs</td><td>none</td><td>OpenAPI Swagger UI</td></tr></tbody></table><p class="table-cap">Table 4C.1. Complete FastAPI route list on server.py.</p>
+<h1 class="part"><span class="part-num">Part 10B</span>Numeric walkthrough — one calibration attempt</h1>
+
+<p class="lede">Illustrative numbers consistent with the model (not a captured golden run). Shows how history, metrics, and UI fields relate.</p>
+
+<table><thead><tr><th>STEP</th><th>ACTION</th><th>FIDELITY</th><th>NOTES</th></tr></thead><tbody><tr><td>0</td><td>measure initial</td><td>0.72</td><td>history (0, 0.72)</td></tr><tr><td>1–3</td><td>wide explores</td><td>0.74–0.79</td><td>some accepts worse via anneal</td></tr><tr><td>4–8</td><td>improve</td><td>0.83</td><td>crosses readiness 0.82; service still climbing to 0.88</td></tr><tr><td>9–12</td><td>tighten scale</td><td>0.87</td><td>near threshold</td></tr><tr><td>13</td><td>accept</td><td>0.901</td><td>success; break</td></tr></tbody></table><p class="table-cap">Table 10B.1. Illustrative climb. UI threshold line at 0.88; READY may flip earlier based on readout card ≥0.82.</p>
+
+<p>After success: <code>attempts=1</code>, <code>successes=1</code>, <code>calibration_success_rate=1.0</code>, <code>avg_time_to_calibrated_s ≈ duration_s</code>, <code>latency_samples=13</code>. ToolTrace summary <code>fidelity=0.901</code>. Detuning frequency_error should shrink if applied moved toward true.</p>
+<p>Under fid cap 0.69: steps continue to max_iterations or patience cycling; best_fid ≤ 0.69; success=False; successes unchanged; attempts still +1; success_rate drops.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-seq-calibrate.svg" alt="FIG. 10B.1"/>
+  <p class="fig-cap"><span class="label">FIG. 10B.1</span>Sequence context for the numeric climb.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-thresholds.svg" alt="FIG. 10B.2"/>
+  <p class="fig-cap"><span class="label">FIG. 10B.2</span>Where 0.82 and 0.88 sit on the number line during the climb.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 7B</span>Agent integration patterns</h1>
+
+<p class="lede">How an external agent should call this control plane without treating it as a chatbot.</p>
+
+<h2>7B.1 Preferred pattern</h2>
+<ol>
+<li>GET /device/state — decide if work is needed.</li>
+<li>POST /goals with an explicit calibration or circuit goal — or POST /calibrate / /circuit/bell for direct control.</li>
+<li>Read results[].ok and traces[] — do not invent narrative.</li>
+<li>GET /metrics — update dashboards.</li>
+<li>If running async jobs, follow GET /jobs/{id} or SSE.</li>
+</ol>
+
+<h2>7B.2 Anti-patterns</h2>
+<ul>
+<li>Asking an LLM to “explain” device state instead of reading /device/state.</li>
+<li>Ignoring success=false because HTTP was 200.</li>
+<li>Skipping calibration because a previous session’s UI looked green (state is in-memory per process).</li>
+<li>Calling stub backend and treating fidelity 0.90 calibration stub success as hardware truth.</li>
+</ul>
+
+<div class="honesty"><strong>Honesty</strong>
+MCP / tool-gateway exposure is a week-1 item in the README, not shipped in 0.1.0. Today the HTTP surface <em>is</em> the agent API.
+</div>
+
+<div class="figure ">
+  <img src="diagrams/fig-dataflow.svg" alt="FIG. 7B.1"/>
+  <p class="fig-cap"><span class="label">FIG. 7B.1</span>HTTP dataflow agents should follow.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 11B</span>Symbol and path index</h1>
+<table><thead><tr><th>SYMBOL / PATH</th><th>ROLE</th></tr></thead><tbody><tr><td>conductor_qpu.adapter.base.QPUAdapter</td><td>Abstract six-method contract</td></tr><tr><td>conductor_qpu.adapter.noisy_sim.NoisySimulatorBackend</td><td>Default drifting toy device</td></tr><tr><td>conductor_qpu.adapter.hardware_stub.ConductorShapedAdapter</td><td>Shape-only stub</td></tr><tr><td>conductor_qpu.adapter.factory.create_backend</td><td>Env-based backend selection</td></tr><tr><td>conductor_qpu.calibration.service.CalibrationService</td><td>Iterative tuner + CalibrationMetrics</td></tr><tr><td>conductor_qpu.orchestrator.orchestrator.Orchestrator</td><td>Tools + traces + run_goal</td></tr><tr><td>conductor_qpu.orchestrator.planner.plan_from_goal</td><td>Deterministic NL→tools</td></tr><tr><td>conductor_qpu.api.server.app</td><td>FastAPI application</td></tr><tr><td>conductor_qpu.models.types</td><td>Job*, DeviceState, CalibrationParams, thresholds</td></tr><tr><td>conductor_qpu.observability.metrics.MetricsAggregator</td><td>Rolling latency/fidelity samples</td></tr><tr><td>conductor_qpu.jobs.store.InMemoryJobStore</td><td>Non-durable job history seam</td></tr><tr><td>ui/app/page.tsx</td><td>Instrument composition</td></tr><tr><td>ui/components/viz/calibration-surface.tsx</td><td>WebGPU/WebGL drift landscape</td></tr><tr><td>ui/lib/api.ts</td><td>Typed HTTP client</td></tr><tr><td>READINESS_READOUT_FIDELITY_THRESHOLD</td><td>0.82</td></tr><tr><td>CalibrationService.fidelity_threshold</td><td>0.88 (API)</td></tr></tbody></table><p class="table-cap">Table 11B.1. Path and symbol index.</p>
+
+<h2>11B.1 Document control</h2>
+
+<table><thead><tr><th>FIELD</th><th>VALUE</th></tr></thead><tbody><tr><td>Title</td><td>AI→QPU Integration Layer Technical Manual</td></tr><tr><td>Edition</td><td>Engineering Edition — October 2026</td></tr><tr><td>Describes</td><td>main @ b05005c (through PR #18, 2026-10-03/04 PT)</td></tr><tr><td>Source tree</td><td>/workspace/manual/ (HTML/CSS + diagrams)</td></tr><tr><td>PDF deliverable</td><td>/workspace/ai-to-qpu-technical-manual.pdf</td></tr><tr><td>Repo</td><td>https://github.com/mariodelgado/ai-to-qpu-spike</td></tr></tbody></table><p class="table-cap">Table 11B.2. Document control block.</p>
+<h1 class="part"><span class="part-num">Part 3B</span>Architecture decision records</h1>
+
+<p class="lede">Short ADRs for this system. Each records context, decision, and consequences as shipped on main.</p>
+
+<h2>ADR-001 — Narrow adapter waist</h2>
+<p><strong>Context.</strong> Real QPUs differ wildly in pulse programming models. <strong>Decision.</strong> Six synchronous methods on QPUAdapter. <strong>Consequences.</strong> Orchestrator/UI stay stable; week-1 work is implementing the six methods. Async/hardware batching is a future wrapper concern.</p>
+
+<h2>ADR-002 — Deterministic planner by default</h2>
+<p><strong>Context.</strong> NL goals are convenient; LLM keys are not. <strong>Decision.</strong> Rule-based planner; optional LLM behind env flag. <strong>Consequences.</strong> Demo and CI are offline; goal coverage is intentionally small; expand rules or enable LLM later without changing tools.</p>
+
+<h2>ADR-003 — In-memory everything</h2>
+<p><strong>Context.</strong> Weekend prototype. <strong>Decision.</strong> No database. <strong>Consequences.</strong> Refresh-safe only within process lifetime; persistence is an explicit next step.</p>
+
+<h2>ADR-004 — Instrument UI over dashboard cards</h2>
+<p><strong>Context.</strong> Early Streamlit UI became a card wall. <strong>Decision.</strong> Replace with a Next.js instrument (65/35 at first; now a three-pane stage over a dock). <strong>Consequences.</strong> Higher front-end complexity; clearer founder narrative; WebGPU dependency with WebGL fallback.</p>
+
+<h2>ADR-005 — Expose sim detuning</h2>
+<p><strong>Context.</strong> Calibration needs a visible problem. <strong>Decision.</strong> get_detuning on sim; stage markers. <strong>Consequences.</strong> Teaching oracle; stub must raise; production must replace with measured diagnostics.</p>
+
+<h2>ADR-006 — Domain failures as 200 + flags</h2>
+<p><strong>Context.</strong> Agents should parse tool outcomes. <strong>Decision.</strong> Calibration failure returns HTTP 200 with success/ok false. <strong>Consequences.</strong> Do not key off HTTP status alone for domain errors; UUID errors still 4xx.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-architecture.svg" alt="FIG. 3B.1"/>
+  <p class="fig-cap"><span class="label">FIG. 3B.1</span>Architecture context for ADR-001/004.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 5C</span>Stub driver integration sketch</h1>
+
+<p class="lede">How a real hardware team should read ConductorShapedAdapter — as a checklist, not as runnable firmware.</p>
+
+<table><thead><tr><th>METHOD</th><th>REAL DRIVER SHOULD…</th><th>STUB DOES…</th></tr></thead><tbody><tr><td>submit_job (CIRCUIT)</td><td>Validate/lower pulse_program; allocate AWG; load; arm; collect shots</td><td>FAIL with NotImplemented message + payload_shape</td></tr><tr><td>submit_job (CALIBRATION)</td><td>Write versioned cal table; optional verify sequence</td><td>Accept shape; apply_calibration_update stub fidelity 0.90</td></tr><tr><td>poll_job</td><td>Return queue/run/complete from control system</td><td>Return in-memory record</td></tr><tr><td>cancel_job</td><td>Best-effort abort if non-terminal</td><td>Mark CANCELLED if non-terminal</td></tr><tr><td>get_device_state</td><td>Query monitors, FPGA, env sensors</td><td>Static snapshot; is_ready=False; NOTES disconnected</td></tr><tr><td>get_calibration</td><td>Read committed table</td><td>Last applied or defaults</td></tr><tr><td>apply_calibration_update</td><td>Validate ranges; commit; verify; return measured fid</td><td>Store last applied; fidelity 0.90 message STUB</td></tr><tr><td>get_detuning</td><td>Spectroscopy / Ramsey estimate</td><td>NotImplementedError</td></tr><tr><td>measure_fidelity</td><td>Hardware estimate</td><td>Return 0.55</td></tr></tbody></table><p class="table-cap">Table 5C.1. Stub vs real driver checklist (hardware_stub.py docstring).</p>
+
+<pre>
+# integration sketch
+export CONDUCTOR_QPU_BACKEND=stub   # proves seam
+# then subclass:
+class MyDriver(ConductorShapedAdapter):
+    def submit_job(self, job):
+        ...  # talk to control stack
+# register in factory.create_backend()
+</pre>
+
+<div class="figure ">
+  <img src="diagrams/fig-adapter-contract.svg" alt="FIG. 5C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 5C.1</span>Methods the subclass must honour.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 8C</span>UI component map</h1>
+
+<p class="lede">File-level map of the Next.js tree that implements the instrument.</p>
+
+<table><thead><tr><th>PATH</th><th>RESPONSIBILITY</th></tr></thead><tbody><tr><td>ui/app/page.tsx</td><td>Root instrument: toolbar, three-pane stage (drift · device · cryostat), iPadOS splitters, bottom-third dock with bubbles + expanded chips, turns, polling</td></tr><tr><td>ui/app/layout.tsx</td><td>HTML shell / fonts</td></tr><tr><td>ui/app/globals.css</td><td>Tokens, toolbar, Safari-safe <code>.stage-blur</code> (solid bands), dock tint, high-contrast composer, hairlines</td></tr><tr><td>ui/components/viz/calibration-surface.tsx</td><td>R3F landscape + high-contrast coplanar grid + markers + GPU mode</td></tr>
+<tr><td>ui/components/viz/device-3d.tsx</td><td>Center pane: qubits, chiplets, resonators, readout card (fidelity / T1 / T2)</td></tr>
+<tr><td>ui/components/viz/cryostat-plate.tsx</td><td>Right pane: isometric dilution-fridge plate + status strip</td></tr>
+<tr><td>ui/components/stage/stage-state-chip.tsx</td><td>Bottom-right StageStateChip lifecycle badge</td></tr><tr><td>ui/components/viz/calibration-surface-lazy.tsx</td><td>Dynamic import boundary</td></tr><tr><td>ui/components/command/command-palette.tsx</td><td>⌘K actions</td></tr><tr><td>ui/components/inspector/right-inspector.tsx</td><td>Legacy/alternate inspector pieces</td></tr><tr><td>ui/components/stage/hero-viewer.tsx</td><td>Stage helper</td></tr><tr><td>ui/components/timeline/filmstrip.tsx</td><td>Timeline alternate</td></tr><tr><td>ui/components/metrics-cards.tsx</td><td>Metrics presentation helper</td></tr><tr><td>ui/lib/api.ts</td><td>Fetch wrapper + types</td></tr><tr><td>ui/lib/store.ts</td><td>zustand (command open, etc.)</td></tr></tbody></table><p class="table-cap">Table 8C.1. UI file map. page.tsx is the composition root for the shipped three-pane layout (drift · device · cryostat + dock).</p>
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-home.png" alt="FIG. 8C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 8C.1</span>Full home screenshot for component orientation. Left: calibration-surface.tsx (drift). Center: device-3d.tsx. Right: cryostat-plate.tsx. Bottom: dock in page.tsx.</p>
+</div>
+<div class="figure full">
+  <img src="assets/ui/manual-3pane-dock-transcript.png" alt="FIG. 8C.2"/>
+  <p class="fig-cap"><span class="label">FIG. 8C.2</span>Dock after two turns — you / agent bubbles, tool pills (<code>calibrate_qubit</code>, <code>run_bell_pair</code>), workflow chips, composer.</p>
+</div>
+
+<h2>8C.1 State fields on a Turn</h2>
+
+<table><thead><tr><th>FIELD</th><th>MEANING</th></tr></thead><tbody><tr><td>id</td><td>Client-generated UUID for the ledger row</td></tr><tr><td>goal</td><td>Submitted string</td></tr><tr><td>status</td><td>running | succeeded | failed</td></tr><tr><td>traces</td><td>ToolTrace[] from GoalResponse</td></tr><tr><td>results</td><td>ToolResult-like array</td></tr><tr><td>fidelityHistory</td><td>{iter, fidelity}[] extracted from data.history</td></tr><tr><td>calThreshold</td><td>From data.threshold or 0.88</td></tr><tr><td>lastCalParams</td><td>params object if present</td></tr><tr><td>bellCounts</td><td>counts object if present</td></tr><tr><td>error</td><td>Failure message</td></tr><tr><td>createdAt</td><td>Client timestamp for ledger clock</td></tr></tbody></table><p class="table-cap">Table 8C.2. Turn interface in page.tsx.</p>
+<h1 class="part"><span class="part-num">Part 10C</span>Operator runbook (90 seconds)</h1>
+
+<p class="lede">Compressed runbook matching the README’s 2-minute founder demo, expanded with failure checks.</p>
+<ol>
+<li><strong>Boot.</strong> <code>make setup</code> once. Then <code>make run-api</code> and <code>make run-ui-dev</code>.</li>
+<li><strong>Verify LIVE.</strong> Toolbar badge green; if red banner, API is down.</li>
+<li><strong>Watch drift.</strong> Cyan vs amber; Δf readout moves slowly.</li>
+<li><strong>Calibrate Q0.</strong> Expect climb HUD; ledger turn; threshold toast if crossed.</li>
+<li><strong>Inspect traces.</strong> Open ledger row — tool names must be real (<code>calibrate_qubit</code>), not prose.</li>
+<li><strong>Bell pair.</strong> Counts appear; stage remains primary.</li>
+<li><strong>Q0 readiness / Device status / Diagnose Q0.</strong> <code>get_device_state</code> fills fidelity/readiness when Bell alone is not enough.</li>
+<li><strong>Improve Bell.</strong> Precise (more shots) Bell after calibrate.</li>
+<li><strong>Fail path.</strong> ⌘K force fail; recalibrate; confirm success=false behaviour.</li>
+<li><strong>Cancel path.</strong> Start long job; stop; confirm CANCELLED.</li>
+<li><strong>Metrics.</strong> Refresh; confirm attempts/successes moved.</li>
+<li><strong>Stub sanity (optional).</strong> Restart API with <code>CONDUCTOR_QPU_BACKEND=stub</code>; confirm never-ready and circuit failure messaging.</li>
+</ol>
+
+<div class="figure ">
+  <img src="diagrams/fig-seq-calibrate.svg" alt="FIG. 10C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 10C.1</span>Happy-path calibrate sequence.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-seq-bell.svg" alt="FIG. 10C.2"/>
+  <p class="fig-cap"><span class="label">FIG. 10C.2</span>Bell sequence.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-failure-modes.svg" alt="FIG. 10C.3"/>
+  <p class="fig-cap"><span class="label">FIG. 10C.3</span>Failure modes to hit in steps 7–8 and stub check.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 2C</span>Theory — observability as a trust protocol</h1>
+
+<p class="lede">Extends Part 2: why traces + metrics + drift form a protocol, not a dashboard aesthetic.</p>
+
+<h2>2C.1 Three audiences, one ledger</h2>
+<p>A <strong>founder</strong> watching the demo needs to see that calibration costs time and sometimes fails. An <strong>operator</strong> needs to see whether the device is ready and what the last tool did. An <strong>agent</strong> needs machine-readable ToolResults and stable tool names. The ToolTrace buffer and /traces endpoint serve all three if the UI does not invent a parallel narrative channel.</p>
+
+<h2>2C.2 What would falsify the design</h2>
+<ul>
+<li>Calibration “success” without a fidelity history that crossed the threshold.</li>
+<li>UI READY state disagreeing with /device/state.is_ready for the same poll.</li>
+<li>Traces that do not match tools actually invoked (LLM fiction).</li>
+<li>Interface latency that never samples because applies are skipped.</li>
+<li>A hardware port that requires rewriting page.tsx to show drift.</li>
+</ul>
+<div class="rule-of-thumb"><strong>Rule of thumb</strong>
+If swapping the adapter requires redesigning the ledger, the waist was too wide. If swapping the planner requires redesigning metrics, the metrics were tied to NL rather than to tools.
+</div>
+
+<div class="figure ">
+  <img src="diagrams/fig-three-layers.svg" alt="FIG. 2C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 2C.1</span>Intent / contract / physics — falsification targets live at the seams.</p>
+</div>
+<div class="figure ">
+  <img src="diagrams/fig-mental-model.svg" alt="FIG. 2C.2"/>
+  <p class="fig-cap"><span class="label">FIG. 2C.2</span>Stack map for trust-protocol discussion.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 6C</span>Metrics algebra</h1>
+
+<p class="lede">Formal-ish definitions matching CalibrationMetrics and MetricsAggregator.</p>
+<pre>
+calibration_success_rate = successes / attempts          # 0 if attempts=0
+avg_time_to_calibrated   = total_time_to_cal_s / successes  # 0 if successes=0
+avg_interface_latency    = total_interface_latency_s / latency_samples
+
+aggregator.p50_ms = percentile_50(latencies_ms)
+aggregator.p95_ms = percentile_95(latencies_ms)
+aggregator.avg_fidelity = mean(fidelity_samples)
+</pre>
+<p>Note: orchestrator records tool latencies separately from calibration interface latency. /metrics returns both. UI may emphasise calibration block for the founder narrative.</p>
+
+<div class="figure ">
+  <img src="diagrams/fig-metrics.svg" alt="FIG. 6C.1"/>
+  <p class="fig-cap"><span class="label">FIG. 6C.1</span>The three primary dials.</p>
+</div>
+<h1 class="part"><span class="part-num">Part 11C</span>Licence and third-party</h1>
+
+<p>This system is MIT-licensed (LICENSE in repo root). UI depends on Next.js, React, three.js, recharts, cmdk, sonner, motion, and shadcn/Radix components — each under their respective licences. Emil Kowalski skills are vendored under <code>.cursor/skills</code> for design guidance; they are not runtime dependencies beyond the libraries chosen.</p>
+<p>This manual’s diagrams are original to the manual source tree under <code>docs/manual/diagrams</code>. Screenshots capture the live three-pane UI (<code>docs/manual/assets/ui/manual-3pane-*.png</code>). TinyNeuro’s manual was studied for structure only; no TinyNeuro content is reproduced.</p>
+
+</body></html>

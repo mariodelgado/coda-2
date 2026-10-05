@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 660" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="860" height="660" fill="#eef2f0"/>
+  <defs>
+  <marker id="arr-cy" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 Z" fill="#1a1a1a"/>
+  </marker>
+  <marker id="arr-cy-red" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 Z" fill="#c41e1e"/>
+  </marker>
+  <marker id="arr-cy-blue" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+    <path d="M0,0 L7,3.5 L0,7 Z" fill="#3d6a8c"/>
+  </marker>
+</defs>
+  <text x="28" y="30" font-size="11" fill="#1a1a1a" letter-spacing="0.22em" font-weight="500" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">FIG. 1.2  ·  CRYOGENIC / RF STACK</text>
+  <text x="28" y="50" font-size="8.5" fill="#4a5560" letter-spacing="0.08em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">300 K → 4 K → STILL → MXC (~10–20 mK)  ·  ATTENUATION DOWN  ·  AMPLIFICATION UP</text>
+
+  <!-- 300K -->
+  <rect x="48" y="70" width="764" height="78" rx="5" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1.3"/>
+  <circle cx="72" cy="100" r="12" fill="#1a1a1a"/><text x="72" y="104" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">1</text>
+  <text x="96" y="96" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">300 K</text>
+  <text x="96" y="116" font-size="9" fill="#4a5560">Classical rack</text>
+  <rect x="420" y="86" width="120" height="46" rx="4" fill="#5a8fb5" fill-opacity="0.3" stroke="#1a1a1a" stroke-width="1"/>
+  <circle cx="440" cy="109" r="12" fill="#1a1a1a"/><text x="440" y="113" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">2</text>
+  <text x="500" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a">AWG</text>
+  <rect x="560" y="86" width="120" height="46" rx="4" fill="#7a8a4a" fill-opacity="0.35" stroke="#1a1a1a" stroke-width="1"/>
+  <circle cx="580" cy="109" r="12" fill="#1a1a1a"/><text x="580" y="113" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">3</text>
+  <text x="640" y="114" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a">ADC</text>
+  <rect x="700" y="86" width="90" height="46" rx="4" fill="#c5d5d8" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="745" y="114" text-anchor="middle" font-size="9" font-weight="700" fill="#1a1a1a">PC</text>
+
+  <!-- 4K -->
+  <rect x="48" y="164" width="764" height="72" rx="5" fill="#c5d5d8" stroke="#1a1a1a" stroke-width="1.2"/>
+  <circle cx="72" cy="200" r="12" fill="#1a1a1a"/><text x="72" y="204" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">4</text>
+  <text x="96" y="190" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">4 K</text>
+  <text x="96" y="210" font-size="9" fill="#4a5560">First cold stage</text>
+  <rect x="420" y="178" width="120" height="44" rx="3" fill="#3d6a8c" fill-opacity="0.35" stroke="#1a1a1a" stroke-width="1"/>
+  <circle cx="440" cy="200" r="12" fill="#1a1a1a"/><text x="440" y="204" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">5</text>
+  <text x="500" y="205" text-anchor="middle" font-size="10" font-weight="600" fill="#1a1a1a">ATTEN</text>
+  <rect x="560" y="178" width="160" height="44" rx="3" fill="#b08d3c" fill-opacity="0.4" stroke="#1a1a1a" stroke-width="1"/>
+  <circle cx="580" cy="200" r="12" fill="#1a1a1a"/><text x="580" y="204" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">6</text>
+  <text x="660" y="205" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a">HEMT</text>
+
+  <!-- still -->
+  <rect x="48" y="252" width="764" height="60" rx="5" fill="#5a8fb5" fill-opacity="0.18" stroke="#1a1a1a" stroke-width="1.2"/>
+  <circle cx="72" cy="282" r="12" fill="#1a1a1a"/><text x="72" y="286" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">7</text>
+  <text x="96" y="278" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">STILL / COLD PLATE</text>
+  <text x="96" y="296" font-size="9" fill="#4a5560">~0.7–1 K · more attenuation · thermalisation</text>
+
+  <!-- MXC -->
+  <rect x="48" y="328" width="764" height="120" rx="5" fill="#3d6a8c" fill-opacity="0.28" stroke="#1a1a1a" stroke-width="1.4"/>
+  <circle cx="72" cy="360" r="12" fill="#1a1a1a"/><text x="72" y="364" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">8</text>
+  <text x="96" y="356" font-size="11" font-weight="700" fill="#1a1a1a" letter-spacing="0.1em">MXC  ·  ~10–20 mK</text>
+  <text x="96" y="376" font-size="9" fill="#4a5560">Mixing chamber</text>
+
+  <rect x="200" y="390" width="200" height="42" rx="4" fill="#f7faf9" stroke="#c41e1e" stroke-width="1.6"/>
+  <circle cx="220" cy="411" r="12" fill="#1a1a1a"/><text x="220" y="415" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">9</text>
+  <text x="310" y="416" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a">SAMPLE / CHIP</text>
+
+  <rect x="430" y="390" width="150" height="42" rx="4" fill="#b08d3c" fill-opacity="0.45" stroke="#1a1a1a" stroke-width="1"/>
+  <circle cx="450" cy="411" r="12" fill="#1a1a1a"/><text x="450" y="415" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">10</text>
+  <text x="530" y="416" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a">TWPA</text>
+
+  <rect x="610" y="390" width="150" height="42" rx="4" fill="#7a8a4a" fill-opacity="0.4" stroke="#1a1a1a" stroke-width="1"/>
+  <circle cx="630" cy="411" r="12" fill="#1a1a1a"/><text x="630" y="415" text-anchor="middle" font-size="11" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">11</text>
+  <text x="710" y="416" text-anchor="middle" font-size="10" font-weight="700" fill="#1a1a1a">ATTEN −dB</text>
+
+  <!-- signal flow -->
+  <line x1="180" y1="470" x2="180" y2="500" stroke="#3d6a8c" stroke-width="2.2" marker-end="url(#arr-cy-blue)"/>
+  <text x="196" y="492" font-size="9" fill="#3d6a8c" font-weight="600">drive ↓</text>
+  <line x1="520" y1="500" x2="520" y2="470" stroke="#c41e1e" stroke-width="2.2" marker-end="url(#arr-cy-red)"/>
+  <text x="536" y="492" font-size="9" fill="#c41e1e" font-weight="600">readout ↑</text>
+
+  <rect x="28" y="512" width="804" height="124" rx="4" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="40" y="530" font-size="8" font-weight="700" fill="#1a1a1a" letter-spacing="0.14em" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">LEGEND</text>
+  <circle cx="40" cy="545" r="8" fill="#1a1a1a"/><text x="40" y="549" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">1</text><text x="54" y="548" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Room-temperature classical rack</text>
+  <circle cx="430" cy="545" r="8" fill="#1a1a1a"/><text x="430" y="549" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">2</text><text x="444" y="548" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">AWG / DAC — pulses out</text>
+  <circle cx="40" cy="561" r="8" fill="#1a1a1a"/><text x="40" y="565" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">3</text><text x="54" y="564" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Digitizer / ADC — bits in</text>
+  <circle cx="430" cy="561" r="8" fill="#1a1a1a"/><text x="430" y="565" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">4</text><text x="444" y="564" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">4 K first cold stage</text>
+  <circle cx="40" cy="577" r="8" fill="#1a1a1a"/><text x="40" y="581" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">5</text><text x="54" y="580" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Drive-line attenuators</text>
+  <circle cx="430" cy="577" r="8" fill="#1a1a1a"/><text x="430" y="581" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">6</text><text x="444" y="580" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">HEMT low-noise amp (readout ↑)</text>
+  <circle cx="40" cy="593" r="8" fill="#1a1a1a"/><text x="40" y="597" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">7</text><text x="54" y="596" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Still / cold plate (~1 K)</text>
+  <circle cx="430" cy="593" r="8" fill="#1a1a1a"/><text x="430" y="597" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">8</text><text x="444" y="596" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Mixing chamber (MXC)</text>
+  <circle cx="40" cy="609" r="8" fill="#1a1a1a"/><text x="40" y="613" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">9</text><text x="54" y="612" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">QPU sample package</text>
+  <circle cx="430" cy="609" r="8" fill="#1a1a1a"/><text x="430" y="613" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">10</text><text x="444" y="612" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">TWPA near-quantum-limited amp</text>
+  <circle cx="40" cy="625" r="8" fill="#1a1a1a"/><text x="40" y="629" text-anchor="middle" font-size="8" font-weight="700" fill="#f7faf9" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">11</text><text x="54" y="628" font-size="8.5" fill="#2a2a2a" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">Final attenuators into qubit</text>
+
+  <text x="430" y="645" text-anchor="middle" font-size="8" fill="#4a5560">Product stand-in: NoisySimulatorBackend (FIG. 1.5).</text>
+</svg>
