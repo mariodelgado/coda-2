@@ -252,11 +252,12 @@ body {
   /* Multi-stop solid gradient = progressive dim from opaque bottom → clear top. */
   background: linear-gradient(
     to top,
-    rgba(8, 8, 10, 0.92) 0%,
-    rgba(10, 10, 14, 0.78) 18%,
-    rgba(12, 12, 16, 0.55) 38%,
-    rgba(14, 14, 18, 0.28) 62%,
-    rgba(14, 14, 18, 0.10) 82%,
+    rgba(6, 6, 8, 0.94) 0%,
+    rgba(10, 10, 14, 0.82) 14%,
+    rgba(14, 14, 18, 0.62) 32%,
+    rgba(18, 18, 22, 0.38) 52%,
+    rgba(22, 22, 28, 0.18) 72%,
+    rgba(28, 28, 34, 0.06) 88%,
     transparent 100%
   );
 }
