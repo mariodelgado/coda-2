@@ -1,38 +1,34 @@
 # Coda 2
 
-**Natural language → quantum processing unit.** An instrument UI for operating a QPU with visual, text, and math at once.
+**Natural language → quantum processing unit.**
 
-Coda 2 turns short goals (“Bring qubit 0 to ready”, “Run a Bell pair”) into typed control-plane tools, shows live device physics on a three-pane stage, and keeps the conversation in a bottom-third chat dock. Offline by default. No API keys required for the core path.
+An instrument UI for a QPU: visual, text, and math at once — not a chat void. Short goals (“Bring qubit 0 to ready”, “Run a Bell pair”) become typed control-plane tools. Live device physics fill a three-pane stage; conversation lives in a bottom-third dock. Offline by default. No API keys for the core path.
 
-[Technical manual (PDF)](docs/manual/coda-2-manual.pdf) · [Demo video](docs/media/demo.mov) · [Architecture plate](docs/diagrams/architecture.svg) · [UI layout](docs/diagrams/ui-layout.svg)
+<p align="center">
+  <a href="docs/media/demo.mov"><strong>Demo</strong></a>
+  ·
+  <a href="docs/manual/coda-2-manual.pdf"><strong>Technical manual (PDF)</strong></a>
+  ·
+  <a href="docs/diagrams/architecture.svg">Architecture</a>
+  ·
+  <a href="docs/diagrams/ui-layout.svg">UI layout</a>
+</p>
 
----
-
-## One-liner
-
-Talk to a quantum computer the way you talk to an instrument — multimodal (visual · text · math), not a chat void.
-
----
-
-## Features
-
-- **Three-pane instrument stage** — param-drift landscape · 3D device · isometric cryostat plate, with iPadOS-style splitters.
-- **Bottom-third progressive dock** — transcript, suggestion chips, and high-contrast composer sit in a darkened band; top ~2/3 of the stage stays sharp (Safari-safe solid frost — no `backdrop-filter` on the dock).
-- **Chat bubbles** — you / agent turns with tool-trace pills; empty-state and chips stay above the tint.
-- **Workflow chips** — Calibrate Q0 · Bell pair · Q0 readiness · Device status · Improve Bell · Diagnose Q0.
-- **Multimodal at once** — visual stage, natural-language goals, and live math (fidelity, Δf, mK, readiness).
-- **Real control plane** — `QPUAdapter` seam, orchestrator + deterministic planner, calibration loop, jobs, traces, FastAPI + SSE.
-- **Honest simulation** — `NoisySimulatorBackend` is a toy 1–2 qubit device with drift; swap the backend without touching UI or orchestrator.
+![Stage / dock layout](docs/diagrams/stage-dock.svg)
 
 ---
 
-## Demo
+## What you get
 
-Local capture of the instrument in motion:
-
-[`docs/media/demo.mov`](docs/media/demo.mov)
-
-![Stage / dock layout plate](docs/diagrams/stage-dock.svg)
+| | |
+|---|---|
+| **Three-pane stage** | Param-drift landscape · 3D device · isometric cryostat — iPadOS-style splitters |
+| **Bottom-third dock** | Transcript, six suggestion chips, high-contrast composer. Top ~2/3 stays optically sharp (Safari-safe solid frost — no `backdrop-filter` on the dock) |
+| **Workflow chips** | Calibrate Q0 · Bell pair · Q0 readiness · Device status · Improve Bell · Diagnose Q0 |
+| **Multimodal** | Visual stage + NL goals + live math (fidelity, Δf, mK, readiness) |
+| **Chat bubbles** | You / agent turns with tool-trace pills; empty-state and chips stay above the tint |
+| **Real control plane** | `QPUAdapter` seam, orchestrator + deterministic planner, calibration loop, jobs, traces, FastAPI + SSE |
+| **Honest simulation** | `NoisySimulatorBackend` — toy 1–2 qubit device with drift; swap the backend without touching UI or orchestrator |
 
 ---
 
@@ -76,15 +72,15 @@ flowchart LR
   Trace --> UI["Transcript + HUD"]
 ```
 
-![Architecture SVG](docs/diagrams/architecture.svg)
+![Architecture plate](docs/diagrams/architecture.svg)
 
-The adapter is the seam. Traces are the observability. The UI is an instrument, not a transcript-first chat app.
+The adapter is the seam. Traces are the observability. The UI is an instrument — not a transcript-first chat app.
 
 ---
 
 ## Quick start
 
-Prerequisites: Python 3.11+, Node 18+. No API keys for the default path.
+**Prerequisites:** Python 3.11+, Node 18+. No API keys for the default path.
 
 ```bash
 git clone https://github.com/mariodelgado/coda-2.git
@@ -115,13 +111,13 @@ Open http://localhost:3000.
 
 1. Confirm **LIVE** in the toolbar.
 2. Click **Calibrate Q0** — watch the climb HUD and drift pane.
-3. Click **Q0 readiness** or **Device status** — get fidelity / readiness without running a circuit.
-4. Click **Bell pair** (or **Improve Bell** for more shots) — read estimated fidelity in the transcript.
-5. Use **Diagnose Q0** when the agent needs health / temperature context.
+3. Click **Q0 readiness** or **Device status** — fidelity / readiness without running a circuit.
+4. Click **Bell pair** (or **Improve Bell** for more shots) — estimated fidelity in the transcript.
+5. Use **Diagnose Q0** when you need health / temperature context.
 
 ---
 
-## Suggestion chips → tools
+## Chips → tools
 
 | Chip | Goal (approx.) | Planner tool |
 |------|----------------|--------------|
@@ -134,7 +130,7 @@ Open http://localhost:3000.
 
 ---
 
-## Layout notes (Safari-safe frost)
+## Safari-safe frost
 
 - **Top ~2/3** of the three panes stay optically sharp.
 - **Bottom ~33vh** uses a dedicated `.stage-blur` sibling with **stacked solid translucent gradients** (no `backdrop-filter`). Historical Safari builds frosted the entire stage when `backdrop-filter` lived on `.dock`.
@@ -153,7 +149,7 @@ Open http://localhost:3000.
 
 ---
 
-## Metrics that matter
+## Metrics
 
 - `time_to_calibrated`
 - `calibration_success_rate`
@@ -169,4 +165,4 @@ Deterministic planner + template narrator by default. Optional OpenAI-compatible
 
 ## License
 
-See [LICENSE](LICENSE).
+[MIT](LICENSE)
