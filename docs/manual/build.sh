@@ -54,9 +54,16 @@ for i in $(seq 1 40); do
 done
 
 OUT=coda-2-manual.pdf
-google-chrome --headless --disable-gpu --no-pdf-header-footer \
+USER_DATA=$(mktemp -d)
+timeout 90 google-chrome --headless --disable-gpu --no-pdf-header-footer \
   --virtual-time-budget=20000 --run-all-compositor-stages-before-draw \
-  --print-to-pdf="$OUT" "http://127.0.0.1:${PORT}/book.html"
+  --user-data-dir="$USER_DATA" --no-first-run \
+  --print-to-pdf="$OUT" "http://127.0.0.1:${PORT}/book.html" || true
+rm -rf "$USER_DATA"
+if [ ! -s "$OUT" ]; then
+  echo "PDF was not written" >&2
+  exit 1
+fi
 
 if [ -n "${MANUAL_COPY_TO:-}" ]; then cp -f "$OUT" "$MANUAL_COPY_TO"; fi
 if command -v pdfinfo >/dev/null 2>&1; then

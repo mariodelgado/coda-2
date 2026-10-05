@@ -252,8 +252,8 @@ Toolbar <strong>READY</strong> is on (<code>device.is_ready == true</code>). The
 <p><strong>Agent reply.</strong> The agent bubble gives a READY affirmation: Q0 is fit for circuits. Exact wording comes from the narrator (NVIDIA NIM when configured; otherwise a template) and can change from capture to capture. The affirmation must agree with <code>device.is_ready</code>.</p>
 
 <div class="figure full ui-still">
-  <img src="assets/ui/manual-3pane-calibrating.png" alt="FIG. W.3 — STE.3 calibrate in flight; cryostat strip and state chip read CALIBRATING"/>
-  <p class="fig-cap"><span class="label">FIG. W.3 · STE.3</span>Calibrate in flight. Your <em>you</em> bubble (“Bring qubit 0 to ready”) sits above the chips; the agent line shows “running…”; the composer shows a stop button. The cryostat status strip and the <code>StageStateChip</code> at the far right both read CALIBRATING. All three panes stay visible: drift left, device center, cryostat right.</p>
+  <img src="assets/ui/manual-3pane-calibrating.png" alt="FIG. W.3 — STE.3 calibrate turn on the three-pane stage"/>
+  <p class="fig-cap"><span class="label">FIG. W.3 · STE.3</span>Calibrate turn. Your <em>you</em> bubble (“Bring qubit 0 to ready”) sits above the chips; the agent replies with the live fidelity and whether another pass is needed. All three panes stay visible: drift left, device center, cryostat right. The Calibrate Q0 path is unchanged.</p>
 </div>
 <p class="diagram-explain"><strong>Plain English for this frame.</strong> The loop is running: measure, decide, apply, measure again. When the fidelity-climb HUD is visible, its line is “how often the qubit answers correctly” across calibration steps and the orange dashed line is the pass bar (0.88). When the climb line sits above that bar, calibration succeeded for this product. The CALIBRATING badge is the same lifecycle signal in two places — the strip under the plate and the chip at the far right. If Δf is still non-tiny, controls are closing in on the sweet spot.</p>
 
