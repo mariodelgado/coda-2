@@ -1,18 +1,20 @@
-# Coda 2
+# [Coda 2](docs/manual/coda-2-manual.pdf)
 
 **Natural language → quantum processing unit.**
 
 An instrument UI for a QPU: visual, text, and math at once — not a chat void. Short goals (“Bring qubit 0 to ready”, “Run a Bell pair”) become typed control-plane tools. Live device physics fill a three-pane stage; conversation lives in a bottom-third dock. Offline by default. No API keys for the core path.
 
 <p align="center">
-  <a href="docs/media/demo.mov"><strong>Demo</strong></a>
-  ·
-  <a href="docs/manual/coda-2-manual.pdf"><strong>Technical manual (PDF)</strong></a>
-  ·
   <a href="docs/diagrams/architecture.svg">Architecture</a>
   ·
   <a href="docs/diagrams/ui-layout.svg">UI layout</a>
 </p>
+
+<video src="docs/media/demo.mov" controls width="100%">
+  <a href="docs/media/demo.mov">Download the demo video</a>
+</video>
+
+<p align="center"><a href="docs/media/demo.mov">Demo video</a> (if the player above does not render)</p>
 
 ![Stage / dock layout](docs/diagrams/stage-dock.svg)
 
@@ -23,12 +25,25 @@ An instrument UI for a QPU: visual, text, and math at once — not a chat void. 
 | | |
 |---|---|
 | **Three-pane stage** | Param-drift landscape · 3D device · isometric cryostat — iPadOS-style splitters |
-| **Bottom-third dock** | Transcript, six suggestion chips, high-contrast composer. Top ~2/3 stays optically sharp (Safari-safe solid frost — no `backdrop-filter` on the dock) |
+| **Bottom-third dock** | Transcript, six suggestion chips, high-contrast composer — stage stays sharp above the fold |
 | **Workflow chips** | Calibrate Q0 · Bell pair · Q0 readiness · Device status · Improve Bell · Diagnose Q0 |
 | **Multimodal** | Visual stage + NL goals + live math (fidelity, Δf, mK, readiness) |
 | **Chat bubbles** | You / agent turns with tool-trace pills; empty-state and chips stay above the tint |
 | **Real control plane** | `QPUAdapter` seam, orchestrator + deterministic planner, calibration loop, jobs, traces, FastAPI + SSE |
 | **Honest simulation** | `NoisySimulatorBackend` — toy 1–2 qubit device with drift; swap the backend without touching UI or orchestrator |
+
+---
+
+## How it works
+
+A short natural-language goal becomes a **probabilistic program** on the device — not free-form chat.
+
+1. **NL goal** — chip or typed ask (“Bring qubit 0 to ready”, “Run a Bell pair”).
+2. **Planner** — maps the goal to typed control-plane tools (`calibrate_qubit`, `run_bell_pair`, `get_device_state`, …).
+3. **Execution** — tools run through `QPUAdapter` on a noisy / probabilistic backend (drift, fidelity from distance, stochastic counts).
+4. **Traces → UI** — tool traces, metrics, and live device state stream back into the transcript and three-pane stage.
+
+Same seam for a real QPU: swap the backend; keep the planner, tools, and instrument UI.
 
 ---
 
@@ -130,12 +145,10 @@ Open http://localhost:3000.
 
 ---
 
-## Safari-safe frost
+## Dock stacking
 
-- **Top ~2/3** of the three panes stay optically sharp.
-- **Bottom ~33vh** uses a dedicated `.stage-blur` sibling with **stacked solid translucent gradients** (no `backdrop-filter`). Historical Safari builds frosted the entire stage when `backdrop-filter` lived on `.dock`.
 - `.dock` stays `pointer-events: none`; interactive children use `pointer-events: auto`.
-- Transcript, empty state, chips, and composer use `position: relative; z-index: 1` so they paint above `.dock-tint`.
+- Transcript, empty state, chips, and composer sit above `.dock-tint` (`position: relative; z-index: 1`).
 
 ![Cryostat plate](docs/diagrams/cryostat-isometric.svg)
 
