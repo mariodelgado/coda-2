@@ -5,7 +5,7 @@ PIP := pip3
 UV := uv
 
 help:
-	@echo "quantum-chat — quantum instrument (visual · text · math)"
+	@echo "Coda 2 — quantum instrument (visual · text · math)"
 	@echo ""
 	@echo "Targets:"
 	@echo "  setup         - Create venv and install Python deps; also installs UI deps"
@@ -25,7 +25,7 @@ help:
 	@echo "  clean         - Remove build artifacts and caches"
 
 setup:
-	@echo "Setting up quantum-chat (Python + Next.js UI)..."
+	@echo "Setting up Coda 2 (Python + Next.js UI)..."
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ".[dev]"
 	@echo "Installing Next.js UI dependencies..."
