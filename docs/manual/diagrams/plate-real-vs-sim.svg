@@ -18,7 +18,7 @@
   <circle cx="90" cy="270" r="8" fill="#7a8a4a"/>
   <text x="110" y="274" font-size="10" fill="#1a1a1a">FastAPI control plane</text>
   <circle cx="90" cy="300" r="8" fill="#7a8a4a"/>
-  <text x="110" y="304" font-size="10" fill="#1a1a1a">Instrument UI (drift | device)</text>
+  <text x="110" y="304" font-size="10" fill="#1a1a1a">Instrument UI (drift | device | cryostat)</text>
   <text x="200" y="340" text-anchor="middle" font-size="8.5" fill="#4a5560">durable seam — keep this</text>
 
   <!-- right: stand-in -->

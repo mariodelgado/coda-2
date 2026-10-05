@@ -548,7 +548,7 @@ export default function QuantumChatInstrument() {
       {/* Clean instrument toolbar */}
       <div className="toolbar relative">
         <div className="flex items-center gap-2 font-medium">
-          <span className="font-sans tracking-[-0.2px]">Quantum Chat</span>
+          <span className="font-sans tracking-[-0.2px]">Coda 2</span>
           <span
             className={`px-1.5 py-px rounded text-[10px] text-black font-mono tracking-[0.5px] ${connected ? "" : "opacity-60"}`}
             style={{ background: connected ? "var(--success)" : "#6b7280" }}

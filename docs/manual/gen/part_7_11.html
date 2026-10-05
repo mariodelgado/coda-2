@@ -31,7 +31,7 @@
 
 <p class="lede">The UI is a Next.js App Router instrument panel. It is not a chat app with a chart widget. The stage is the product: three panes — <strong>drift | device 3D | cryostat</strong>. The dock is the agent surface.</p>
 
-<div class="figure full">
+<div class="figure full ui-still">
   <img src="assets/ui/manual-3pane-home.png" alt="FIG. 8.1 — Coda 2 three-pane instrument at rest"/>
   <p class="fig-cap"><span class="label">FIG. 8.1</span>Screenshot: the three-pane instrument at rest. Left: parameter-drift landscape (orange applied, blue true). Center: 3D device with qubit spheres and the readout card. Right: isometric dilution-fridge plate with its status strip and the StageStateChip. Bottom: dock with empty-state hint, six workflow chips, and the composer.</p>
 </div>
@@ -40,11 +40,11 @@
   <p class="fig-cap"><span class="label">FIG. 8.2</span>Schematic of the same chrome. Toolbar on top. Three panes separated by two splitters. Dock over the bottom-third frost.</p>
 </div>
 <p>Current UI (<code>main</code>, three-pane chrome through PR&nbsp;#25–#27): three panes at rest. Left is a high-contrast drift grid, coplanar with the fidelity surface. Center is Device3D: qubit spheres, chiplets, resonators, and a readout card (Q0/Q1 fidelity, T1, T2, err, mK). Right is the isometric cryostat plate with a status strip (state · Q0 % · mK · Δf). Two iPadOS Split View–style separators resize the panes; hover shows a capsule drag handle; each pane keeps a minimum width (roughly 22–28% of the stage). No traffic lights. No glass inset. No tabs. Earlier releases shipped a single drift stage (65/35) and then a two-pane drift | device split; both are historical.</p>
-<div class="figure full">
+<div class="figure full ui-still">
   <img src="assets/ui/manual-3pane-dock-chips.png" alt="FIG. 8.3"/>
   <p class="fig-cap"><span class="label">FIG. 8.3</span>Screenshot crop: dock region — empty-state hint, six workflow chips (Calibrate Q0 · Bell pair · Q0 readiness · Device status · Improve Bell · Diagnose Q0), and the high-contrast composer with ⌘K.</p>
 </div>
-<div class="figure full">
+<div class="figure full ui-still">
   <img src="assets/ui/manual-3pane-calibrating.png" alt="FIG. 8.4"/>
   <p class="fig-cap"><span class="label">FIG. 8.4</span>Screenshot: during a run. All three panes stay live. The you-bubble sits right, the agent shows “running…”, the composer swaps in a stop button, and the cryostat strip and state chip read CALIBRATING.</p>
 </div>

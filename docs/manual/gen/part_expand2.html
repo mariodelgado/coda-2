@@ -52,11 +52,11 @@ class MyDriver(ConductorShapedAdapter):
 <tr><td>ui/components/viz/device-3d.tsx</td><td>Center pane: qubits, chiplets, resonators, readout card (fidelity / T1 / T2)</td></tr>
 <tr><td>ui/components/viz/cryostat-plate.tsx</td><td>Right pane: isometric dilution-fridge plate + status strip</td></tr>
 <tr><td>ui/components/stage/stage-state-chip.tsx</td><td>Bottom-right StageStateChip lifecycle badge</td></tr><tr><td>ui/components/viz/calibration-surface-lazy.tsx</td><td>Dynamic import boundary</td></tr><tr><td>ui/components/command/command-palette.tsx</td><td>⌘K actions</td></tr><tr><td>ui/components/inspector/right-inspector.tsx</td><td>Legacy/alternate inspector pieces</td></tr><tr><td>ui/components/stage/hero-viewer.tsx</td><td>Stage helper</td></tr><tr><td>ui/components/timeline/filmstrip.tsx</td><td>Timeline alternate</td></tr><tr><td>ui/components/metrics-cards.tsx</td><td>Metrics presentation helper</td></tr><tr><td>ui/lib/api.ts</td><td>Fetch wrapper + types</td></tr><tr><td>ui/lib/store.ts</td><td>zustand (command open, etc.)</td></tr></tbody></table><p class="table-cap">Table 8C.1. UI file map. page.tsx is the composition root for the shipped three-pane layout (drift · device · cryostat + dock).</p>
-<div class="figure full">
+<div class="figure full ui-still">
   <img src="assets/ui/manual-3pane-home.png" alt="FIG. 8C.1"/>
   <p class="fig-cap"><span class="label">FIG. 8C.1</span>Full home screenshot for component orientation. Left: calibration-surface.tsx (drift). Center: device-3d.tsx. Right: cryostat-plate.tsx. Bottom: dock in page.tsx.</p>
 </div>
-<div class="figure full">
+<div class="figure full ui-still">
   <img src="assets/ui/manual-3pane-dock-transcript.png" alt="FIG. 8C.2"/>
   <p class="fig-cap"><span class="label">FIG. 8C.2</span>Dock after two turns — you / agent bubbles, tool pills (<code>calibrate_qubit</code>, <code>run_bell_pair</code>), workflow chips, composer.</p>
 </div>

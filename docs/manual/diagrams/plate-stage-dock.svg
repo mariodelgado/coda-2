@@ -6,27 +6,42 @@
   <!-- instrument chrome outline -->
   <rect x="60" y="80" width="640" height="300" rx="8" fill="#c5d5d8" stroke="#1a1a1a" stroke-width="1.4"/>
 
-  <!-- stage 65% -->
-  <rect x="70" y="90" width="620" height="178" rx="4" fill="#5a8fb5" fill-opacity="0.28"/>
-  <text x="90" y="118" font-size="10" font-weight="700" fill="#1a1a1a" letter-spacing="0.2em">STAGE  ·  ~65%</text>
-  <text x="90" y="138" font-size="9" fill="#4a5560">physics · continuous state</text>
+  <!-- three-pane stage (top ~2/3) -->
+  <rect x="70" y="90" width="620" height="178" rx="4" fill="#5a8fb5" fill-opacity="0.18"/>
+  <text x="90" y="112" font-size="10" font-weight="700" fill="#1a1a1a" letter-spacing="0.2em">STAGE  ·  THREE PANES  ·  TOP ~2/3</text>
+  <text x="90" y="128" font-size="9" fill="#4a5560">physics in the visual field · no tabs</text>
 
-  <!-- drift | device tabs -->
-  <rect x="90" y="156" width="52" height="22" rx="11" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="116" y="171" text-anchor="middle" font-size="8" font-weight="600" fill="#1a1a1a">drift</text>
-  <rect x="150" y="156" width="58" height="22" rx="11" fill="#1a1a1a"/>
-  <text x="179" y="171" text-anchor="middle" font-size="8" font-weight="600" fill="#f7faf9">device</text>
+  <!-- left drift -->
+  <rect x="82" y="140" width="188" height="116" rx="4" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="176" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a" letter-spacing="0.12em">LEFT · DRIFT</text>
+  <ellipse cx="176" cy="198" rx="62" ry="18" fill="#7a8a4a" fill-opacity="0.28"/>
+  <circle cx="158" cy="194" r="6" fill="#3d6a8c"/>
+  <circle cx="196" cy="198" r="5" fill="#c41e1e" fill-opacity="0.85"/>
+  <text x="176" y="242" text-anchor="middle" font-size="8" fill="#4a5560">applied vs true</text>
 
-  <!-- stylized landscape / cryo hint -->
-  <ellipse cx="380" cy="220" rx="160" ry="36" fill="#7a8a4a" fill-opacity="0.25"/>
-  <circle cx="340" cy="210" r="18" fill="#3d6a8c" fill-opacity="0.7"/>
-  <circle cx="420" cy="214" r="14" fill="#7a8a4a" fill-opacity="0.7"/>
-  <circle cx="348" cy="206" r="3.5" fill="#c41e1e"/>
-  <circle cx="428" cy="210" r="3.5" fill="#f7faf9" stroke="#1a1a1a" stroke-width="0.8"/>
-  <text x="560" y="200" font-size="8" fill="#4a5560">true / applied</text>
-  <text x="560" y="216" font-size="8" fill="#4a5560">mK · readiness</text>
+  <!-- splitter -->
+  <rect x="274" y="150" width="4" height="96" rx="2" fill="#1a1a1a" fill-opacity="0.35"/>
 
-  <!-- dock 35% with progressive blur hint -->
+  <!-- center device -->
+  <rect x="282" y="140" width="196" height="116" rx="4" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="380" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a" letter-spacing="0.12em">CENTER · DEVICE 3D</text>
+  <circle cx="348" cy="198" r="14" fill="#3d6a8c" fill-opacity="0.75"/>
+  <circle cx="412" cy="198" r="14" fill="#7a8a4a" fill-opacity="0.75"/>
+  <text x="380" y="242" text-anchor="middle" font-size="8" fill="#4a5560">Q0 · Q1 · readout</text>
+
+  <!-- splitter -->
+  <rect x="482" y="150" width="4" height="96" rx="2" fill="#1a1a1a" fill-opacity="0.35"/>
+
+  <!-- right cryostat -->
+  <rect x="490" y="140" width="188" height="116" rx="4" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="584" y="158" text-anchor="middle" font-size="8" font-weight="700" fill="#1a1a1a" letter-spacing="0.12em">RIGHT · CRYOSTAT</text>
+  <ellipse cx="584" cy="178" rx="22" ry="5" fill="none" stroke="#1a1a1a" stroke-width="0.9"/>
+  <ellipse cx="584" cy="198" rx="18" ry="4" fill="none" stroke="#1a1a1a" stroke-width="0.9"/>
+  <ellipse cx="584" cy="216" rx="12" ry="3" fill="none" stroke="#1a1a1a" stroke-width="0.9"/>
+  <line x1="584" y1="178" x2="584" y2="216" stroke="#1a1a1a" stroke-width="0.8"/>
+  <text x="584" y="242" text-anchor="middle" font-size="8" fill="#4a5560">plate · status strip</text>
+
+  <!-- dock bottom third -->
   <defs>
     <linearGradient id="blurGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#f7faf9" stop-opacity="0.15"/>
@@ -34,17 +49,20 @@
       <stop offset="100%" stop-color="#f7faf9" stop-opacity="0.95"/>
     </linearGradient>
   </defs>
-  <rect x="70" y="268" width="620" height="102" rx="4" fill="url(#blurGrad)" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="90" y="296" font-size="10" font-weight="700" fill="#1a1a1a" letter-spacing="0.2em">DOCK  ·  ~35%</text>
-  <text x="90" y="316" font-size="9" fill="#4a5560">agency · ledger · composer · chips</text>
+  <rect x="70" y="276" width="620" height="94" rx="4" fill="url(#blurGrad)" stroke="#1a1a1a" stroke-width="1"/>
+  <text x="90" y="298" font-size="10" font-weight="700" fill="#1a1a1a" letter-spacing="0.2em">DOCK  ·  BOTTOM THIRD</text>
+  <text x="90" y="314" font-size="9" fill="#4a5560">transcript · six chips · composer</text>
 
-  <!-- ledger rows -->
-  <rect x="90" y="330" width="200" height="10" rx="2" fill="#1a1a1a" fill-opacity="0.12"/>
-  <rect x="90" y="346" width="160" height="10" rx="2" fill="#1a1a1a" fill-opacity="0.08"/>
-  <rect x="320" y="330" width="140" height="28" rx="14" fill="#7a8a4a" fill-opacity="0.45" stroke="#1a1a1a" stroke-width="0.8"/>
-  <text x="390" y="348" text-anchor="middle" font-size="8" font-weight="600" fill="#1a1a1a">Calibrate Q0</text>
-  <rect x="480" y="330" width="180" height="28" rx="4" fill="#f7faf9" stroke="#1a1a1a" stroke-width="1"/>
-  <text x="500" y="348" font-size="8" fill="#4a5560">ask the instrument…</text>
+  <g font-size="6.5" fill="#1a1a1a" text-anchor="middle" font-weight="600">
+    <rect x="88" y="326" width="72" height="16" rx="8" fill="#7a8a4a" fill-opacity="0.4" stroke="#1a1a1a" stroke-width="0.7"/><text x="124" y="337">Calibrate Q0</text>
+    <rect x="166" y="326" width="58" height="16" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="0.7"/><text x="195" y="337">Bell pair</text>
+    <rect x="230" y="326" width="72" height="16" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="0.7"/><text x="266" y="337">Q0 readiness</text>
+    <rect x="308" y="326" width="72" height="16" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="0.7"/><text x="344" y="337">Device status</text>
+    <rect x="386" y="326" width="72" height="16" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="0.7"/><text x="422" y="337">Improve Bell</text>
+    <rect x="464" y="326" width="72" height="16" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="0.7"/><text x="500" y="337">Diagnose Q0</text>
+  </g>
+  <rect x="548" y="326" width="126" height="16" rx="8" fill="#f7faf9" stroke="#1a1a1a" stroke-width="0.8"/>
+  <text x="560" y="337" font-size="7" fill="#4a5560">Type a goal…</text>
 
-  <text x="380" y="404" text-anchor="middle" font-size="8.5" fill="#4a5560">Stage keeps detuning and fidelity in view; dock keeps the agent auditable.</text>
+  <text x="380" y="404" text-anchor="middle" font-size="8.5" fill="#4a5560">Left drift · center device 3D · right cryostat. Dock holds agency under physics.</text>
 </svg>

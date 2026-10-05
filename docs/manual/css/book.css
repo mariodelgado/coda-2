@@ -283,6 +283,54 @@ caption, .table-cap, .fig-cap {
   height: auto;
 }
 .figure.full img { width: 100%; }
+/* Live UI stills must print at a readable size. Chrome otherwise
+   either clips a 2x 1600×960 PNG or drops it when page-break-inside
+   cannot fit the unscaled bitmap. */
+.figure.ui-still img,
+.figure.full.ui-still img {
+  width: 100%;
+  max-height: 6.5in;
+  object-fit: contain;
+  background: #000;
+  border: 0.6pt solid #0f172a;
+  display: block;
+}
+.figure.hero {
+  page-break-after: avoid;
+  margin-top: 0.08in;
+}
+.figure.hero img {
+  max-height: 7.1in;
+}
+.pane-legend {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.1in;
+  margin: 0.08in 0 0.16in 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.pane-legend div {
+  border: 1px solid #0f172a;
+  padding: 0.08in 0.1in;
+  background: #eef4f6;
+  font-size: 9pt;
+  color: #1e293b;
+  text-align: center;
+}
+.pane-legend strong {
+  display: block;
+  font-size: 8pt;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #0f172a;
+  margin-bottom: 2pt;
+}
+.chip-row {
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 9.5pt;
+  color: #0f172a;
+  margin: 0.08in 0 0.16in 0;
+}
 .two-col {
   display: grid;
   grid-template-columns: 1fr 1fr;

@@ -222,7 +222,7 @@ contrast = clamp(0.5 + 0.48*(joint_f - 0.6)/0.4, 0.02, 0.98)
 
 <h1 class="part"><span class="part-num">Part 8B</span>UI chrome and progressive blur</h1>
 
-<p class="lede">Implementation notes for the instrument chrome beyond the React tree — so a designer or engineer can preserve the 65/35 contract.</p>
+<p class="lede">Implementation notes for the instrument chrome beyond the React tree — so a designer or engineer can preserve the three-pane stage (drift | device 3D | cryostat) over a bottom-third dock.</p>
 
 <h2>8B.1 Why the stage extends under the dock</h2>
 <p>Progressive blur via <code>backdrop-filter</code> only works if there is content behind the frosted layer. The stage is therefore positionally full-bleed; the dock is an overlay with a gradient mask that is stronger near the composer and fades toward the stage. First paint must never be an empty chat void.</p>

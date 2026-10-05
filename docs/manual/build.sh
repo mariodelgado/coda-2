@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Assemble book.html and print coda-2-manual.pdf via a local HTTP server.
+# Chrome file:// print often drops large PNGs; HTTP makes the stills embed.
 set -euo pipefail
 cd "$(dirname "$0")"
 python3 gen_diagrams.py
@@ -38,9 +40,32 @@ else:
     missing = [r for r in required if not (gen / r).exists()]
     print("using existing book.html; missing:", missing)
 PY
+
+PORT="${MANUAL_HTTP_PORT:-8765}"
+python3 -m http.server "$PORT" --bind 127.0.0.1 >/tmp/coda-manual-http.log 2>&1 &
+HTTP_PID=$!
+cleanup() { kill "$HTTP_PID" 2>/dev/null || true; }
+trap cleanup EXIT
+for i in $(seq 1 40); do
+  if curl -sf "http://127.0.0.1:${PORT}/book.html" >/dev/null; then
+    break
+  fi
+  sleep 0.15
+done
+
 OUT=coda-2-manual.pdf
 google-chrome --headless --disable-gpu --no-pdf-header-footer \
-  --print-to-pdf="$OUT" "file://$(pwd)/book.html"
-# Optional: copy the PDF somewhere else (e.g. MANUAL_COPY_TO=/workspace/shots/coda-2-manual.pdf)
+  --virtual-time-budget=20000 --run-all-compositor-stages-before-draw \
+  --print-to-pdf="$OUT" "http://127.0.0.1:${PORT}/book.html"
+
 if [ -n "${MANUAL_COPY_TO:-}" ]; then cp -f "$OUT" "$MANUAL_COPY_TO"; fi
-pdfinfo "$OUT" | egrep 'Pages|Page size|File size|Title'
+if command -v pdfinfo >/dev/null 2>&1; then
+  pdfinfo "$OUT" | egrep 'Pages|Page size|File size|Title' || true
+else
+  python3 - <<'PY'
+from pathlib import Path
+p = Path("coda-2-manual.pdf")
+print(f"wrote {p} ({p.stat().st_size} bytes)")
+PY
+fi
+echo "PDF: $(pwd)/$OUT"
