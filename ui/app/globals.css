@@ -337,23 +337,38 @@ body {
 .composer {
   width: 100%;
   max-width: 42rem;
-  background: rgba(18, 18, 22, 0.92);
-  border: 1px solid rgba(84, 84, 88, 0.55);
+  background: rgb(44, 44, 46);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   padding: 6px 10px 6px 18px;
   display: flex;
   align-items: center;
   gap: 8px;
+  pointer-events: auto;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.composer:focus-within {
+  border-color: #0a84ff;
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.35);
 }
 .composer input {
   flex: 1;
   background: transparent;
   outline: none;
   font-size: 14px;
-  color: #e4e4e7;
+  color: #f5f5f7;
+  caret-color: #0a84ff;
 }
 .composer input::placeholder {
-  color: #52525b;
+  color: rgba(235, 235, 245, 0.62);
+  opacity: 1;
+}
+.composer input:disabled {
+  color: rgba(235, 235, 245, 0.6);
+  cursor: not-allowed;
+}
+.composer input:focus-visible {
+  outline: none;
 }
 
 /* Legacy full-bleed stage rule is overridden by .stage-split grid below when using the peer layout.
@@ -530,6 +545,9 @@ button:focus-visible {
 .chat-composer {
   flex: 0 0 auto;
   padding-bottom: 4px;
+  /* Lifts the composer above the absolutely-positioned .dock-tint layer */
+  position: relative;
+  z-index: 1;
 }
 
 /* Remove the old ledger clip list styles when using chat layout (they can coexist but are not primary) */
