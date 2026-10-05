@@ -10,11 +10,21 @@ An instrument UI for a QPU: visual, text, and math at once — not a chat void. 
   <a href="docs/diagrams/ui-layout.svg">UI layout</a>
 </p>
 
-<video src="docs/media/demo.mov" controls width="100%">
-  <a href="docs/media/demo.mov">Download the demo video</a>
+<p align="center">
+  <a href="docs/media/demo.webm">
+    <img src="docs/media/demo-poster.png" alt="Coda 2 demo" width="100%">
+  </a>
+</p>
+
+<video src="docs/media/demo.webm" poster="docs/media/demo-poster.png" controls width="100%">
+  <a href="docs/media/demo.webm">Download the demo video (WebM)</a>
 </video>
 
-<p align="center"><a href="docs/media/demo.mov">Demo video</a> (if the player above does not render)</p>
+<p align="center">
+  <a href="docs/media/demo.webm">Demo (WebM)</a>
+  ·
+  <a href="docs/media/demo.mov">Demo (MOV)</a>
+</p>
 
 ![Stage / dock layout](docs/diagrams/stage-dock.svg)
 
