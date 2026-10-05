@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <rect width="720" height="400" fill="#000"/>
+  <text x="16" y="22" font-size="10" fill="#94a3b8" letter-spacing="1.2">OPERATOR UI - 65 / 35 INSTRUMENT LAYOUT</text>
+  <rect x="40" y="40" width="640" height="36" rx="4" fill="#1c1c1e"/>
+  <circle cx="58" cy="58" r="5" fill="#FF5F57"/><circle cx="74" cy="58" r="5" fill="#FEBC2E"/><circle cx="90" cy="58" r="5" fill="#28C840"/>
+  <text x="120" y="63" font-size="10" fill="#fff">quantum-chat</text>
+  <rect x="230" y="50" width="36" height="16" rx="3" fill="#34C759"/>
+  <text x="248" y="62" text-anchor="middle" font-size="8" fill="#000" font-weight="600">LIVE</text>
+  <text x="280" y="63" font-size="9" fill="#FF9500">CAL NEEDED</text>
+  <text x="500" y="63" font-size="9" fill="#a1a1aa" font-family="Menlo, monospace">Q0 91.2% - 22.4 mK - Df 0.031</text>
+  <rect x="40" y="80" width="640" height="200" fill="#0a0a0a"/>
+  <text x="60" y="100" font-size="9" fill="#52525b">param drift - dfreq x damp</text>
+  <ellipse cx="360" cy="175" rx="160" ry="70" fill="#111" stroke="#27272a"/>
+  <circle cx="390" cy="160" r="9" fill="#007AFF"/>
+  <circle cx="330" cy="185" r="7" fill="#FF9500"/>
+  <rect x="480" y="130" width="170" height="70" rx="4" fill="#18181b" stroke="#27272a"/>
+  <text x="495" y="150" font-size="8" fill="#a1a1aa">fidelity climb</text>
+  <text x="580" y="150" font-size="8" fill="#34C759">0.9012 / 0.88</text>
+  <polyline points="500,185 520,178 540,170 560,155 580,148 600,145" fill="none" stroke="#007AFF" stroke-width="1.5"/>
+  <line x1="500" y1="160" x2="630" y2="160" stroke="#FF9500" stroke-dasharray="3 2" stroke-width="1"/>
+  <defs>
+    <linearGradient id="dockfade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#000" stop-opacity="0.15"/>
+      <stop offset="40%" stop-color="#000" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.92"/>
+    </linearGradient>
+  </defs>
+  <rect x="40" y="250" width="640" height="130" fill="url(#dockfade)"/>
+  <text x="60" y="275" font-size="9" fill="#71717a">ledger (clip list)</text>
+  <rect x="60" y="285" width="400" height="18" rx="2" fill="#18181b"/>
+  <text x="70" y="298" font-size="8" fill="#007AFF">Bring qubit 0 to ready</text>
+  <text x="280" y="298" font-size="8" fill="#a1a1aa">f=0.9012</text>
+  <rect x="200" y="315" width="80" height="20" rx="10" fill="#27272a"/>
+  <text x="240" y="329" text-anchor="middle" font-size="8" fill="#e4e4e7">Calibrate Q0</text>
+  <rect x="290" y="315" width="70" height="20" rx="10" fill="#27272a"/>
+  <text x="325" y="329" text-anchor="middle" font-size="8" fill="#e4e4e7">Bell pair</text>
+  <rect x="180" y="345" width="280" height="24" rx="12" fill="#18181b" stroke="#27272a"/>
+  <text x="200" y="361" font-size="8" fill="#52525b">Type a goal... or pick above</text>
+  <text x="360" y="385" text-anchor="middle" font-size="8" fill="#3f3f46">progressive blur dock - stage extends underneath</text>
+</svg>

@@ -338,6 +338,10 @@ export default function QuantumChatInstrument() {
   const suggested = useMemo(() => [
     { label: "Calibrate Q0", goal: "Bring qubit 0 to ready" },
     { label: "Bell pair", goal: "Run a Bell pair and report fidelity" },
+    { label: "Q0 readiness", goal: "Report qubit 0 readiness and fidelity status" },
+    { label: "Device status", goal: "Report device health and temperature status" },
+    { label: "Improve Bell", goal: "Run a precise Bell pair and report fidelity" },
+    { label: "Diagnose Q0", goal: "Check qubit 0 health and readout status" },
   ], [])
 
   // Live readouts for top bar (instrument)
@@ -580,8 +584,8 @@ export default function QuantumChatInstrument() {
         </div>
       </div>
 
-      {/* Content area: three-pane stage (drift | device | cryostat) with short solid-tint dock overlaid at bottom.
-          Dock uses pointer-events:none; inner content gets auto. No backdrop-filter anywhere. */}
+      {/* Content area: three-pane stage + bottom-third stage-blur + chat dock.
+          Top ~2/3 panes stay sharp. Dock uses pointer-events:none; inner content gets auto. */}
       <div className="content-area">
         {/* Three-pane stage: param-drift landscape (left), 3D device (middle), static cryostat plate (right).
             Two iPadOS Split View–style splitters. Grid driven by leftFr/midFr/rightFr. */}
@@ -690,23 +694,27 @@ export default function QuantumChatInstrument() {
             />
           </div>
 
-          {/* StageStateChip bottom-right (above dock) — anchored to the overall stage */}
-          <div className="absolute bottom-3 right-3 z-30">
+          {/* StageStateChip just above the bottom-third dock/blur band */}
+          <div className="absolute right-3 z-30" style={{ bottom: 'calc(33vh + 10px)' }}>
             <StageStateChip state={stageMachine} />
           </div>
         </div>
 
-        {/* Short solid-tint dock (~14vh / max 160px). NO backdrop-filter.
-            Dock container has pointer-events:none so the three stage panes stay interactive.
-            Tint is a short bottom strip only (chips + composer). Top ~2/3+ of panes stay clear. */}
+        {/* Bottom-third progressive frost (solid stacked bands — Safari-safe).
+            Sibling of .stage/.dock; never put backdrop-filter on .dock (full-stage leak). */}
+        <div className="stage-blur" aria-hidden="true" />
+
+        {/* Bottom-third chat dock (~33vh). NO backdrop-filter.
+            pointer-events:none on dock; inner chat re-enables auto.
+            Transcript/chips/composer sit above .dock-tint (z-index:1). Top ~2/3 panes stay sharp. */}
         <div className="dock chat-dock">
-          {/* Solid tint layer (no blur). Short bottom composer/chips area. */}
+          {/* Solid progressive tint behind chat (no blur). */}
           <div className="dock-tint" />
           <div className="constrained chat-constrained" style={{ pointerEvents: 'auto' }}>
             {/* Scrollable conversation transcript (top of dock, grows, scrolls) */}
             <div ref={transcriptRef} className="chat-transcript">
               {turns.length === 0 && (
-                <div className="chat-empty text-zinc-500">No messages yet. Try “Calibrate Q0” or type a goal below.</div>
+                <div className="chat-empty">No messages yet. Try a chip below — calibrate, Bell, readiness, or status — or type a goal.</div>
               )}
               {turns.map((t) => (
                 <div key={t.id} className="chat-turn">

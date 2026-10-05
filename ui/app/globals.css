@@ -96,9 +96,10 @@ body {
   display: none;
 }
 
-/* Content area: three-pane stage + overlaid dock (solid tint only).
-   Dock is absolute at the bottom; stage fills above it.
-   NO backdrop-filter on dock or any stage-overlapping layers — sharp stage is mandatory. */
+/* Content area: three-pane stage + bottom-third stage-blur + chat dock.
+   Stage fills the frame; .stage-blur softens only the bottom ~33vh (solid bands, no
+   backdrop-filter — Safari-safe). Dock overlays that band with transcript/chips/composer.
+   Top ~2/3 of panes stay optically sharp. */
 .content-area {
   position: relative;
   flex: 1;
@@ -212,60 +213,101 @@ body {
   outline-offset: -1px;
 }
 
-/* Short solid-tint dock band (~14vh / max ~160px).
-   NO backdrop-filter of any kind (Safari leaks blur to the whole stage).
-   Solid progressive tint ONLY in a short bottom strip (chips + composer).
-   The top ~2/3+ of the three instrument panes must be completely clear and sharp.
+/* =====================================================
+   Bottom-third progressive frost (Safari-safe)
+   =====================================================
+   History: backdrop-filter on .dock (even with mask-image / clipped children)
+   frosted the ENTIRE three-pane stage on Safari (see PRs #23/#24). So we NEVER
+   put backdrop-filter on .dock.
+
+   Technique: a dedicated .stage-blur SIBLING of .stage/.dock inside .content-area,
+   covering only the bottom ~33vh. It uses STACKED SOLID translucent gradient bands
+   (no backdrop-filter) to simulate progressive frost. Hard-clipped with overflow +
+   isolation so it cannot promote a filter rect up the ancestor tree. Top ~2/3 of
+   the instrument panes stay optically sharp.
+
+   .dock itself is a taller chat band (~33vh) with pointer-events:none; interactive
+   children re-enable pointer-events:auto. Transcript/chips/composer sit ABOVE the
+   solid .dock-tint via position:relative; z-index:1 (same fix as PR #26 composer).
+   ===================================================== */
+
+/* Soft progressive frost under the transcript — bottom third only.
+   Solid stacked bands ONLY (no backdrop-filter) — Safari-safe. */
+.stage-blur {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 33vh;
+  z-index: 10; /* above .stage (1), below .dock (20) */
+  pointer-events: none;
+  overflow: hidden;
+  isolation: isolate;
+  contain: paint;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  /* Explicit: never blur the stage via filter promotion. */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  /* Multi-stop solid gradient = progressive dim from opaque bottom → clear top. */
+  background: linear-gradient(
+    to top,
+    rgba(8, 8, 10, 0.92) 0%,
+    rgba(10, 10, 14, 0.78) 18%,
+    rgba(12, 12, 16, 0.55) 38%,
+    rgba(14, 14, 18, 0.28) 62%,
+    rgba(14, 14, 18, 0.10) 82%,
+    transparent 100%
+  );
+}
+
+/* Bottom-third chat dock (~33vh). NO backdrop-filter (Safari safety).
    Dock container pointer-events:none; only inner chat gets events. */
 .dock {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  /* Very short dock band so stage occupies top ~2/3+. */
-  height: clamp(72px, 10vh, 120px);
-  min-height: 72px;
+  /* Tall enough for transcript growing upward + chips + composer. */
+  height: 33vh;
+  min-height: 200px;
+  max-height: 420px;
   z-index: 20;
   display: flex;
   flex-direction: column;
-  padding: 2px 0 2px;
+  padding: 4px 0 6px;
   overflow: hidden;
   background: transparent;
-  position: relative;
-  /* Never block the three stage panes. */
+  /* Never block the three stage panes above the band. */
   pointer-events: none;
   /* Force no blur on the container (Safari safety). */
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
 
-/* Solid tint ONLY — short bottom strip for chips + composer.
-   NO backdrop-filter and NO -webkit-backdrop-filter (explicit).
-   This is the required Safari-safe approach: solid tint, no blur layer at all. */
+/* Solid progressive tint filling the dock (behind chat, under z-index:1 content).
+   NO backdrop-filter. Transcript/chips/composer paint above this layer. */
 .dock-tint {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  /* Confine the visible tint to the lowest part of the short dock (chips + composer only).
-     Transcript lives above this in the dock and sees the stage. */
-  height: 34%;
+  top: 0;
+  height: 100%;
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  border-top-left-radius: 12px;
-  border-top-right-radius: 12px;
-  /* Hard disable any blur on the tint layer. */
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  /* Solid-to-transparent, no blur. */
   background: linear-gradient(
     to top,
-    rgba(18, 18, 22, 0.96) 0%,
-    rgba(18, 18, 22, 0.86) 16%,
-    rgba(18, 18, 22, 0.50) 34%,
-    rgba(18, 18, 22, 0.14) 54%,
-    transparent 74%
+    rgba(18, 18, 22, 0.88) 0%,
+    rgba(18, 18, 22, 0.72) 22%,
+    rgba(18, 18, 22, 0.42) 48%,
+    rgba(18, 18, 22, 0.16) 72%,
+    transparent 100%
   );
 }
 
@@ -452,6 +494,8 @@ button:focus-visible {
   min-height: 0;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 /* Scrollable transcript — grows and scrolls; fills space above chips/composer inside the dock band.
@@ -469,13 +513,18 @@ button:focus-visible {
   line-height: 1.35;
   /* Anchor conversation near the bottom of the transcript area (tight to chips) */
   justify-content: flex-end;
+  /* Lift above absolutely-positioned .dock-tint (same as .chat-composer / PR #26) */
+  position: relative;
+  z-index: 1;
 }
 
-/* Empty state */
+/* Empty state — above tint, readable on dark dock */
 .chat-empty {
-  color: #52525b;
+  color: #a1a1aa;
   font-size: 12px;
   padding: 8px 4px;
+  position: relative;
+  z-index: 1;
 }
 
 /* Real chat bubbles — user right, agent left, rounded.
@@ -539,6 +588,9 @@ button:focus-visible {
   gap: 6px;
   padding: 4px 4px 6px;
   justify-content: flex-start;
+  /* Lift above .dock-tint so chips stay readable */
+  position: relative;
+  z-index: 1;
 }
 
 /* Composer wrapper sticks to bottom inside the constrained column */
