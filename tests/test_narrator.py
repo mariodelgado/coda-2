@@ -56,7 +56,123 @@ def test_narrator_bell_path_template() -> None:
     msg = narrate(goal, traces, results, None)
     assert isinstance(msg, str)
     assert len(msg.strip()) > 0
-    assert "Bell" in msg or "00" in msg or "contrast" in msg.lower()
+    low = msg.lower()
+    assert "Bell" in msg or "00" in msg
+    assert "fidelity" in low or "correlation" in low
+    assert "contrast" not in low
+
+
+def test_narrator_good_bell_language() -> None:
+    """A balanced ~0.45/0.45 Bell is high fidelity, not weak.
+
+    Old metric used |p00−p11| ≈ 0, so a good pair narrated as 'weak correlation'.
+    """
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    goal = "Run a Bell pair and report fidelity"
+    traces = [_trace("run_bell_pair", "00/11=460/450")]
+    results = [
+        _res(
+            True,
+            {
+                "counts": {"00": 460, "11": 450, "01": 57, "10": 57},
+                "shots": 1024,
+                "metrics": {"estimated_fidelity": 0.8887, "shots": 1024.0},
+            },
+        )
+    ]
+
+    msg = narrate(goal, traces, results, None)
+    assert isinstance(msg, str)
+    low = msg.lower()
+    assert "weak" not in low
+    assert "random" not in low
+    assert any(w in low for w in ["strong", "high-fidelity", "high fidelity"])
+    assert "0.89" in msg or "0.88" in msg
+    assert "1024" in msg
+    assert "shot" in low
+    assert "contrast" not in low
+    # Balanced bins must not be scored by |p00−p11| ≈ 0.01
+    assert "0.01" not in msg or "±" in msg
+
+
+def test_narrator_bad_bell_language() -> None:
+    """Near-random same-parity (~0.50) must read as weak, not strong."""
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    goal = "Run a Bell pair"
+    traces = [_trace("run_bell_pair", "00/11=260/240")]
+    results = [
+        _res(
+            True,
+            {
+                "counts": {"00": 260, "11": 240, "01": 250, "10": 250},
+                "metrics": {"estimated_fidelity": 0.50, "shots": 1000.0},
+            },
+        )
+    ]
+
+    msg = narrate(goal, traces, results, None)
+    assert isinstance(msg, str)
+    low = msg.lower()
+    assert any(w in low for w in ["weak", "random"])
+    assert "strong" not in low
+    assert "high-fidelity" not in low
+    assert "contrast" not in low
+    assert "1000" in msg or "shot" in low
+
+
+def test_narrator_mediocre_bell_is_not_random() -> None:
+    """~0.34 / 0.34 bins are mediocre correlation, not a random pair."""
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    results = [_res(True, {"counts": {"00": 348, "11": 348, "01": 164, "10": 164}})]
+    msg = narrate("Run a Bell pair", [_trace("run_bell_pair")], results, None)
+    low = msg.lower()
+    assert "random" not in low
+    assert "weak" not in low
+    assert "moderate" in low
+
+
+def test_narrator_good_bell_without_adapter_metrics() -> None:
+    """Correlation P(00)+P(11) is the fallback when estimated_fidelity is absent."""
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    # 0.45 / 0.45 — contrast is ~0, correlation is 0.90
+    results = [_res(True, {"counts": {"00": 450, "11": 450, "01": 62, "10": 62}})]
+    msg = narrate("Run a Bell pair", [_trace("run_bell_pair")], results, None)
+    low = msg.lower()
+    assert "weak" not in low
+    assert any(w in low for w in ["strong", "high-fidelity", "high fidelity"])
+    assert "0.90" in msg or "0.88" in msg
 
 
 def test_narrator_state_path_template() -> None:

@@ -560,6 +560,8 @@ button:focus-visible {
 }
 
 .bubble-meta {
+  display: block;
+  margin-top: 4px;
   font-size: 9px;
   color: var(--tertiary-label);
   padding: 0 2px;
