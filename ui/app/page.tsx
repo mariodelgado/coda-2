@@ -41,26 +41,101 @@ interface Turn {
   createdAt: number
 }
 
-/** Bell quality from job metrics: estimated_fidelity, else P(00)+P(11). */
-function bellMetricsFromResults(results: unknown[]): { fidelity: number; shots?: number } | null {
-  for (const raw of results || []) {
-    const r = raw as { data?: Record<string, unknown> } | null
-    const d = (r?.data || {}) as Record<string, unknown>
-    const m = (d.metrics && typeof d.metrics === "object" ? d.metrics : {}) as Record<string, unknown>
-    const counts = d.counts as Record<string, number> | undefined
-    let fidelity: number | undefined
-    if (typeof m.estimated_fidelity === "number") {
-      fidelity = m.estimated_fidelity
-    } else if (counts && typeof counts === "object") {
-      const total = Object.values(counts).reduce((a, b) => a + Number(b || 0), 0) || 1
-      fidelity = (Number(counts["00"] || 0) + Number(counts["11"] || 0)) / Number(total)
-    }
-    if (fidelity == null || Number.isNaN(fidelity)) continue
-    const shotsRaw = m.shots ?? d.shots
-    const shots = typeof shotsRaw === "number" ? shotsRaw : undefined
-    return { fidelity, shots }
+/** Live / result math: fidelity, shots, Δf, temp/mK, readiness — only keys that are present. */
+type MathReadout = {
+  fidelity?: number
+  shots?: number
+  deltaF?: number
+  tempMk?: number
+  readiness?: number
+}
+
+function asFinite(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return v
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v)
+    if (Number.isFinite(n)) return n
   }
-  return null
+  return undefined
+}
+
+function pickQubit0(rec: unknown): number | undefined {
+  if (!rec || typeof rec !== "object") return undefined
+  const o = rec as Record<string, unknown>
+  return asFinite(o["0"] ?? (o as Record<number, unknown>)[0])
+}
+
+/** Numbers from one tool result (device state, calibrate, Bell job metrics). */
+function mathFromData(data: unknown): MathReadout {
+  const out: MathReadout = {}
+  if (!data || typeof data !== "object") return out
+  const d = data as Record<string, unknown>
+  const m = (d.metrics && typeof d.metrics === "object" ? d.metrics : {}) as Record<string, unknown>
+
+  // Bell F from #34 (estimated_fidelity), else calibrate fidelity, else Q0 readout.
+  const fid =
+    asFinite(m.estimated_fidelity) ??
+    asFinite(d.fidelity) ??
+    pickQubit0(d.readout_fidelity)
+  if (fid != null) out.fidelity = fid
+
+  if (out.fidelity == null && d.counts && typeof d.counts === "object") {
+    const counts = d.counts as Record<string, number>
+    const total = Object.values(counts).reduce((a, b) => a + Number(b || 0), 0) || 1
+    const corr = (Number(counts["00"] || 0) + Number(counts["11"] || 0)) / Number(total)
+    if (Number.isFinite(corr)) out.fidelity = corr
+  }
+
+  const shots = asFinite(m.shots) ?? asFinite(d.shots)
+  if (shots != null) out.shots = shots
+
+  const readiness = asFinite(d.readiness_score)
+  if (readiness != null) out.readiness = readiness
+
+  const temp = pickQubit0(d.temperatures_mk)
+  if (temp != null) out.tempMk = temp
+
+  const det = (d.detuning && typeof d.detuning === "object" ? d.detuning : d) as Record<string, unknown>
+  const df = asFinite(det.frequency_error)
+  if (df != null) out.deltaF = df
+
+  return out
+}
+
+function mathFromResults(results: unknown[]): MathReadout {
+  const out: MathReadout = {}
+  for (const raw of results || []) {
+    const piece = mathFromData((raw as { data?: unknown } | null)?.data)
+    if (piece.fidelity != null) out.fidelity = piece.fidelity
+    if (piece.shots != null) out.shots = piece.shots
+    if (piece.deltaF != null) out.deltaF = piece.deltaF
+    if (piece.tempMk != null) out.tempMk = piece.tempMk
+    if (piece.readiness != null) out.readiness = piece.readiness
+  }
+  return out
+}
+
+function formatMathParts(m: MathReadout, shotsBare = false): string[] {
+  const parts: string[] = []
+  if (m.fidelity != null) parts.push(`F ${m.fidelity.toFixed(2)}`)
+  if (m.shots != null) parts.push(shotsBare ? `${Math.round(m.shots)}` : `${Math.round(m.shots)} shots`)
+  if (m.deltaF != null) parts.push(`Δf ${m.deltaF.toFixed(3)}`)
+  if (m.tempMk != null) parts.push(`${m.tempMk.toFixed(1)} mK`)
+  if (m.readiness != null) parts.push(`R ${m.readiness.toFixed(3)}`)
+  return parts
+}
+
+function formatBubbleMeta(m: MathReadout): string {
+  return formatMathParts(m).join(" · ")
+}
+
+function formatPillMath(m: MathReadout): string {
+  const parts = formatMathParts(m, true)
+  return parts.length ? ` · ${parts.join(" · ")}` : ""
+}
+
+function hasMath(m: MathReadout): boolean {
+  return m.fidelity != null || m.shots != null || m.deltaF != null || m.tempMk != null || m.readiness != null
 }
 
 export default function QuantumChatInstrument() {
@@ -371,10 +446,11 @@ export default function QuantumChatInstrument() {
 
   // Live readouts for top bar (instrument)
   const q0Fid = device?.readout_fidelity?.["0"] ?? device?.readout_fidelity?.[0 as any] ?? null
-  const q0Temp = device?.temperatures_mk?.["0"] ?? device?.temperatures_mk?.[0 as any] ?? null
+  const q0Temp = asFinite(device?.temperatures_mk?.["0"] ?? device?.temperatures_mk?.[0 as any])
   const isReady = !!device?.is_ready
   const q0Ready = isReady || (q0Fid != null && Number(q0Fid) >= 0.82)
   const readiness = device ? device.readiness_score.toFixed(3) : null
+  const q0DeltaF = asFinite(detuning?.frequency_error)
 
   const hasCalibrated = turns.some(
     (t) => t.status === "succeeded" && t.traces.some((tr) => tr.tool === "calibrate_qubit"),
@@ -599,9 +675,18 @@ export default function QuantumChatInstrument() {
           </span>
         </div>
 
-        {/* READY centered when ready (instrument-first, minimal clutter) */}
-        <div className="absolute left-1/2 -translate-x-1/2 text-[10px] font-mono tracking-[0.5px] text-success">
-          {isReady ? "READY" : ""}
+        {/* Live math: READY + Q0 temp / readiness / Δf (fields already polled; no dock blur). */}
+        <div className="toolbar-math absolute left-1/2 -translate-x-1/2">
+          {isReady ? <span className="text-success">READY</span> : null}
+          {q0Temp != null && (
+            <span title="Q0 temperature">{q0Temp.toFixed(1)} mK</span>
+          )}
+          {readiness != null && (
+            <span title="Readiness score">R {readiness}</span>
+          )}
+          {q0DeltaF != null && (
+            <span title="Q0 frequency detuning">Δf {q0DeltaF.toFixed(3)}</span>
+          )}
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -758,8 +843,11 @@ export default function QuantumChatInstrument() {
                 <div className="chat-empty">Golden path: Calibrate Q0 → check READY → Bell pair. Chips below follow that order.</div>
               )}
               {turns.map((t) => {
-                const bell = t.status !== "running" ? bellMetricsFromResults(t.results) : null
-                const bellShots = bell?.shots != null ? Math.round(bell.shots) : null
+                const turnMath = t.status !== "running" ? mathFromResults(t.results) : {}
+                const meta = formatBubbleMeta(turnMath)
+                const traces = t.traces || []
+                const shown = traces.slice(-3)
+                const traceStart = traces.length - shown.length
                 return (
                   <div key={t.id} className="chat-turn">
                     {/* User bubble (right) */}
@@ -772,23 +860,25 @@ export default function QuantumChatInstrument() {
                       {t.status === "failed" && (t.error || "failed")}
                       {t.status !== "running" && t.agentMessage && t.agentMessage}
                       {t.status !== "running" && !t.agentMessage && !t.error && "completed"}
-                      {bell && (
-                        <span className="bubble-meta">
-                          F {bell.fidelity.toFixed(2)}{bellShots != null ? ` · ${bellShots} shots` : ""}
+                      {meta && (
+                        <span className="bubble-meta instrument-mono">
+                          {meta}
                         </span>
                       )}
                     </div>
-                    {/* Tiny trace pills (non-primary) */}
-                    {t.traces && t.traces.length > 0 && (
+                    {/* Tiny trace pills — tool name + key numbers when the result has them */}
+                    {shown.length > 0 && (
                       <div className="chat-traces">
-                        {t.traces.slice(-3).map((tr, i) => (
-                          <span key={i} className="chat-trace-pill">
-                            {tr.tool}
-                            {tr.tool === "run_bell_pair" && bell
-                              ? ` · ${bell.fidelity.toFixed(2)}${bellShots != null ? ` · ${bellShots}` : ""}`
-                              : ""}
-                          </span>
-                        ))}
+                        {shown.map((tr, i) => {
+                          const result = t.results?.[traceStart + i]
+                          const pillMath = mathFromData((result as { data?: unknown } | undefined)?.data)
+                          const fallback = !hasMath(pillMath) && tr.tool === "run_bell_pair" ? turnMath : pillMath
+                          return (
+                            <span key={i} className="chat-trace-pill instrument-mono">
+                              {tr.tool}{formatPillMath(fallback)}
+                            </span>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
