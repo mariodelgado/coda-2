@@ -296,7 +296,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "jobs",
-        "description": "Submit-adjacent job poll, list, and SSE. In-memory; not durable.",
+        "description": "Submit-adjacent job poll, list, job SSE, and live calibration climb SSE. In-memory; not durable.",
     },
     {
         "name": "device",

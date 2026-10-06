@@ -37,6 +37,7 @@ Chat is the wrong interface for a physical, probabilistic device. This API is th
 | GET | `/jobs` | jobs | Recent jobs (in-memory, not durable) |
 | GET | `/jobs/{job_id}` | jobs | Poll one job |
 | GET | `/sse/jobs/{job_id}` | jobs | SSE status stream |
+| GET | `/sse/calibration` | jobs | Live climb points while calibrate runs |
 | GET | `/device/state` | device | Snapshot + readiness + predicate |
 | GET | `/device/detuning/{qubit_id}` | device | Applied vs hidden-true drift |
 | GET | `/readiness_predicate` | readiness | Exact READY predicate |
@@ -76,6 +77,35 @@ Successful `results[].data`:
 ```
 
 Direct REST: `POST /calibrate` with `{ "qubit_id": 0, "target_fidelity": 0.88 }`.
+
+While that request (or `POST /goals` with a calibrate chip) is in flight, `GET /sse/calibration` emits named `climb` events so the instrument HUD can append points. The JSON response is unchanged.
+
+### Live climb (`GET /sse/calibration`)
+
+Subscribe **before** `POST /goals` / `POST /calibrate`. Named events:
+
+| Event | When |
+|---|---|
+| `hello` | Subscriber attached (`{"channel": "calibration"}`) |
+| `climb` | One anneal sample (`phase`: `start` \| `step` \| `done`) |
+| `timeout` | Stream idle cap (~30 min); EventSource reconnects |
+
+`climb` data:
+
+```json
+{
+  "phase": "step",
+  "qubit_id": 0,
+  "iter": 4,
+  "fidelity": 0.81,
+  "best_fidelity": 0.84,
+  "threshold": 0.88,
+  "success": false,
+  "done": false
+}
+```
+
+`fidelity` is the candidate at that iteration (same series as `history`). Headless clients that skip SSE are unchanged: `results[].data.history` on the final `/goals` body is still the full climb.
 
 ### `run_bell_pair`
 

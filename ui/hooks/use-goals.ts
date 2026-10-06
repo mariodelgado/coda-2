@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
-import { api, type JobRecord } from "@/lib/api"
-import { extractFromResults, type Turn } from "@/lib/turns"
+import { api, type ClimbEvent, type JobRecord } from "@/lib/api"
+import { extractFromResults, upsertFidelityPoint, type Turn } from "@/lib/turns"
 
 export function useGoals(opts: {
   refreshDevice: () => Promise<void>
   setBackendDown: (down: boolean) => void
+  connected?: boolean
 }) {
-  const { refreshDevice, setBackendDown } = opts
+  const { refreshDevice, setBackendDown, connected = false } = opts
 
   const [turns, setTurns] = useState<Turn[]>([])
   const [selectedTurnId, setSelectedTurnId] = useState<string | null>(null)
@@ -18,6 +19,8 @@ export function useGoals(opts: {
   const [jobs, setJobs] = useState<Record<string, JobRecord>>({})
   const [activeJobId, setActiveJobId] = useState<string | null>(null)
   const eventSourcesRef = useRef<Record<string, EventSource>>({})
+  const climbSourceRef = useRef<EventSource | null>(null)
+  const lastDevRefreshRef = useRef(0)
 
   const loadRecentJobs = useCallback(async () => {
     try {
@@ -55,6 +58,59 @@ export function useGoals(opts: {
     } catch {}
   }, [upsertJob])
 
+  const applyClimbEvent = useCallback((ev: ClimbEvent) => {
+    if (typeof ev.iter !== "number" || typeof ev.fidelity !== "number") return
+    setTurns(prev => prev.map(t => {
+      if (t.status !== "running") return t
+      return {
+        ...t,
+        fidelityHistory: upsertFidelityPoint(t.fidelityHistory, { iter: ev.iter, fidelity: ev.fidelity }),
+        calThreshold: typeof ev.threshold === "number" ? ev.threshold : t.calThreshold,
+      }
+    }))
+    const now = Date.now()
+    if (now - lastDevRefreshRef.current > 220) {
+      lastDevRefreshRef.current = now
+      void refreshDevice()
+    }
+  }, [refreshDevice])
+
+  const startCalibrationSSE = useCallback(() => {
+    const existing = climbSourceRef.current
+    if (existing && existing.readyState !== EventSource.CLOSED) return existing
+    try {
+      const es = new EventSource(api.sseCalibrationUrl())
+      climbSourceRef.current = es
+      const onClimb = (raw: MessageEvent) => {
+        try { applyClimbEvent(JSON.parse(raw.data) as ClimbEvent) } catch {}
+      }
+      es.addEventListener("climb", onClimb)
+      es.onmessage = onClimb
+      es.onerror = () => {
+        // EventSource reconnects; only drop the handle if it fully closed.
+        if (es.readyState === EventSource.CLOSED) {
+          climbSourceRef.current = null
+        }
+      }
+      return es
+    } catch {
+      return null
+    }
+  }, [applyClimbEvent])
+
+  useEffect(() => {
+    if (!connected) {
+      const es = climbSourceRef.current
+      if (es) { es.close(); climbSourceRef.current = null }
+      return
+    }
+    startCalibrationSSE()
+    return () => {
+      const es = climbSourceRef.current
+      if (es) { es.close(); climbSourceRef.current = null }
+    }
+  }, [connected, startCalibrationSSE])
+
   const cancelJob = useCallback(async (jobId: string) => {
     try {
       await api.postGoal(`cancel ${jobId}`).catch(() => {})
@@ -90,6 +146,14 @@ export function useGoals(opts: {
     setSelectedTurnId(turnId)
     setSubmitting(true)
     setGoalInput("")
+    startCalibrationSSE()
+    const climbEs = climbSourceRef.current
+    if (climbEs && climbEs.readyState === EventSource.CONNECTING) {
+      await new Promise<void>((resolve) => {
+        const t = setTimeout(() => resolve(), 500)
+        climbEs.addEventListener("open", () => { clearTimeout(t); resolve() }, { once: true })
+      })
+    }
 
     try {
       const resp = await api.postGoal(goal)
@@ -106,7 +170,7 @@ export function useGoals(opts: {
           status: "succeeded",
           traces,
           results: resp.results || [],
-          fidelityHistory: history,
+          fidelityHistory: history.length ? history : t.fidelityHistory,
           calThreshold: threshold,
           lastCalParams: params,
           bellCounts: counts,
@@ -140,7 +204,7 @@ export function useGoals(opts: {
     } finally {
       setSubmitting(false)
     }
-  }, [refreshDevice, loadRecentJobs, startJobSSE, setBackendDown])
+  }, [refreshDevice, loadRecentJobs, startJobSSE, startCalibrationSSE, setBackendDown])
 
   const runSuggested = useCallback((goal: string, opts?: { warnCalibrateFirst?: boolean }) => {
     if (opts?.warnCalibrateFirst) {

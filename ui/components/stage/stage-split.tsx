@@ -104,7 +104,7 @@ export function StageSplit({
           className="h-full w-full"
         />
 
-        {/* Fidelity climb HUD — snapshot from the completed turn (no live SSE climb). */}
+        {/* Fidelity climb HUD — live SSE points during Calibrate Q0, then the completed turn. */}
         {activeTurn && activeTurn.fidelityHistory.length > 0 && (
           <div className="absolute bottom-[38%] right-3 w-[280px] hud rounded px-2 py-1 text-[10px]">
             <div className="flex items-baseline justify-between mb-0.5 px-1">
@@ -120,7 +120,7 @@ export function StageSplit({
                   <XAxis dataKey="step" tick={{ fontSize: 9, fill: "#52525b" }} />
                   <YAxis domain={[0.5, 1.0]} tick={{ fontSize: 9, fill: "#52525b" }} />
                   <ReferenceLine y={threshold} stroke="#FF9500" strokeDasharray="2 2" />
-                  <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={false} />
+                  <Line type="monotone" dataKey="fidelity" stroke="#007AFF" strokeWidth={1.5} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>

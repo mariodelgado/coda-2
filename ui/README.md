@@ -57,7 +57,7 @@ Optional (explicit): `NEXT_PUBLIC_API_BASE=http://localhost:8000` (still works; 
 - `components/stage/stage-split.tsx` — three-pane stage + splitters
 - `components/chat/chat-dock.tsx` — transcript, chips, composer
 - `hooks/use-device-poll.ts` — health + device/detuning poll
-- `hooks/use-goals.ts` — turns, POST /goals, job SSE
+- `hooks/use-goals.ts` — turns, POST /goals, job SSE, live calibration climb
 - `hooks/use-stage-split.ts` — iPadOS-style pane resize
 - `components/command/command-palette.tsx` — ⌘K goals
 - `components/viz/calibration-surface.tsx` — WebGPU/WebGL fidelity landscape

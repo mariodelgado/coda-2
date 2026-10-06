@@ -93,6 +93,7 @@ flowchart TB
   Adapter --> Sim
   Adapter -.-> HW
   Jobs -->|SSE / poll| Dock
+  Cal -->|climb SSE| Stage
   Adapter -->|device state| Stage
 ```
 

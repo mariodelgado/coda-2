@@ -497,6 +497,26 @@
         }
       }
     },
+    "/sse/calibration": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "SSE calibration climb stream",
+        "description": "Live fidelity samples while CalibrationService anneals.\n\nNamed events: ``hello`` (subscribe ack), ``climb`` (start/step/done),\n``timeout``. POST /goals and POST /calibrate still return the full\nhistory when they finish \u2014 this stream is additive.",
+        "operationId": "sse_calibration_sse_calibration_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/demo/fail_next_cal": {
       "post": {
         "tags": [
@@ -1633,7 +1653,7 @@
     },
     {
       "name": "jobs",
-      "description": "Submit-adjacent job poll, list, and SSE. In-memory; not durable."
+      "description": "Submit-adjacent job poll, list, job SSE, and live calibration climb SSE. In-memory; not durable."
     },
     {
       "name": "device",

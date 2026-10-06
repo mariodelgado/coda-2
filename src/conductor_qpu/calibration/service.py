@@ -78,12 +78,14 @@ class CalibrationService:
         max_iterations: int = 80,
         patience: int = 14,
         seed: int | None = 123,
+        on_step: Callable[[int, CalibrationResult], None] | None = None,
     ) -> None:
         self.adapter = adapter
         self.fidelity_threshold = fidelity_threshold
         self.max_iterations = max_iterations
         self.patience = patience
         self._rng = __import__("random").Random(seed)
+        self._on_step = on_step
 
         self._metrics = CalibrationMetrics()
         self._last_result: CalibrationResult | None = None
@@ -127,7 +129,8 @@ class CalibrationService:
 
         Returns the final CalibrationResult. Side-effects:
           - updates internal metrics
-          - calls on_step(iter, result) for each iteration if provided
+          - calls on_step(iter, result) for iter 0 (start) and each anneal
+            step if provided (instance-level on_step is also invoked)
           - commits the reported best params to the adapter (anneal may
             have left the device on a later, worse candidate)
         """
@@ -142,6 +145,17 @@ class CalibrationService:
         no_improve = 0
         success = False
         final_res: CalibrationResult | None = None
+
+        start_res = CalibrationResult(
+            success=False,
+            params=best,
+            fidelity=round(best_fid, 5),
+            iterations=0,
+            duration_s=0.0,
+            history=history[:],
+            message="In progress",
+        )
+        self._emit_step(0, start_res, on_step)
 
         for it in range(1, self.max_iterations + 1):
             # Temperature-like schedule for accepting worse steps (higher early)
@@ -193,11 +207,9 @@ class CalibrationService:
                 iterations=it,
                 duration_s=round(time.time() - start_wall, 4),
                 history=history[:],
-                message="Converged" if best_fid >= threshold else "In progress",
+                message="In progress",
             )
-
-            if on_step:
-                on_step(it, final_res)
+            self._emit_step(it, final_res, on_step)
 
             if best_fid >= threshold:
                 success = True
@@ -220,7 +232,7 @@ class CalibrationService:
                 fidelity=round(best_fid, 5),
                 iterations=self.max_iterations,
                 duration_s=round(time.time() - start_wall, 4),
-                history=history,
+                history=history[:],
                 message="Max iterations reached",
             )
 
@@ -230,6 +242,16 @@ class CalibrationService:
         # worse than claimed).
         self.adapter.apply_calibration_update(best)
 
+        final_res = CalibrationResult(
+            success=success,
+            params=best,
+            fidelity=round(best_fid, 5),
+            iterations=final_res.iterations,
+            duration_s=round(time.time() - start_wall, 4),
+            history=history[:],
+            message="Converged" if success else "Max iterations reached",
+        )
+
         # Update aggregate metrics
         self._metrics.attempts += 1
         if success:
@@ -237,7 +259,18 @@ class CalibrationService:
             self._metrics.total_time_to_cal_s += final_res.duration_s
 
         self._last_result = final_res
+        self._emit_step(final_res.iterations, final_res, on_step)
         return final_res
+
+    def _emit_step(
+        self,
+        it: int,
+        res: CalibrationResult,
+        extra: Callable[[int, CalibrationResult], None] | None,
+    ) -> None:
+        for cb in (self._on_step, extra):
+            if cb is not None:
+                cb(it, res)
 
     def get_last_result(self) -> CalibrationResult | None:
         return self._last_result
