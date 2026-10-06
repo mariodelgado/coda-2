@@ -26,7 +26,6 @@ from typing import Any
 
 from conductor_qpu.orchestrator.orchestrator import ToolCall
 
-
 # Q0 readout floor used by the UI/device readiness predicate.
 _Q0_READY_FLOOR = 0.82
 
@@ -167,8 +166,10 @@ def plan_from_goal(
 
     # Status / readiness queries before the "ready" calibrate keyword so
     # "Report qubit 0 readiness" is get_device_state, not calibrate_qubit.
-    if _is_status_goal(g) and not _is_bell_goal(g) and not (
-        any(k in g for k in ["bring", "calibrat", "tune"])
+    if (
+        _is_status_goal(g)
+        and not _is_bell_goal(g)
+        and not (any(k in g for k in ["bring", "calibrat", "tune"]))
     ):
         return [ToolCall(tool="get_device_state", args={})]
 
@@ -287,9 +288,7 @@ def _get_planner_llm_client() -> tuple[Any, str] | None:
     if provider == "nvidia" and nvidia_key:
         model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.2-11b-vision-instruct"
         try:
-            client = OpenAI(
-                api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1"
-            )
+            client = OpenAI(api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1")
             return client, model
         except Exception:  # noqa: BLE001
             return None
@@ -314,9 +313,7 @@ def _get_planner_llm_client() -> tuple[Any, str] | None:
     if nvidia_key:
         model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.2-11b-vision-instruct"
         try:
-            client = OpenAI(
-                api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1"
-            )
+            client = OpenAI(api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1")
             return client, model
         except Exception:  # noqa: BLE001
             pass
@@ -400,9 +397,7 @@ def maybe_llm_plan(
         # If the model returned an empty array or only unknown tools, fall back.
         if not out:
             return None
-        return ensure_calibrate_before_bell(
-            out, device_ready=device_ready, snapshot=snapshot
-        )
+        return ensure_calibrate_before_bell(out, device_ready=device_ready, snapshot=snapshot)
     except Exception:  # noqa: BLE001
         # Any failure (auth, network, schema, rate limit, parse) -> fallback
         return None

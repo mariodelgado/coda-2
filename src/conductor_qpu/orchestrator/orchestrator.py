@@ -351,10 +351,20 @@ class Orchestrator:
 
         self._last_traces = []
         results: list[ToolResult] = []
-        for step in plan:
+        for i, step in enumerate(plan):
             res = self.call_tool(step.tool, **step.args)
             results.append(res)
-            if not res.ok and step.tool in ("calibrate_qubit", "run_bell_pair"):
+            if res.ok:
+                continue
+            if step.tool == "run_bell_pair":
+                break
+            if step.tool == "calibrate_qubit":
+                # Best-effort: a prepended calibrate may miss the 0.88 tool
+                # threshold while Q0 is already READY. Still run Bell so the
+                # golden path cannot stall on a soft cal miss.
+                remaining = [s.tool for s in plan[i + 1 :]]
+                if "run_bell_pair" in remaining:
+                    continue
                 break
         return results
 

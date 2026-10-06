@@ -330,8 +330,7 @@ def _template_narrate(
     # Bell / circuit path
     if any(k in g for k in ["bell", "circuit", "entangl", "pair"]):
         traces_have_cal = any(
-            (t.get("tool") if isinstance(t, dict) else getattr(t, "tool", ""))
-            == "calibrate_qubit"
+            (t.get("tool") if isinstance(t, dict) else getattr(t, "tool", "")) == "calibrate_qubit"
             for t in (traces or [])
         )
         snap_ready = None
@@ -352,9 +351,7 @@ def _template_narrate(
                     pass
         prefix = ""
         if snap_ready is False and not traces_have_cal:
-            prefix = (
-                "Device is not ready — calibrate Q0 first, then retry the Bell pair. "
-            )
+            prefix = "Device is not ready — calibrate Q0 first, then retry the Bell pair. "
         elif traces_have_cal:
             prefix = "Calibrated Q0 first, then ran the Bell pair. "
 
