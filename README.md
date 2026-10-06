@@ -48,7 +48,7 @@ A goal typed into the dock is compiled to a typed control-plane tool. Tools are 
 |---|---|
 | **Three-pane stage** | Param-drift landscape · 3D device · isometric cryostat — iPadOS-style splitters |
 | **Bottom-third dock** | Transcript, six suggestion chips, high-contrast composer — stage stays sharp above the fold |
-| **Workflow chips** | Calibrate Q0 · Bell pair · Q0 readiness · Device status · Improve Bell · Diagnose Q0 |
+| **Workflow chips** | Calibrate Q0 → Q0 readiness · Device status → Bell pair → Improve Bell · Diagnose Q0 |
 | **Multimodal** | Visual stage + NL goals + live math (fidelity, Δf, mK, readiness) |
 | **Chat bubbles** | You / agent turns with tool-trace pills; empty-state and chips stay above the tint |
 | **Real control plane** | `QPUAdapter` seam, orchestrator + deterministic planner, calibration loop, jobs, traces, FastAPI + SSE |
@@ -130,10 +130,10 @@ The metrics are what make the claim testable rather than rhetorical: `time_to_ca
 | Chip | Goal (approx.) | Planner tool |
 |------|----------------|--------------|
 | Calibrate Q0 | Bring qubit 0 to ready | `calibrate_qubit` |
-| Bell pair | Run a Bell pair and report fidelity | `run_bell_pair` |
 | Q0 readiness | Report qubit 0 readiness and fidelity status | `get_device_state` |
 | Device status | Report device health and temperature status | `get_device_state` |
-| Improve Bell | Run a precise Bell pair and report fidelity | `run_bell_pair` (more shots) |
+| Bell pair | Run a Bell pair and report fidelity | `run_bell_pair` (calibrate first if not READY) |
+| Improve Bell | Run a precise Bell pair and report fidelity | `run_bell_pair` (more shots; same gate) |
 | Diagnose Q0 | Check qubit 0 health and readout status | `get_device_state` |
 
 ### Real vs simulated
