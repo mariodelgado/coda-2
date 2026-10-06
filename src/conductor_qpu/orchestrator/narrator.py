@@ -159,12 +159,59 @@ def _extract_fidelity(
     return init, final, params
 
 
+def _as_float(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _extract_bell(results: list[dict[str, Any]]) -> dict[str, Any] | None:
     for r in results or []:
         d = (r or {}).get("data") or {}
         if d and isinstance(d.get("counts"), dict):
-            return {"counts": d["counts"], "metrics": d.get("metrics") or {}}
+            return {
+                "counts": d["counts"],
+                "metrics": d.get("metrics") or {},
+                "shots": d.get("shots"),
+            }
     return None
+
+
+def _bell_quality(bell: dict[str, Any]) -> tuple[float, int, float | None]:
+    """Return (quality, shots, stderr) for a Bell readout.
+
+    Quality is the adapter's ``estimated_fidelity`` when present, otherwise
+    the same-parity correlation P(00)+P(11). Never |P(00)−P(11)| — a good
+    Bell (~0.45/0.45) has near-zero contrast and would look like noise.
+    """
+    counts = bell.get("counts") or {}
+    metrics = bell.get("metrics") or {}
+    if not isinstance(metrics, dict):
+        metrics = {}
+    total = sum(int(v) for v in counts.values()) or 1
+    p00 = int(counts.get("00", 0)) / total
+    p11 = int(counts.get("11", 0)) / total
+    correlation = p00 + p11
+
+    estimated = _as_float(metrics.get("estimated_fidelity"))
+    quality = estimated if estimated is not None else correlation
+
+    shots = _as_float(metrics.get("shots"))
+    if shots is None:
+        shots = _as_float(bell.get("shots"))
+    shots_n = int(shots) if shots is not None else int(total)
+
+    stderr = None
+    for key in ("stderr", "std_err", "uncertainty", "estimated_fidelity_stderr"):
+        stderr = _as_float(metrics.get(key))
+        if stderr is not None:
+            break
+    if stderr is None and shots_n > 0 and 0.0 <= quality <= 1.0:
+        stderr = (quality * (1.0 - quality) / shots_n) ** 0.5
+    return quality, shots_n, stderr
 
 
 def _template_narrate(
@@ -284,20 +331,25 @@ def _template_narrate(
     if any(k in g for k in ["bell", "circuit", "entangl", "pair"]):
         if bell and isinstance(bell.get("counts"), dict):
             c = bell["counts"]
-            total = sum(int(v) for v in c.values()) or 1
-            p00 = int(c.get("00", 0)) / total
-            p11 = int(c.get("11", 0)) / total
-            contrast = abs(p00 - p11)
-            note = ""
-            if contrast > 0.6:
-                note = "Strong correlation; the Bell pair shows good contrast."
-            elif contrast > 0.35:
+            quality, shots, stderr = _bell_quality(bell)
+            if quality >= 0.80:
+                note = (
+                    "Strong correlation; the Bell pair is consistent with a "
+                    "high-fidelity entangled state."
+                )
+            elif quality >= 0.60:
                 note = "Moderate correlation; calibration and readout noise are visible."
             else:
-                note = "Weak correlation; the device may need fresh calibration or the circuit may be sensitive to current detuning."
+                note = (
+                    "Weak correlation; outcomes look close to random. "
+                    "The device may need fresh calibration or the circuit may be "
+                    "sensitive to current detuning."
+                )
+            unc = f" ± {stderr:.2f}" if stderr is not None and stderr > 1e-6 else ""
+            shots_txt = f" over {shots} shots" if shots else ""
             return (
                 f"Bell pair measured {dict((k, int(v)) for k, v in c.items())}. "
-                f"Contrast between 00 and 11 is {contrast:.2f}. {note}"
+                f"Estimated fidelity {quality:.2f}{unc}{shots_txt}. {note}"
             )
         return "Bell circuit executed. Results captured in traces. " + (traces_str or "")
 
@@ -369,6 +421,8 @@ def _call_llm_narrate(
         "Given a goal, tool traces, and numeric results, produce ONE short plain-English sentence (or two) "
         "that explains what happened in terms an operator understands: fidelity change, readiness, drift implications, or circuit quality. "
         "Use the actual numbers from context. No hype, no marketing language. No JSON. No lists. "
+        "For Bell/circuit results, quality is estimated_fidelity or (p00+p11) — never |p00-p11|. "
+        "A balanced ~0.45/0.45 Bell is high fidelity, not weak. Include shots and stderr when present. "
         "CRITICAL RULE — readiness is authoritative: the 'device' object in context contains the post-execution device state. "
         "If device.is_ready is true (boolean), the qubit IS ready and usable for circuits — affirm this in plain English (e.g., 'ready', 'usable for circuits', 'meets the readiness predicate'). "
         "If device.is_ready is false, clearly state another pass is needed; do not claim ready. "

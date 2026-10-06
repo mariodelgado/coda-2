@@ -41,6 +41,28 @@ interface Turn {
   createdAt: number
 }
 
+/** Bell quality from job metrics: estimated_fidelity, else P(00)+P(11). */
+function bellMetricsFromResults(results: unknown[]): { fidelity: number; shots?: number } | null {
+  for (const raw of results || []) {
+    const r = raw as { data?: Record<string, unknown> } | null
+    const d = (r?.data || {}) as Record<string, unknown>
+    const m = (d.metrics && typeof d.metrics === "object" ? d.metrics : {}) as Record<string, unknown>
+    const counts = d.counts as Record<string, number> | undefined
+    let fidelity: number | undefined
+    if (typeof m.estimated_fidelity === "number") {
+      fidelity = m.estimated_fidelity
+    } else if (counts && typeof counts === "object") {
+      const total = Object.values(counts).reduce((a, b) => a + Number(b || 0), 0) || 1
+      fidelity = (Number(counts["00"] || 0) + Number(counts["11"] || 0)) / Number(total)
+    }
+    if (fidelity == null || Number.isNaN(fidelity)) continue
+    const shotsRaw = m.shots ?? d.shots
+    const shots = typeof shotsRaw === "number" ? shotsRaw : undefined
+    return { fidelity, shots }
+  }
+  return null
+}
+
 export default function QuantumChatInstrument() {
   const setCommandOpen = useControlPlaneStore((s) => s.setCommandOpen)
 
@@ -716,29 +738,43 @@ export default function QuantumChatInstrument() {
               {turns.length === 0 && (
                 <div className="chat-empty">No messages yet. Try a chip below — calibrate, Bell, readiness, or status — or type a goal.</div>
               )}
-              {turns.map((t) => (
-                <div key={t.id} className="chat-turn">
-                  {/* User bubble (right) */}
-                  <div className="bubble user">
-                    {t.userMessage || t.goal}
-                  </div>
-                  {/* Agent bubble (left) */}
-                  <div className="bubble agent">
-                    {t.status === "running" && "running…"}
-                    {t.status === "failed" && (t.error || "failed")}
-                    {t.status !== "running" && t.agentMessage && t.agentMessage}
-                    {t.status !== "running" && !t.agentMessage && !t.error && "completed"}
-                  </div>
-                  {/* Tiny trace pills (non-primary) */}
-                  {t.traces && t.traces.length > 0 && (
-                    <div className="chat-traces">
-                      {t.traces.slice(-3).map((tr, i) => (
-                        <span key={i} className="chat-trace-pill">{tr.tool}</span>
-                      ))}
+              {turns.map((t) => {
+                const bell = t.status !== "running" ? bellMetricsFromResults(t.results) : null
+                const bellShots = bell?.shots != null ? Math.round(bell.shots) : null
+                return (
+                  <div key={t.id} className="chat-turn">
+                    {/* User bubble (right) */}
+                    <div className="bubble user">
+                      {t.userMessage || t.goal}
                     </div>
-                  )}
-                </div>
-              ))}
+                    {/* Agent bubble (left) */}
+                    <div className="bubble agent">
+                      {t.status === "running" && "running…"}
+                      {t.status === "failed" && (t.error || "failed")}
+                      {t.status !== "running" && t.agentMessage && t.agentMessage}
+                      {t.status !== "running" && !t.agentMessage && !t.error && "completed"}
+                      {bell && (
+                        <span className="bubble-meta">
+                          F {bell.fidelity.toFixed(2)}{bellShots != null ? ` · ${bellShots} shots` : ""}
+                        </span>
+                      )}
+                    </div>
+                    {/* Tiny trace pills (non-primary) */}
+                    {t.traces && t.traces.length > 0 && (
+                      <div className="chat-traces">
+                        {t.traces.slice(-3).map((tr, i) => (
+                          <span key={i} className="chat-trace-pill">
+                            {tr.tool}
+                            {tr.tool === "run_bell_pair" && bell
+                              ? ` · ${bell.fidelity.toFixed(2)}${bellShots != null ? ` · ${bellShots}` : ""}`
+                              : ""}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
 
             {/* Soft suggestion chips (above composer) */}
