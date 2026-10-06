@@ -128,6 +128,8 @@ class CalibrationService:
         Returns the final CalibrationResult. Side-effects:
           - updates internal metrics
           - calls on_step(iter, result) for each iteration if provided
+          - commits the reported best params to the adapter (anneal may
+            have left the device on a later, worse candidate)
         """
         start_wall = time.time()
         threshold = target_fidelity or self.fidelity_threshold
@@ -221,6 +223,12 @@ class CalibrationService:
                 history=history,
                 message="Max iterations reached",
             )
+
+        # Every candidate is written to the adapter, including rejected and
+        # annealed-worse steps. Re-apply `best` so live state matches the
+        # fidelity we report (otherwise Calibrate Q0 can leave the machine
+        # worse than claimed).
+        self.adapter.apply_calibration_update(best)
 
         # Update aggregate metrics
         self._metrics.attempts += 1
