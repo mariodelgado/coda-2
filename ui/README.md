@@ -10,7 +10,6 @@ Opinionated picks from [emilkowalski/skills](https://github.com/emilkowalski/ski
 | --- | --- |
 | Command palette (⌘K, **no open animation**) | `cmdk` |
 | Toasts (cal success/fail/cancel/backend down) | `sonner` |
-| Metric counters | `@number-flow/react` |
 | Motion (transform/opacity, strong ease-out) | `motion` |
 | Theme | `next-themes` (forced dark) |
 | Shared UI state | `zustand` |
@@ -54,7 +53,12 @@ Optional (explicit): `NEXT_PUBLIC_API_BASE=http://localhost:8000` (still works; 
 
 ## Key files
 
-- `app/page.tsx` — control plane composition
+- `app/page.tsx` — composition root (toolbar + stage + dock)
+- `components/stage/stage-split.tsx` — three-pane stage + splitters
+- `components/chat/chat-dock.tsx` — transcript, chips, composer
+- `hooks/use-device-poll.ts` — health + device/detuning poll
+- `hooks/use-goals.ts` — turns, POST /goals, job SSE
+- `hooks/use-stage-split.ts` — iPadOS-style pane resize
 - `components/command/command-palette.tsx` — ⌘K goals
 - `components/viz/calibration-surface.tsx` — WebGPU/WebGL fidelity landscape
 - `lib/api.ts` — FastAPI client
