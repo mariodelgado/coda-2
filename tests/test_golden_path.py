@@ -154,3 +154,16 @@ def test_orchestrator_golden_path_calibrate_then_bell(
     fid = _bell_fidelity(packed)
     assert fid is not None
     assert _FID_LO <= fid <= _FID_HI
+
+
+def test_literacy_goals_do_not_calibrate_or_bell() -> None:
+    """Dock literacy asks are get_device_state + observation copy only."""
+    for goal in ("What does READY mean?", "Why do counts vary?"):
+        body = client.post("/goals", json={"goal": goal})
+        assert body.status_code == 200
+        payload = body.json()
+        tools = [t.get("tool") for t in payload.get("traces", [])]
+        assert tools == ["get_device_state"], goal
+        agent = (payload.get("agent_message") or "").lower()
+        assert "collaps" in agent or "sample" in agent
+        assert "drift" in agent or "recalibrat" in agent

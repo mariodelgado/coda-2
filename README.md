@@ -36,7 +36,7 @@ Coda 2 is an instrument, not a chatbot. It asks that three languages be spoken a
 
 **Visual.** A three-pane stage with draggable splitters: a param-drift landscape where qubit frequencies wander as a terrain you can see change, a 3D device view, and an isometric cryostat that shows the machine you are addressing. The stage is the primary surface; it stays sharp above the fold.
 
-**Text.** A bottom-third dock holds the conversational layer: transcript, six workflow chips, and a high-contrast composer. Text is how you state intent, not how the device reports its state.
+**Text.** A bottom-third dock holds the conversational layer: transcript, six golden-path chips, two observation asks, and a high-contrast composer. Text is how you state intent, not how the device reports its state.
 
 **Math.** Fidelity, Δf, millikelvin, readiness. Every claim the interface makes about the machine resolves to a number with a provenance — a tool call, a trace, a timestamp — rather than an assertion in prose.
 
@@ -47,8 +47,8 @@ A goal typed into the dock is compiled to a typed control-plane tool. Tools are 
 | | |
 |---|---|
 | **Three-pane stage** | Param-drift landscape · 3D device · isometric cryostat — iPadOS-style splitters |
-| **Bottom-third dock** | Transcript, six suggestion chips, high-contrast composer — stage stays sharp above the fold |
-| **Workflow chips** | Calibrate Q0 → Q0 readiness · Device status → Bell pair → Improve Bell · Diagnose Q0 |
+| **Bottom-third dock** | Transcript, six golden-path chips + two observation asks, high-contrast composer — stage stays sharp above the fold |
+| **Workflow chips** | Calibrate Q0 → Q0 readiness · Device status → Bell pair → Improve Bell · Diagnose Q0 · What does READY mean? · Why do counts vary? |
 | **Multimodal** | Visual stage + NL goals + live math (fidelity, Δf, mK, readiness) |
 | **Chat bubbles** | You / agent turns with tool-trace pills; empty-state and chips stay above the tint |
 | **Real control plane** | `QPUAdapter` seam, orchestrator + deterministic planner, calibration loop, jobs, traces, FastAPI + SSE |
@@ -119,6 +119,8 @@ A quantum processing unit returns samples, not results. The counts you get out o
 
 So the system does not hand back a sentence claiming a fact. It runs a program: declare the goal, choose the actions, spend shots, collect traces, and return an estimate with its evidence attached — shots, per-outcome counts, estimated fidelity, the calibration before and after, and when each number was taken. The answer stays falsifiable, and the transcript shows the work rather than smoothing it over.
 
+A short [quantum literacy](docs/QUANTUM_LITERACY.md) note covers observation, drift, and why recalibration is ongoing — the same ideas the dock can ask in-session.
+
 ### The adapter seam
 
 `QPUAdapter` is the only place that knows how the device is reached. Above it sit the planner, the typed tools, and the instrument UI; below it sits `NoisySimulatorBackend` today, and your hardware tomorrow. Swapping in real control electronics means implementing the same contract — submit, poll, and cancel jobs; read device state; read and apply calibration — with nothing above the seam changing. The UI keeps rendering the same drift, fidelity, and readiness surfaces; the traces keep meaning the same thing.
@@ -135,6 +137,8 @@ The metrics are what make the claim testable rather than rhetorical: `time_to_ca
 | Bell pair | Run a Bell pair and report fidelity | `run_bell_pair` (calibrate first if not READY) |
 | Improve Bell | Run a precise Bell pair and report fidelity | `run_bell_pair` (more shots; same gate) |
 | Diagnose Q0 | Check qubit 0 health and readout status | `get_device_state` |
+| What does READY mean? | What does READY mean? | `get_device_state` (live numbers + observation note) |
+| Why do counts vary? | Why do counts vary? | `get_device_state` (live numbers + observation note) |
 
 ### Real vs simulated
 
@@ -150,7 +154,7 @@ The default path is fully local: a deterministic planner matches goals to tools,
 
 ## Get started
 
-Follow [docs/QUICKSTART.md](docs/QUICKSTART.md) to run the API and the instrument locally; the deeper argument, contracts, and diagrams live in the [technical manual](docs/manual/coda-2-manual.pdf).
+Follow [docs/QUICKSTART.md](docs/QUICKSTART.md) to run the API and the instrument locally. For observation, drift, and why the numbers move, see [docs/QUANTUM_LITERACY.md](docs/QUANTUM_LITERACY.md). The deeper argument, contracts, and diagrams live in the [technical manual](docs/manual/coda-2-manual.pdf).
 
 ## License
 

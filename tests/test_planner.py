@@ -13,6 +13,7 @@ import pytest
 from conductor_qpu.orchestrator.orchestrator import Orchestrator, ToolCall
 from conductor_qpu.orchestrator.planner import (
     ensure_calibrate_before_bell,
+    is_literacy_goal,
     plan,
     plan_from_goal,
 )
@@ -132,6 +133,27 @@ def test_run_goal_default_falls_back_without_llm(
     assert traces
     assert traces[0]["tool"] == "calibrate_qubit"
     assert len(results) >= 1
+
+
+def test_literacy_goals_are_status_only() -> None:
+    """Observation chips must not calibrate or run a circuit."""
+    for goal in (
+        "What does READY mean?",
+        "Why do counts vary?",
+        "what does ready mean",
+        "why do counts vary",
+        "Why do numbers vary after a measurement?",
+    ):
+        assert is_literacy_goal(goal) is True
+        steps = plan_from_goal(goal, device_ready=False)
+        assert [s.tool for s in steps] == ["get_device_state"], goal
+
+
+def test_literacy_plan_ignores_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An LLM must not rewrite a literacy ask into calibrate / Bell."""
+    _install_fake_llm(monkeypatch, '[{"tool": "calibrate_qubit", "args": {"qubit_id": 0}}]')
+    steps = plan("What does READY mean?", device_ready=False)
+    assert [s.tool for s in steps] == ["get_device_state"]
 
 
 def test_readiness_chip_is_status_not_calibrate() -> None:

@@ -40,6 +40,8 @@ Chips are ordered and soft-gated so the Safari / founder demo stays on this path
 5. Click **Improve Bell** for more shots.
 6. Use **Diagnose Q0** only if you need health / temperature context.
 
+**Observation asks** (empty-state prompts and dashed chips) do not leave this path: **What does READY mean?** and **Why do counts vary?** query live numbers and return a short note (measure collapses the prepared state; counts are samples; drift / recal is continuous). They do not calibrate or run a circuit. See [QUANTUM_LITERACY.md](QUANTUM_LITERACY.md).
+
 Do not start with Diagnose or a free-form composer goal — that is what derails the walk.
 
 ## Useful targets

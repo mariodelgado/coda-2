@@ -98,6 +98,7 @@ def test_narrator_good_bell_language() -> None:
     assert "0.89" in msg or "0.88" in msg
     assert "1024" in msg
     assert "shot" in low
+    assert "sample" in low or "distribution" in low
     assert "contrast" not in low
     # Balanced bins must not be scored by |p00−p11| ≈ 0.01
     assert "0.01" not in msg or "±" in msg
@@ -223,6 +224,60 @@ def test_narrator_good_bell_without_adapter_metrics() -> None:
     assert "weak" not in low
     assert any(w in low for w in ["strong", "high-fidelity", "high fidelity"])
     assert "0.90" in msg or "0.88" in msg
+
+
+def test_narrator_literacy_ready_uses_live_numbers() -> None:
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    snap = {"is_ready": True, "readiness_score": 0.91, "readout_fidelity": {"0": 0.91}}
+    msg = narrate(
+        "What does READY mean?",
+        [_trace("get_device_state", "ready=True")],
+        [_res(True, {"is_ready": True})],
+        snap,
+    )
+    low = msg.lower()
+    assert "0.91" in msg
+    assert "ready" in low
+    assert "0.82" in msg or "floor" in low
+    assert "collaps" in low
+    assert "sample" in low
+    assert "drift" in low or "recalibrat" in low
+    # Must not treat the word READY as a calibrate goal.
+    assert "moved from" not in low
+    assert "calibrat" not in low or "recalibrat" in low
+
+
+def test_narrator_literacy_counts_vary() -> None:
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    snap = {"is_ready": False, "readiness_score": 0.61, "readout_fidelity": {"0": 0.61}}
+    msg = narrate(
+        "Why do counts vary?",
+        [_trace("get_device_state")],
+        [_res(True, {"is_ready": False})],
+        snap,
+    )
+    low = msg.lower()
+    assert "0.61" in msg
+    assert "sample" in low or "distribution" in low
+    assert "collaps" in low
+    assert "drift" in low or "recalibrat" in low
+    assert "calibrate_qubit" not in low
 
 
 def test_narrator_state_path_template() -> None:

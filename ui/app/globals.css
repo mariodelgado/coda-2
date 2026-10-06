@@ -403,6 +403,17 @@ body {
     opacity: 0.72;
   }
 }
+.preset-chip-ask {
+  color: #71717a;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+@media (hover: hover) and (pointer: fine) {
+  .preset-chip-ask:hover {
+    color: #d4d4d8;
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+}
 
 /* Centered composer — solid tint (no backdrop-filter). */
 .composer-wrap {
@@ -559,6 +570,20 @@ button:focus-visible {
   position: relative;
   z-index: 1;
 }
+.chat-empty p {
+  margin: 0;
+}
+.chat-empty-asks-label {
+  margin-top: 8px !important;
+  color: #71717a;
+  font-size: 11px;
+}
+.chat-empty-asks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
 
 /* Real chat bubbles — user right, agent left, rounded.
    No loud YOU/AGENT labels (tiny meta only if needed). */
@@ -598,6 +623,14 @@ button:focus-visible {
   color: var(--tertiary-label);
   padding: 0 2px;
   font-feature-settings: "tnum" 1, "zero" 1;
+}
+.bubble-note {
+  display: block;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #a1a1aa;
+  padding: 0 2px;
 }
 
 /* Tiny collapsed trace pills under a turn (non-primary) */

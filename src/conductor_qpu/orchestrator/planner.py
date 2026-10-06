@@ -96,8 +96,38 @@ def ensure_calibrate_before_bell(
     return cal + rest
 
 
+def is_literacy_goal(goal: str) -> bool:
+    """Observation / uncertainty questions — status only, never calibrate or Bell.
+
+    Dock chips: "What does READY mean?" / "Why do counts vary?"
+    """
+    g = _norm(goal)
+    if any(
+        k in g
+        for k in (
+            "what does ready",
+            "ready mean",
+            "what is ready",
+            "why do count",
+            "why count",
+            "counts vary",
+            "why do numbers",
+            "why numbers",
+            "why vary",
+        )
+    ):
+        return True
+    if any(k in g for k in ("observ", "collaps", "uncertaint")):
+        return True
+    if "sample" in g and any(k in g for k in ("why", "what", "mean", "shot")):
+        return True
+    return False
+
+
 def _is_status_goal(g: str) -> bool:
     """Readiness / health queries — not 'bring to ready' / calibrate."""
+    if is_literacy_goal(g):
+        return True
     if any(k in g for k in ["readiness", "ready?", "health", "temperature"]):
         return True
     if any(k in g for k in ["status", "state"]) and not any(
@@ -116,9 +146,11 @@ def _is_bell_goal(g: str) -> bool:
 
 
 def _is_calibrate_goal(g: str) -> bool:
+    if is_literacy_goal(g):
+        return False
     if any(k in g for k in ["bring", "calibrat", "tune"]):
         return True
-    # Word "ready" but not the "readiness" / "ready?" status chips.
+    # Word "ready" but not the "readiness" / "ready?" / literacy status chips.
     if "ready" in g and "readiness" not in g and "ready?" not in g:
         return True
     return False
@@ -158,11 +190,16 @@ def plan_from_goal(
       - "Bring qubit N to ready" / "calibrate qubit N"
       - "Run a Bell pair and report fidelity" / "bell"
       - "Q0 readiness" / "device state" / "health" / "status"
+      - "What does READY mean?" / "Why do counts vary?" (literacy)
 
     Golden-path gate: a Bell goal while Q0 is not ready prepends
     ``calibrate_qubit`` so the Safari demo cannot skip calibration.
     """
     g = _norm(goal)
+
+    # Observation / uncertainty questions before "ready" / default calibrate.
+    if is_literacy_goal(g):
+        return [ToolCall(tool="get_device_state", args={})]
 
     # Status / readiness queries before the "ready" calibrate keyword so
     # "Report qubit 0 readiness" is get_device_state, not calibrate_qubit.
@@ -368,7 +405,9 @@ def maybe_llm_plan(
         "get_device_state(), get_job_status(job_id: string), cancel_job(job_id: string). "
         "Golden path: calibrate Q0, then check readiness/status, then Bell. "
         "If the device is not ready and the user asks for a Bell pair, "
-        "include calibrate_qubit before run_bell_pair."
+        "include calibrate_qubit before run_bell_pair. "
+        "If the goal asks what READY means, why counts vary, or about "
+        "observation / uncertainty / samples, return only [get_device_state]."
         f"{ready_note} "
         "If the goal is ambiguous, return []."
     )
@@ -415,7 +454,12 @@ def plan(
 
     When ``device_ready``/``snapshot`` say Q0 is not ready, a Bell goal
     includes ``calibrate_qubit`` first.
+
+    Literacy questions stay on the deterministic status path so an LLM
+    cannot "helpfully" calibrate or run a circuit.
     """
+    if is_literacy_goal(goal):
+        return plan_from_goal(goal, device_ready=device_ready, snapshot=snapshot)
     llm = maybe_llm_plan(goal, device_ready=device_ready, snapshot=snapshot)
     if llm is not None:
         return llm
