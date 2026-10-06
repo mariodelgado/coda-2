@@ -139,3 +139,10 @@ export function extractFromResults(results: unknown[]): {
   }
   return { history, params, counts, threshold }
 }
+
+export function upsertFidelityPoint(history: FidelityPoint[], point: FidelityPoint): FidelityPoint[] {
+  const next = history.filter(p => p.iter !== point.iter)
+  next.push(point)
+  next.sort((a, b) => a.iter - b.iter)
+  return next
+}

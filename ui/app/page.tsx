@@ -42,7 +42,7 @@ export default function QuantumChatInstrument() {
     startJobSSE,
     hasRunning,
     activeTurn,
-  } = useGoals({ refreshDevice, setBackendDown })
+  } = useGoals({ refreshDevice, setBackendDown, connected })
   const {
     leftFr,
     midFr,

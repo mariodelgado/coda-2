@@ -21,6 +21,7 @@ _REQUIRED_PATHS = {
     "/device/state",
     "/readiness_predicate",
     "/tools",
+    "/sse/calibration",
 }
 
 _REQUIRED_TAGS = {"health", "goals", "jobs", "device", "readiness", "tools"}

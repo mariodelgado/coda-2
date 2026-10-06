@@ -67,6 +67,17 @@ export interface GoalResponse {
   metrics: MetricsSnapshot
 }
 
+export interface ClimbEvent {
+  phase: "start" | "step" | "done" | string
+  qubit_id: number
+  iter: number
+  fidelity: number
+  best_fidelity: number
+  threshold: number
+  success: boolean
+  done: boolean
+}
+
 export interface DetuningResponse {
   qubit_id: number
   detuning: Record<string, number>
@@ -160,6 +171,7 @@ export const api = {
   demoStartLongJob: () =>
     req<{ job_id: string }>("/demo/start_long_job", { method: "POST" }),
   sseJobUrl: (jobId: string) => `${_base}/sse/jobs/${jobId}`,
+  sseCalibrationUrl: () => `${_base}/sse/calibration`,
   readinessPredicate: () =>
     req<{ name: string; readout_fidelity_threshold: number; description: string }>(
       "/readiness_predicate",

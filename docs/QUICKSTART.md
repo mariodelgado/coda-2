@@ -36,7 +36,7 @@ Open http://localhost:3000.
 Chips are ordered and soft-gated so the Safari / founder demo stays on this path. The highlighted chip is the next step. **Bell pair** / **Improve Bell** warn (and the planner prepends calibration) if the device is not READY.
 
 1. Confirm **LIVE** in the toolbar.
-2. Click **Calibrate Q0** — watch the climb HUD and drift pane until the stage chip reads READY.
+2. Click **Calibrate Q0** — the climb HUD updates live over SSE while the anneal runs (`GET /sse/calibration`). `POST /goals` still returns the full history when it finishes. Wait for the stage chip to read READY.
 3. Click **Q0 readiness** or **Device status** — fidelity / readiness without running a circuit.
 4. Click **Bell pair** — estimated fidelity in the transcript (sensible band, not a single overfit number).
 5. Click **Improve Bell** for more shots.

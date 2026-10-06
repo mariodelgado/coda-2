@@ -15,6 +15,7 @@ Endpoints:
 - GET  /device/state          -> device snapshot
 - GET  /readiness_predicate   -> exact READY predicate
 - GET  /sse/jobs/{job_id}     -> SSE stream of job status
+- GET  /sse/calibration       -> SSE stream of live climb points during anneal
 - GET  /openapi.json          -> machine-readable OpenAPI schema
 """
 
@@ -23,15 +24,23 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 from typing import Any
 from uuid import UUID
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from conductor_qpu.adapter.factory import create_backend
 from conductor_qpu.api.errors import ErrorCode, api_error
+from conductor_qpu.api.events import (
+    CLIMB_STEP_PAUSE_S,
+    ClimbEventBus,
+    climb_payload,
+    iter_climb_sse,
+)
 from conductor_qpu.api.schemas import (
     OPENAPI_TAGS,
     TOOLS_CATALOG,
@@ -57,7 +66,7 @@ from conductor_qpu.api.schemas import (
 from conductor_qpu.calibration.service import CalibrationService
 from conductor_qpu.jobs.store import InMemoryJobStore
 from conductor_qpu.models import types as model_types
-from conductor_qpu.models.types import JobType, QPUJob
+from conductor_qpu.models.types import CalibrationResult, JobType, QPUJob
 from conductor_qpu.observability.metrics import MetricsAggregator
 from conductor_qpu.orchestrator.orchestrator import Orchestrator
 
@@ -90,6 +99,40 @@ app = FastAPI(
     license_info={"name": "MIT"},
 )
 
+
+class _PrivateNetworkHeaderMiddleware:
+    """Pure ASGI wrapper so SSE bodies are not buffered.
+
+    Starlette ``BaseHTTPMiddleware`` (``@app.middleware("http")``) iterates the
+    response body before returning, which stalls ``text/event-stream``.
+    """
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        origin = ""
+        for key, value in scope.get("headers") or []:
+            if key == b"origin":
+                origin = value.decode("latin-1").lower()
+                break
+        is_local = origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1")
+
+        async def send_wrapper(message: Message) -> None:
+            if message["type"] == "http.response.start":
+                headers = list(message.get("headers") or [])
+                acao = any(k.lower() == b"access-control-allow-origin" for k, _ in headers)
+                if is_local or acao:
+                    headers.append((b"access-control-allow-private-network", b"true"))
+                message = {**message, "headers": headers}
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+
 # CORS for the Next.js UI (dev on :3000, prod builds may be same-origin or behind proxy)
 # allow_headers=["*"] covers Access-Control-Request-Private-Network in preflight.
 app.add_middleware(
@@ -106,27 +149,36 @@ app.add_middleware(
     expose_headers=["*"],
 )
 
-
-# Ensure Chromium private-network preflights succeed for local dev.
-# CORSMiddleware short-circuits OPTIONS; this small ASGI middleware injects the
-# header on responses that already carry ACAO (or for local origins).
-@app.middleware("http")
-async def add_private_network_header(request, call_next):  # type: ignore[no-untyped-def]
-    response = await call_next(request)
-    origin = (request.headers.get("origin") or "").lower()
-    is_local = origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1")
-    # Always allow for local dev; harmless for non-private contexts.
-    if is_local or response.headers.get("access-control-allow-origin"):
-        # Set on every response (including preflight 204/200) so the browser sees it
-        # during the private-network preflight sequence.
-        response.headers["Access-Control-Allow-Private-Network"] = "true"
-    return response
+# Outer wrapper: inject private-network header without consuming streaming bodies.
+app.add_middleware(_PrivateNetworkHeaderMiddleware)
 
 
 # Backend selection via env (CONDUCTOR_QPU_BACKEND=stub|sim)
 # This is the single seam a real hardware driver plugs into.
 _backend = create_backend()
-_calibration = CalibrationService(adapter=_backend, fidelity_threshold=0.88, max_iterations=60)
+_climb_bus = ClimbEventBus()
+
+
+def _on_cal_step(it: int, res: CalibrationResult) -> None:
+    """Publish anneal samples to SSE subscribers; pace only while watched."""
+    if it == 0:
+        phase = "start"
+    elif res.message != "In progress":
+        phase = "done"
+    else:
+        phase = "step"
+    threshold = getattr(_calibration, "fidelity_threshold", 0.88)
+    _climb_bus.publish(climb_payload(it, res, threshold=threshold, phase=phase))
+    if phase != "done" and _climb_bus.has_subscribers():
+        time.sleep(CLIMB_STEP_PAUSE_S)
+
+
+_calibration = CalibrationService(
+    adapter=_backend,
+    fidelity_threshold=0.88,
+    max_iterations=60,
+    on_step=_on_cal_step,
+)
 _job_store = InMemoryJobStore()
 _orchestrator = Orchestrator(adapter=_backend, calibration=_calibration, job_store=_job_store)
 _metrics = MetricsAggregator()
@@ -529,6 +581,34 @@ async def sse_job(job_id: str) -> StreamingResponse:
         yield f"event: timeout\ndata: {json.dumps({'job_id': str(jid)})}\n\n"
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")
+
+
+@app.get(
+    "/sse/calibration",
+    tags=["jobs"],
+    summary="SSE calibration climb stream",
+)
+async def sse_calibration() -> StreamingResponse:
+    """Live fidelity samples while CalibrationService anneals.
+
+    Named events: ``hello`` (subscribe ack), ``climb`` (start/step/done),
+    ``timeout``. POST /goals and POST /calibrate still return the full
+    history when they finish — this stream is additive.
+    """
+
+    async def event_gen():
+        async for frame in iter_climb_sse(_climb_bus):
+            yield frame
+
+    return StreamingResponse(
+        event_gen(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # ---------------- Demo / Guardrail endpoints (founder demo) ----------------
