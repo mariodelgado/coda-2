@@ -46,7 +46,6 @@ llm = [
 
 [project.scripts]
 conductor-qpu-api = "conductor_qpu.api:run"
-conductor-qpu-ui = "conductor_qpu.ui:run"
 
 [project.urls]
 Homepage = "https://github.com/conductor-quantum/conductor-qpu"
