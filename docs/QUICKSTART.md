@@ -27,6 +27,8 @@ env -u NEXT_PUBLIC_API_BASE npx next start -H 0.0.0.0 -p 3000
 
 Open http://localhost:3000.
 
+**Programmatic access** (same contract as the dock; traces are the audit trail): [API.md](API.md) · [openapi.json](openapi.json) · http://127.0.0.1:8000/docs
+
 `ui/lib/api.ts` defaults to `/qpu` when `NEXT_PUBLIC_API_BASE` is unset. The Next server rewrites `/qpu/*` → `http://127.0.0.1:8000/*`.
 
 ## First walk (golden path)
@@ -51,6 +53,7 @@ Do not start with Diagnose or a free-form composer goal — that is what derails
 | `make test` | Run the Python test suite |
 | `make lint` | Ruff over `tests/` and the sources |
 | `make demo` | Headless calibration + circuit demos, no UI required |
+| `make openapi` | Export FastAPI schema to `docs/openapi.json` |
 | `make manual` | Rebuild the technical manual PDF |
 
 ## Notes for UI contributors

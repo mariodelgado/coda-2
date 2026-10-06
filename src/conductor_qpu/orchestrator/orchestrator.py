@@ -91,8 +91,9 @@ class Orchestrator:
     Public surface:
       - register_tool(name, fn)
       - call_tool(name, **kwargs) -> ToolResult
-      - run_goal(goal: str) -> list[ToolResult]
-      - get_last_traces() -> list[dict]   # for UI observability
+      - run_goal(goal: str, *, shots=None) -> list[ToolResult]
+      - preview_plan(goal: str) -> list[ToolCall]
+      - get_last_traces() -> list[dict]   # audit trail + cost/risk metadata
       - get_metrics() -> dict
     """
 
@@ -152,17 +153,32 @@ class Orchestrator:
         )
 
     def get_last_traces(self) -> list[dict[str, Any]]:
-        return [
-            {
+        out: list[dict[str, Any]] = []
+        for t in self._last_traces:
+            row: dict[str, Any] = {
                 "ts": t.timestamp,
                 "tool": t.tool,
                 "args": t.args,
                 "latency_s": t.latency_s,
                 "ok": t.ok,
                 "summary": t.summary,
+                "mutates_calibration": t.tool == "calibrate_qubit",
             }
-            for t in self._last_traces
-        ]
+            raw_shots = t.args.get("shots") if isinstance(t.args, dict) else None
+            if raw_shots is not None:
+                try:
+                    row["shots"] = int(raw_shots)
+                except (TypeError, ValueError):
+                    pass
+            out.append(row)
+        return out
+
+    def preview_plan(self, goal: str) -> list[ToolCall]:
+        """Compile a goal to tool calls without executing them."""
+        from conductor_qpu.orchestrator.planner import plan as default_planner
+
+        snapshot, device_ready = _adapter_readiness(self.adapter)
+        return default_planner(goal, device_ready=device_ready, snapshot=snapshot)
 
     # ---------------- Built-in tools (4-5 as required) ----------------
 
@@ -332,13 +348,19 @@ class Orchestrator:
         return res
 
     def run_goal(
-        self, goal: str, planner: Callable[[str], list[ToolCall]] | None = None
+        self,
+        goal: str,
+        planner: Callable[[str], list[ToolCall]] | None = None,
+        *,
+        shots: int | None = None,
     ) -> list[ToolResult]:
         """Execute a natural-language-ish goal via a planner + tool calls.
 
         Default planner is plan() — LLM when configured, with deterministic
         plan_from_goal fallback inside plan(). Traces for this execution are
         available via get_last_traces().
+
+        ``shots`` optionally overrides ``run_bell_pair`` shot count after planning.
         """
         from conductor_qpu.orchestrator.planner import plan as default_planner
 
@@ -348,6 +370,11 @@ class Orchestrator:
             plan = default_planner(goal, device_ready=device_ready, snapshot=snapshot)
         else:
             plan = planner(goal)
+
+        if shots is not None:
+            for step in plan:
+                if step.tool == "run_bell_pair":
+                    step.args["shots"] = int(shots)
 
         self._last_traces = []
         results: list[ToolResult] = []
@@ -373,6 +400,8 @@ class Orchestrator:
         goal: str,
         planner: Callable[[str], list[ToolCall]] | None = None,
         device_snapshot: dict[str, Any] | None = None,
+        *,
+        shots: int | None = None,
     ) -> dict[str, Any]:
         """Run a goal and return results + traces + a plain-English agent_message.
 
@@ -383,7 +412,7 @@ class Orchestrator:
         narration reflects authoritative readiness (is_ready) after calibration.
         The caller-provided snapshot is only used as a last-resort fallback.
         """
-        results = self.run_goal(goal, planner=planner)
+        results = self.run_goal(goal, planner=planner, shots=shots)
         traces = self.get_last_traces()
 
         # Capture a fresh, post-goal snapshot from the live adapter when possible.
@@ -410,17 +439,40 @@ class Orchestrator:
         except Exception:  # noqa: BLE001
             # Hard safety: never leave the caller without text
             agent_message = _fallback_template_narrate(goal, traces, results)
-        return {
-            "goal": goal,
-            "results": [
-                {
+        result_rows: list[dict[str, Any]] = []
+        for r, t in zip(results, traces, strict=False):
+            row: dict[str, Any] = {
+                "ok": r.ok,
+                "data": r.data,
+                "latency_s": r.latency_s,
+                "error": r.error,
+                "mutates_calibration": t.get("mutates_calibration", False),
+            }
+            if t.get("shots") is not None:
+                row["shots"] = t["shots"]
+            if not r.ok:
+                err = (r.error or "").lower()
+                if "unknown tool" in err:
+                    row["error_code"] = "UNKNOWN_TOOL"
+                else:
+                    row["error_code"] = "GOAL_STEP_FAILED"
+            result_rows.append(row)
+        # If zip truncated (shouldn't), append remaining results without risk fields.
+        if len(results) > len(traces):
+            for r in results[len(traces) :]:
+                row = {
                     "ok": r.ok,
                     "data": r.data,
                     "latency_s": r.latency_s,
                     "error": r.error,
                 }
-                for r in results
-            ],
+                if not r.ok:
+                    row["error_code"] = "GOAL_STEP_FAILED"
+                result_rows.append(row)
+
+        return {
+            "goal": goal,
+            "results": result_rows,
             "traces": traces,
             "agent_message": agent_message or _fallback_template_narrate(goal, traces, results),
         }
