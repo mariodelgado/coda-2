@@ -3,7 +3,8 @@
 Design:
 - Tools are plain callables with typed-ish signatures.
 - Orchestrator owns job lifecycle and metrics aggregation.
-- No LLM required; a planner (planner.py) emits a sequence of ToolCalls.
+- No LLM required; the default planner is plan() (LLM when configured,
+  else deterministic plan_from_goal).
 - Optional LLM tool-calling is gated behind CONDUCTOR_ENABLE_LLM.
 
 Traces: every tool invocation is recorded as a ToolTrace with args, latency,
@@ -319,9 +320,11 @@ class Orchestrator:
     ) -> list[ToolResult]:
         """Execute a natural-language-ish goal via a planner + tool calls.
 
-        Traces for this execution are available via get_last_traces().
+        Default planner is plan() — LLM when configured, with deterministic
+        plan_from_goal fallback inside plan(). Traces for this execution are
+        available via get_last_traces().
         """
-        from conductor_qpu.orchestrator.planner import plan_from_goal as default_planner
+        from conductor_qpu.orchestrator.planner import plan as default_planner
 
         plan_fn = planner or default_planner
         plan = plan_fn(goal)

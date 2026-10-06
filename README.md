@@ -98,7 +98,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  Goal["NL goal / chip"] --> Plan["plan_from_goal"]
+  Goal["NL goal / chip"] --> Plan["plan()"]
   Plan --> Tools["calibrate_qubit · run_bell_pair<br/>get_device_state · cancel_job · …"]
   Tools --> Adapter["QPUAdapter"]
   Adapter --> Trace["ToolTrace"]
