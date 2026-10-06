@@ -76,7 +76,6 @@ def test_calibrate_commits_best_params_to_live_adapter(seed: int) -> None:
 
     live = backend.measure_fidelity(0)
     assert live >= res.fidelity - _LIVE_VS_REPORTED_EPS, (
-        f"seed={seed} live={live:.5f} reported={res.fidelity:.5f} "
-        f"(gap={res.fidelity - live:.5f})"
+        f"seed={seed} live={live:.5f} reported={res.fidelity:.5f} (gap={res.fidelity - live:.5f})"
     )
     assert backend.get_calibration(0) == res.params
