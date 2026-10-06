@@ -329,6 +329,32 @@ def _template_narrate(
 
     # Bell / circuit path
     if any(k in g for k in ["bell", "circuit", "entangl", "pair"]):
+        traces_have_cal = any(
+            (t.get("tool") if isinstance(t, dict) else getattr(t, "tool", "")) == "calibrate_qubit"
+            for t in (traces or [])
+        )
+        snap_ready = None
+        if device_snapshot and isinstance(device_snapshot, dict):
+            try:
+                snap_ready = device_snapshot.get("is_ready")
+                if snap_ready is not None:
+                    snap_ready = bool(snap_ready)
+            except Exception:  # noqa: BLE001
+                snap_ready = None
+            if snap_ready is not True:
+                try:
+                    rf = device_snapshot.get("readout_fidelity") or {}
+                    q0 = rf.get("0") if "0" in rf else rf.get(0)
+                    if q0 is not None and float(q0) >= 0.82:
+                        snap_ready = True
+                except Exception:  # noqa: BLE001
+                    pass
+        prefix = ""
+        if snap_ready is False and not traces_have_cal:
+            prefix = "Device is not ready — calibrate Q0 first, then retry the Bell pair. "
+        elif traces_have_cal:
+            prefix = "Calibrated Q0 first, then ran the Bell pair. "
+
         if bell and isinstance(bell.get("counts"), dict):
             c = bell["counts"]
             quality, shots, stderr = _bell_quality(bell)
@@ -348,9 +374,11 @@ def _template_narrate(
             unc = f" ± {stderr:.2f}" if stderr is not None and stderr > 1e-6 else ""
             shots_txt = f" over {shots} shots" if shots else ""
             return (
-                f"Bell pair measured {dict((k, int(v)) for k, v in c.items())}. "
+                f"{prefix}Bell pair measured {dict((k, int(v)) for k, v in c.items())}. "
                 f"Estimated fidelity {quality:.2f}{unc}{shots_txt}. {note}"
             )
+        if prefix:
+            return prefix + (traces_str or "No Bell counts yet.")
         return "Bell circuit executed. Results captured in traces. " + (traces_str or "")
 
     # Device state / health
@@ -426,6 +454,8 @@ def _call_llm_narrate(
         "CRITICAL RULE — readiness is authoritative: the 'device' object in context contains the post-execution device state. "
         "If device.is_ready is true (boolean), the qubit IS ready and usable for circuits — affirm this in plain English (e.g., 'ready', 'usable for circuits', 'meets the readiness predicate'). "
         "If device.is_ready is false, clearly state another pass is needed; do not claim ready. "
+        "If the goal is a Bell/circuit and the device is not ready, recommend calibrating Q0 first. "
+        "If traces include calibrate_qubit before run_bell_pair, mention that calibration ran first. "
         "The calibrate tool may report a final_fidelity against a different internal threshold; ignore that for the READY/usable determination when device.is_ready is present. "
         "Tone example: 'Q0 climbed from 0.55 to 0.91 fidelity — the applied drive is close enough that this qubit is READY for circuits. Residual Δfreq is small; drift will pull it away again.'"
     )

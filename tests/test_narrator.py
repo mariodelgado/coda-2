@@ -155,6 +155,56 @@ def test_narrator_mediocre_bell_is_not_random() -> None:
     assert "moderate" in low
 
 
+def test_narrator_bell_not_ready_recommends_calibrate() -> None:
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    snap = {"is_ready": False, "readiness_score": 0.61, "readout_fidelity": {"0": 0.61}}
+    msg = narrate(
+        "Run a Bell pair and report fidelity",
+        [_trace("run_bell_pair")],
+        [_res(True, {"counts": {"00": 260, "11": 240, "01": 250, "10": 250}})],
+        snap,
+    )
+    low = msg.lower()
+    assert "calibrat" in low
+    assert "not ready" in low
+
+
+def test_narrator_bell_after_auto_calibrate_mentions_order() -> None:
+    for k in (
+        "CONDUCTOR_ENABLE_LLM",
+        "GROQ_API_KEY",
+        "OPENAI_API_KEY",
+        "NVIDIA_NIM_API_KEY",
+        "NVIDIA_API_KEY",
+    ):
+        os.environ.pop(k, None)
+
+    traces = [_trace("calibrate_qubit", "fidelity=0.91"), _trace("run_bell_pair")]
+    results = [
+        _res(True, {"fidelity": 0.91}),
+        _res(
+            True,
+            {
+                "counts": {"00": 460, "11": 450, "01": 57, "10": 57},
+                "metrics": {"estimated_fidelity": 0.8887, "shots": 1024.0},
+            },
+        ),
+    ]
+    snap = {"is_ready": True, "readout_fidelity": {"0": 0.91}}
+    msg = narrate("Run a Bell pair and report fidelity", traces, results, snap)
+    low = msg.lower()
+    assert "calibrat" in low
+    assert "bell" in low
+
+
 def test_narrator_good_bell_without_adapter_metrics() -> None:
     """Correlation P(00)+P(11) is the fallback when estimated_fidelity is absent."""
     for k in (

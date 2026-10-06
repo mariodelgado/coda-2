@@ -11,7 +11,11 @@ from __future__ import annotations
 import pytest
 
 from conductor_qpu.orchestrator.orchestrator import Orchestrator, ToolCall
-from conductor_qpu.orchestrator.planner import plan, plan_from_goal
+from conductor_qpu.orchestrator.planner import (
+    ensure_calibrate_before_bell,
+    plan,
+    plan_from_goal,
+)
 
 # Free-form phrasing that misses every plan_from_goal keyword, so the
 # deterministic default (get_device_state + calibrate_qubit) would apply.
@@ -128,6 +132,45 @@ def test_run_goal_default_falls_back_without_llm(
     assert traces
     assert traces[0]["tool"] == "calibrate_qubit"
     assert len(results) >= 1
+
+
+def test_readiness_chip_is_status_not_calibrate() -> None:
+    """'readiness' must not match the calibrate 'ready' keyword."""
+    steps = plan_from_goal("Report qubit 0 readiness and fidelity status")
+    assert [s.tool for s in steps] == ["get_device_state"]
+    steps = plan_from_goal("Report device health and temperature status")
+    assert [s.tool for s in steps] == ["get_device_state"]
+    steps = plan_from_goal("Check qubit 0 health and readout status")
+    assert [s.tool for s in steps] == ["get_device_state"]
+
+
+def test_bell_while_not_ready_prepends_calibrate() -> None:
+    steps = plan_from_goal("Run a Bell pair and report fidelity", device_ready=False)
+    assert [s.tool for s in steps] == ["calibrate_qubit", "run_bell_pair"]
+    steps = plan_from_goal("Run a precise Bell pair and report fidelity", device_ready=False)
+    assert steps[0].tool == "calibrate_qubit"
+    assert steps[-1].tool == "run_bell_pair"
+    assert steps[-1].args.get("shots") == 4096
+
+
+def test_bell_while_ready_is_bell_only() -> None:
+    steps = plan_from_goal("Run a Bell pair and report fidelity", device_ready=True)
+    assert [s.tool for s in steps] == ["run_bell_pair"]
+
+
+def test_ensure_calibrate_before_bell_reorders() -> None:
+    steps = [
+        ToolCall(tool="run_bell_pair", args={"shots": 256}),
+        ToolCall(tool="calibrate_qubit", args={"qubit_id": 0}),
+    ]
+    out = ensure_calibrate_before_bell(steps, device_ready=False)
+    assert [s.tool for s in out] == ["calibrate_qubit", "run_bell_pair"]
+
+
+def test_llm_bell_plan_gated_when_not_ready(monkeypatch: pytest.MonkeyPatch) -> None:
+    _install_fake_llm(monkeypatch, '[{"tool": "run_bell_pair", "args": {"shots": 1024}}]')
+    steps = plan("Run a Bell pair and report fidelity", device_ready=False)
+    assert [s.tool for s in steps] == ["calibrate_qubit", "run_bell_pair"]
 
 
 def test_run_goal_explicit_planner_still_overrides(

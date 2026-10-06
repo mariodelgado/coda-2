@@ -287,7 +287,10 @@ export default function QuantumChatInstrument() {
     }
   }, [refreshDevice, refreshMetrics, loadRecentJobs, startJobSSE])
 
-  const runSuggested = useCallback((goal: string) => {
+  const runSuggested = useCallback((goal: string, opts?: { warnCalibrateFirst?: boolean }) => {
+    if (opts?.warnCalibrateFirst) {
+      toast.warning("Not READY", { description: "Calibrating Q0 first, then Bell." })
+    }
     void submitGoal(goal)
   }, [submitGoal])
 
@@ -358,19 +361,35 @@ export default function QuantumChatInstrument() {
   [turns, jobs])
 
   const suggested = useMemo(() => [
-    { label: "Calibrate Q0", goal: "Bring qubit 0 to ready" },
-    { label: "Bell pair", goal: "Run a Bell pair and report fidelity" },
-    { label: "Q0 readiness", goal: "Report qubit 0 readiness and fidelity status" },
-    { label: "Device status", goal: "Report device health and temperature status" },
-    { label: "Improve Bell", goal: "Run a precise Bell pair and report fidelity" },
-    { label: "Diagnose Q0", goal: "Check qubit 0 health and readout status" },
+    { label: "Calibrate Q0", goal: "Bring qubit 0 to ready", kind: "calibrate" as const },
+    { label: "Q0 readiness", goal: "Report qubit 0 readiness and fidelity status", kind: "status" as const },
+    { label: "Device status", goal: "Report device health and temperature status", kind: "status" as const },
+    { label: "Bell pair", goal: "Run a Bell pair and report fidelity", kind: "bell" as const },
+    { label: "Improve Bell", goal: "Run a precise Bell pair and report fidelity", kind: "bell" as const },
+    { label: "Diagnose Q0", goal: "Check qubit 0 health and readout status", kind: "diagnose" as const },
   ], [])
 
   // Live readouts for top bar (instrument)
   const q0Fid = device?.readout_fidelity?.["0"] ?? device?.readout_fidelity?.[0 as any] ?? null
   const q0Temp = device?.temperatures_mk?.["0"] ?? device?.temperatures_mk?.[0 as any] ?? null
   const isReady = !!device?.is_ready
+  const q0Ready = isReady || (q0Fid != null && Number(q0Fid) >= 0.82)
   const readiness = device ? device.readiness_score.toFixed(3) : null
+
+  const hasCalibrated = turns.some(
+    (t) => t.status === "succeeded" && t.traces.some((tr) => tr.tool === "calibrate_qubit"),
+  )
+  const hasCheckedStatus = turns.some((t) => t.traces.some((tr) => tr.tool === "get_device_state"))
+  const hasBell = turns.some(
+    (t) => t.status === "succeeded" && t.traces.some((tr) => tr.tool === "run_bell_pair"),
+  )
+  const nextChipLabel = !hasCalibrated
+    ? "Calibrate Q0"
+    : !hasCheckedStatus
+      ? "Q0 readiness"
+      : !hasBell
+        ? "Bell pair"
+        : "Improve Bell"
 
   const activeTurn = useMemo(() => {
     if (selectedTurnId) return turns.find(t => t.id === selectedTurnId) || null
@@ -386,7 +405,7 @@ export default function QuantumChatInstrument() {
 
   const commandActions: CommandAction[] = useMemo(() => [
     { id: "g1", label: "Bring qubit 0 to ready", hint: "calibrate", group: "Goals", icon: defaultCommandIcons.calibrate, run: () => submitGoal("Bring qubit 0 to ready") },
-    { id: "g2", label: "Run a Bell pair and report fidelity", hint: "circuit", group: "Goals", icon: defaultCommandIcons.bell, run: () => submitGoal("Run a Bell pair and report fidelity") },
+    { id: "g2", label: "Run a Bell pair and report fidelity", hint: q0Ready ? "circuit" : "calibrate first", group: "Goals", icon: defaultCommandIcons.bell, run: () => runSuggested("Run a Bell pair and report fidelity", { warnCalibrateFirst: !q0Ready }) },
     { id: "q1", label: "Refresh device", group: "Quick", icon: defaultCommandIcons.refresh, run: async () => { await Promise.all([refreshDevice(), refreshMetrics()]) } },
     { id: "d1", label: "Force fail next calibration", hint: "demo", group: "Demo", icon: defaultCommandIcons.fail, run: async () => { try { await api.demoForceFailNextCal(); toast.message("Next cal will fail") } catch { toast.error("unavailable") } } },
     { id: "d2", label: "Start long job (cancel me)", hint: "demo", group: "Demo", icon: defaultCommandIcons.long, run: async () => {
@@ -399,7 +418,7 @@ export default function QuantumChatInstrument() {
         toast.message("Long job running")
       } catch { toast.error("unavailable") }
     }},
-  ], [submitGoal, refreshDevice, refreshMetrics, startJobSSE])
+  ], [submitGoal, runSuggested, q0Ready, refreshDevice, refreshMetrics, startJobSSE])
 
   const selectedTurn = useMemo(() => turns.find(t => t.id === selectedTurnId) || null, [turns, selectedTurnId])
 
@@ -736,7 +755,7 @@ export default function QuantumChatInstrument() {
             {/* Scrollable conversation transcript (top of dock, grows, scrolls) */}
             <div ref={transcriptRef} className="chat-transcript">
               {turns.length === 0 && (
-                <div className="chat-empty">No messages yet. Try a chip below — calibrate, Bell, readiness, or status — or type a goal.</div>
+                <div className="chat-empty">Golden path: Calibrate Q0 → check READY → Bell pair. Chips below follow that order.</div>
               )}
               {turns.map((t) => {
                 const bell = t.status !== "running" ? bellMetricsFromResults(t.results) : null
@@ -778,12 +797,37 @@ export default function QuantumChatInstrument() {
             </div>
 
             {/* Soft suggestion chips (above composer) */}
-            <div className="chat-chips">
-              {suggested.map((s, i) => (
-                <button key={i} onClick={() => runSuggested(s.goal)} disabled={!connected || submitting} className="preset-chip">
-                  {s.label}
-                </button>
-              ))}
+            <div className="chat-chips" role="list" aria-label="Golden path chips">
+              {suggested.map((s, i) => {
+                const gated = s.kind === "bell" && !q0Ready
+                const next = s.label === nextChipLabel
+                const cls = [
+                  "preset-chip",
+                  next ? "preset-chip-next" : "",
+                  gated ? "preset-chip-gated" : "",
+                ].filter(Boolean).join(" ")
+                const title = gated
+                  ? "Device not READY — calibrate Q0 first (or click to calibrate then Bell)"
+                  : next
+                    ? "Next step on the golden path"
+                    : undefined
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    role="listitem"
+                    onClick={() => runSuggested(s.goal, { warnCalibrateFirst: gated })}
+                    disabled={!connected || submitting}
+                    className={cls}
+                    title={title}
+                    aria-disabled={!connected || submitting}
+                    data-next={next ? "true" : undefined}
+                    data-gated={gated ? "true" : undefined}
+                  >
+                    {s.label}
+                  </button>
+                )
+              })}
             </div>
 
             {/* Composer flush to the very bottom of the dock/viewport */}

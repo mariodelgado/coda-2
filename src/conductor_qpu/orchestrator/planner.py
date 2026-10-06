@@ -26,45 +26,163 @@ from typing import Any
 
 from conductor_qpu.orchestrator.orchestrator import ToolCall
 
+# Q0 readout floor used by the UI/device readiness predicate.
+_Q0_READY_FLOOR = 0.82
+
 
 def _norm(s: str) -> str:
     return " ".join(s.lower().strip().split())
 
 
-def plan_from_goal(goal: str) -> list[ToolCall]:
+def _q0_from_snapshot(snapshot: dict[str, Any] | None) -> float | None:
+    if not snapshot or not isinstance(snapshot, dict):
+        return None
+    rf = snapshot.get("readout_fidelity") or {}
+    if not isinstance(rf, dict):
+        return None
+    raw = rf.get(0, rf.get("0"))
+    if raw is None:
+        return None
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return None
+
+
+def q0_ready_for_circuits(
+    snapshot: dict[str, Any] | None = None,
+    device_ready: bool | None = None,
+) -> bool | None:
+    """Whether Q0 is ready enough for a Bell / circuit.
+
+    Prefers an explicit ``device_ready`` flag, then ``is_ready``, then Q0
+    readout fidelity against the 0.82 floor. ``None`` means unknown.
+    """
+    if device_ready is True:
+        return True
+    if snapshot and isinstance(snapshot, dict):
+        if snapshot.get("is_ready") is True:
+            return True
+        q0 = _q0_from_snapshot(snapshot)
+        if q0 is not None:
+            return q0 >= _Q0_READY_FLOOR
+        if snapshot.get("is_ready") is False:
+            return False
+    if device_ready is False:
+        return False
+    return None
+
+
+def ensure_calibrate_before_bell(
+    steps: list[ToolCall],
+    device_ready: bool | None = None,
+    snapshot: dict[str, Any] | None = None,
+) -> list[ToolCall]:
+    """If Bell is planned while Q0 is not ready, calibrate first.
+
+    Leaves the plan unchanged when readiness is unknown or already true,
+    or when the plan has no Bell step. Reorders an existing calibrate
+    step ahead of other tools.
+    """
+    ready = q0_ready_for_circuits(snapshot=snapshot, device_ready=device_ready)
+    if ready is not False:
+        return steps
+    if not any(s.tool == "run_bell_pair" for s in steps):
+        return steps
+    cal = [s for s in steps if s.tool == "calibrate_qubit"]
+    rest = [s for s in steps if s.tool != "calibrate_qubit"]
+    if not cal:
+        cal = [ToolCall(tool="calibrate_qubit", args={"qubit_id": 0, "target_fidelity": 0.88})]
+    return cal + rest
+
+
+def _is_status_goal(g: str) -> bool:
+    """Readiness / health queries — not 'bring to ready' / calibrate."""
+    if any(k in g for k in ["readiness", "ready?", "health", "temperature"]):
+        return True
+    if any(k in g for k in ["status", "state"]) and not any(
+        k in g for k in ["bring", "calibrat", "tune"]
+    ):
+        return True
+    if any(k in g for k in ["report", "check"]) and not any(
+        k in g for k in ["bring", "calibrat", "tune", "bell", "circuit", "entangl", "pair"]
+    ):
+        return True
+    return False
+
+
+def _is_bell_goal(g: str) -> bool:
+    return any(k in g for k in ["bell", "circuit", "entangl", "pair"])
+
+
+def _is_calibrate_goal(g: str) -> bool:
+    if any(k in g for k in ["bring", "calibrat", "tune"]):
+        return True
+    # Word "ready" but not the "readiness" / "ready?" status chips.
+    if "ready" in g and "readiness" not in g and "ready?" not in g:
+        return True
+    return False
+
+
+def _calibrate_call(goal: str) -> ToolCall:
+    q = 0
+    for tok in goal.replace("qubit", " ").split():
+        if tok.isdigit():
+            q = max(0, min(1, int(tok)))
+            break
+    target = 0.88
+    g = _norm(goal)
+    if "high" in g or "strict" in g:
+        target = 0.92
+    return ToolCall(tool="calibrate_qubit", args={"qubit_id": q, "target_fidelity": target})
+
+
+def _bell_call(goal: str) -> ToolCall:
+    g = _norm(goal)
+    shots = 1024
+    if "few" in g or "quick" in g:
+        shots = 256
+    if "many" in g or "precise" in g:
+        shots = 4096
+    return ToolCall(tool="run_bell_pair", args={"shots": shots, "qubits": (0, 1)})
+
+
+def plan_from_goal(
+    goal: str,
+    device_ready: bool | None = None,
+    snapshot: dict[str, Any] | None = None,
+) -> list[ToolCall]:
     """Rule-based planner for the required demo goals.
 
     Supported intents:
       - "Bring qubit N to ready" / "calibrate qubit N"
       - "Run a Bell pair and report fidelity" / "bell"
-      - "device state" / "health" / "status"
+      - "Q0 readiness" / "device state" / "health" / "status"
+
+    Golden-path gate: a Bell goal while Q0 is not ready prepends
+    ``calibrate_qubit`` so the Safari demo cannot skip calibration.
     """
     g = _norm(goal)
 
-    # Calibration goals
-    if any(k in g for k in ["bring", "calibrat", "ready", "tune"]):
-        q = 0
-        for tok in g.replace("qubit", " ").split():
-            if tok.isdigit():
-                q = max(0, min(1, int(tok)))
-                break
-        target = 0.88
-        if "high" in g or "strict" in g:
-            target = 0.92
-        return [ToolCall(tool="calibrate_qubit", args={"qubit_id": q, "target_fidelity": target})]
-
-    # Circuit / Bell goals
-    if any(k in g for k in ["bell", "circuit", "entangl", "pair"]):
-        shots = 1024
-        if "few" in g or "quick" in g:
-            shots = 256
-        if "many" in g or "precise" in g:
-            shots = 4096
-        return [ToolCall(tool="run_bell_pair", args={"shots": shots, "qubits": (0, 1)})]
-
-    # Device visibility
-    if any(k in g for k in ["state", "health", "status", "ready?", "temperature"]):
+    # Status / readiness queries before the "ready" calibrate keyword so
+    # "Report qubit 0 readiness" is get_device_state, not calibrate_qubit.
+    if (
+        _is_status_goal(g)
+        and not _is_bell_goal(g)
+        and not (any(k in g for k in ["bring", "calibrat", "tune"]))
+    ):
         return [ToolCall(tool="get_device_state", args={})]
+
+    # Circuit / Bell goals (optionally calibrate-first when not ready)
+    if _is_bell_goal(g):
+        steps = [_bell_call(goal)]
+        if _is_calibrate_goal(g):
+            steps = [_calibrate_call(goal), *steps]
+        return ensure_calibrate_before_bell(steps, device_ready=device_ready, snapshot=snapshot)
+
+    # Calibration goals
+    if _is_calibrate_goal(g):
+        return [_calibrate_call(goal)]
 
     # Cancel a specific job (founder demo / guardrail)
     if g.startswith("cancel ") or "cancel job" in g:
@@ -170,9 +288,7 @@ def _get_planner_llm_client() -> tuple[Any, str] | None:
     if provider == "nvidia" and nvidia_key:
         model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.2-11b-vision-instruct"
         try:
-            client = OpenAI(
-                api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1"
-            )
+            client = OpenAI(api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1")
             return client, model
         except Exception:  # noqa: BLE001
             return None
@@ -197,9 +313,7 @@ def _get_planner_llm_client() -> tuple[Any, str] | None:
     if nvidia_key:
         model = os.getenv("CONDUCTOR_LLM_MODEL") or "meta/llama-3.2-11b-vision-instruct"
         try:
-            client = OpenAI(
-                api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1"
-            )
+            client = OpenAI(api_key=nvidia_key, base_url="https://integrate.api.nvidia.com/v1")
             return client, model
         except Exception:  # noqa: BLE001
             pass
@@ -220,7 +334,11 @@ def _get_planner_llm_client() -> tuple[Any, str] | None:
     return None
 
 
-def maybe_llm_plan(goal: str) -> list[ToolCall] | None:
+def maybe_llm_plan(
+    goal: str,
+    device_ready: bool | None = None,
+    snapshot: dict[str, Any] | None = None,
+) -> list[ToolCall] | None:
     """Optional LLM planner. Uses Groq by default when a free key is present.
 
     Returns None if not enabled or unavailable. On any error (network, parse,
@@ -233,6 +351,14 @@ def maybe_llm_plan(goal: str) -> list[ToolCall] | None:
     client, model = pair
 
     # Constrained prompt: ask for pure JSON only.
+    ready_note = ""
+    if device_ready is False:
+        ready_note = (
+            " The device is NOT ready. If the goal is a Bell pair or circuit, "
+            "include calibrate_qubit first, then run_bell_pair."
+        )
+    elif device_ready is True:
+        ready_note = " The device is ready for circuits."
     sys = (
         "You are a planner for a quantum control plane. "
         "Output ONLY a JSON array of tool calls. No prose, no explanations. "
@@ -240,6 +366,10 @@ def maybe_llm_plan(goal: str) -> list[ToolCall] | None:
         "calibrate_qubit(qubit_id: int, target_fidelity?: float), "
         "run_bell_pair(shots?: int, qubits?: [int,int]), "
         "get_device_state(), get_job_status(job_id: string), cancel_job(job_id: string). "
+        "Golden path: calibrate Q0, then check readiness/status, then Bell. "
+        "If the device is not ready and the user asks for a Bell pair, "
+        "include calibrate_qubit before run_bell_pair."
+        f"{ready_note} "
         "If the goal is ambiguous, return []."
     )
 
@@ -267,19 +397,26 @@ def maybe_llm_plan(goal: str) -> list[ToolCall] | None:
         # If the model returned an empty array or only unknown tools, fall back.
         if not out:
             return None
-        return out
+        return ensure_calibrate_before_bell(out, device_ready=device_ready, snapshot=snapshot)
     except Exception:  # noqa: BLE001
         # Any failure (auth, network, schema, rate limit, parse) -> fallback
         return None
 
 
-def plan(goal: str) -> list[ToolCall]:
+def plan(
+    goal: str,
+    device_ready: bool | None = None,
+    snapshot: dict[str, Any] | None = None,
+) -> list[ToolCall]:
     """Public entry: tries LLM if enabled, else deterministic planner.
 
     Groq (llama) is the preferred free path when GROQ_API_KEY is set.
     On any failure the deterministic plan_from_goal is used (no silent bad plans).
+
+    When ``device_ready``/``snapshot`` say Q0 is not ready, a Bell goal
+    includes ``calibrate_qubit`` first.
     """
-    llm = maybe_llm_plan(goal)
+    llm = maybe_llm_plan(goal, device_ready=device_ready, snapshot=snapshot)
     if llm is not None:
         return llm
-    return plan_from_goal(goal)
+    return plan_from_goal(goal, device_ready=device_ready, snapshot=snapshot)

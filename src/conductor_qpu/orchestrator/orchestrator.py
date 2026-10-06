@@ -69,6 +69,22 @@ class ToolTrace:
 Tool = Callable[..., ToolResult]
 
 
+def _adapter_readiness(adapter: QPUAdapter) -> tuple[dict[str, Any] | None, bool | None]:
+    """Snapshot + Q0-centric ready flag for the planner's Bell gate."""
+    try:
+        state = adapter.get_device_state()
+        snapshot: dict[str, Any] = {
+            "is_ready": state.is_ready,
+            "readiness_score": round(state.readiness_score(), 4),
+            "readout_fidelity": {q: round(v, 4) for q, v in state.readout_fidelity.items()},
+        }
+        from conductor_qpu.orchestrator.planner import q0_ready_for_circuits
+
+        return snapshot, q0_ready_for_circuits(snapshot=snapshot)
+    except Exception:  # noqa: BLE001
+        return None, None
+
+
 class Orchestrator:
     """Coordinates adapter + calibration + jobs for agent goals.
 
@@ -326,15 +342,29 @@ class Orchestrator:
         """
         from conductor_qpu.orchestrator.planner import plan as default_planner
 
-        plan_fn = planner or default_planner
-        plan = plan_fn(goal)
+        snapshot, device_ready = _adapter_readiness(self.adapter)
+
+        if planner is None:
+            plan = default_planner(goal, device_ready=device_ready, snapshot=snapshot)
+        else:
+            plan = planner(goal)
 
         self._last_traces = []
         results: list[ToolResult] = []
-        for step in plan:
+        for i, step in enumerate(plan):
             res = self.call_tool(step.tool, **step.args)
             results.append(res)
-            if not res.ok and step.tool in ("calibrate_qubit", "run_bell_pair"):
+            if res.ok:
+                continue
+            if step.tool == "run_bell_pair":
+                break
+            if step.tool == "calibrate_qubit":
+                # Best-effort: a prepended calibrate may miss the 0.88 tool
+                # threshold while Q0 is already READY. Still run Bell so the
+                # golden path cannot stall on a soft cal miss.
+                remaining = [s.tool for s in plan[i + 1 :]]
+                if "run_bell_pair" in remaining:
+                    continue
                 break
         return results
 

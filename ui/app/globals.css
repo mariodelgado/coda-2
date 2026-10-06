@@ -357,7 +357,7 @@ body {
   color: var(--tertiary-label);
 }
 
-/* Preset chips — calm */
+/* Preset chips — calm; golden-path next / gated states */
 .preset-chip {
   font-size: 11px;
   padding: 5px 14px;
@@ -365,11 +365,29 @@ body {
   border: 1px solid var(--hairline);
   background: transparent;
   color: #a1a1aa;
-  transition: all 80ms var(--ease-out);
+  transition: transform 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out), opacity 160ms var(--ease-out), background-color 160ms var(--ease-out);
 }
-.preset-chip:hover {
-  border-color: rgba(255,255,255,0.18);
+.preset-chip:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .preset-chip:hover {
+    border-color: rgba(255,255,255,0.18);
+    color: #e4e4e7;
+  }
+}
+.preset-chip-next {
+  border-color: rgba(10, 132, 255, 0.45);
   color: #e4e4e7;
+  background: rgba(10, 132, 255, 0.08);
+}
+.preset-chip-gated {
+  opacity: 0.42;
+}
+@media (hover: hover) and (pointer: fine) {
+  .preset-chip-gated:hover {
+    opacity: 0.72;
+  }
 }
 
 /* Centered composer — solid tint (no backdrop-filter). */
