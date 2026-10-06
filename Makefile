@@ -1,4 +1,4 @@
-.PHONY: setup install demo demo-calibration demo-circuit test lint format clean run-api run-ui run-ui-dev founder-demo founder-demo-llm founder-demo-stub manual help
+.PHONY: setup install demo demo-calibration demo-circuit test lint format clean run-api run-ui run-ui-dev founder-demo founder-demo-llm founder-demo-stub manual openapi help
 
 PYTHON := python3
 PIP := pip3
@@ -24,6 +24,7 @@ help:
 	@echo "  run-ui-dev    - Start Next.js UI in dev mode (recommended for development)"
 	@echo "  clean         - Remove build artifacts and caches"
 	@echo "  manual        - Rebuild docs/manual/coda-2-manual.pdf"
+	@echo "  openapi       - Export FastAPI schema to docs/openapi.json"
 
 setup:
 	@echo "Setting up Coda 2 (Python + Next.js UI)..."
@@ -98,3 +99,7 @@ demo-script-stub:
 manual:
 	@echo "Rebuilding Coda 2 technical manual PDF"
 	./docs/manual/build.sh
+
+openapi:
+	@echo "Exporting OpenAPI schema to docs/openapi.json"
+	$(PYTHON) docs/export_openapi.py

@@ -152,6 +152,12 @@ The metrics are what make the claim testable rather than rhetorical: `time_to_ca
 
 The default path is fully local: a deterministic planner matches goals to tools, and a template narrator renders the reply. If an OpenAI-compatible provider key is present in the environment (NVIDIA NIM, Groq, OpenAI), a model-backed planner and narrator switch on automatically for looser phrasing and richer replies — and the system always falls back to the rules if the call fails or no key exists. See `orchestrator/planner.py`.
 
+## Programmatic access
+
+Finance, quant, and notebook users can drive the **same typed tools** as the dock — no UI required. `POST /goals` compiles intent to `calibrate_qubit` / `run_bell_pair` / `get_device_state` / …; every call leaves an auditable `traces` record (`shots`, `mutates_calibration`, args, latency). That is the same contract the instrument uses.
+
+See [docs/API.md](docs/API.md) for request/response shapes and error codes, and [docs/openapi.json](docs/openapi.json) (live at `/docs` and `/openapi.json` when the API is running).
+
 ## Get started
 
 Follow [docs/QUICKSTART.md](docs/QUICKSTART.md) to run the API and the instrument locally. For observation, drift, and why the numbers move, see [docs/QUANTUM_LITERACY.md](docs/QUANTUM_LITERACY.md). The deeper argument, contracts, and diagrams live in the [technical manual](docs/manual/coda-2-manual.pdf).

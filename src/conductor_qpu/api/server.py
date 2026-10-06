@@ -1,14 +1,21 @@
 """FastAPI server exposing the QPU control plane.
 
+Same contract as the instrument UI: NL goals compile to typed tools,
+every call leaves a trace, readiness is a number with a predicate.
+
 Endpoints:
-- POST /goals                 -> run a planner goal, return results + job ids
+- POST /goals                 -> run a planner goal, return results + traces
 - GET  /jobs/{job_id}         -> poll a job
+- GET  /jobs                  -> list recent jobs (in-memory)
 - GET  /metrics               -> control-plane + calibration metrics
 - GET  /health                -> liveness
+- GET  /tools                 -> enumerable tool catalog (cost/risk metadata)
 - POST /calibrate             -> direct calibration trigger
 - POST /circuit/bell          -> direct Bell pair submission
 - GET  /device/state          -> device snapshot
-- GET  /sse/jobs/{job_id}     -> simple SSE stream of job status (polling under the hood)
+- GET  /readiness_predicate   -> exact READY predicate
+- GET  /sse/jobs/{job_id}     -> SSE stream of job status
+- GET  /openapi.json          -> machine-readable OpenAPI schema
 """
 
 from __future__ import annotations
@@ -19,12 +26,34 @@ import os
 from typing import Any
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
 
 from conductor_qpu.adapter.factory import create_backend
+from conductor_qpu.api.errors import ErrorCode, api_error
+from conductor_qpu.api.schemas import (
+    OPENAPI_TAGS,
+    TOOLS_CATALOG,
+    BellRequest,
+    BellResponse,
+    CalibrateRequest,
+    CalibrateResponse,
+    DemoFailCalResponse,
+    DemoLongJobResponse,
+    DetuningResponse,
+    DeviceStateResponse,
+    ErrorResponse,
+    GoalRequest,
+    GoalResponse,
+    HealthResponse,
+    JobListResponse,
+    JobRecord,
+    MetricsResponse,
+    ReadinessPredicate,
+    ToolsCatalogResponse,
+    TracesResponse,
+)
 from conductor_qpu.calibration.service import CalibrationService
 from conductor_qpu.jobs.store import InMemoryJobStore
 from conductor_qpu.models import types as model_types
@@ -38,8 +67,28 @@ try:
 except Exception:  # noqa: BLE001
     NoisySimulatorBackend = None  # type: ignore
 
+_OPENAPI_DESCRIPTION = """
+Coda 2 control plane — the same typed tools the instrument UI uses, over HTTP.
 
-app = FastAPI(title="quantum-chat", version="0.1.0", docs_url="/docs")
+Finance and quant clients can submit natural-language goals (`POST /goals`),
+poll jobs and device state, and keep an **audit trail** from `traces`
+(every tool: name, args, latency, ok, `shots`, `mutates_calibration`).
+
+Interactive docs: `/docs` (Swagger) and `/redoc`.
+Machine-readable schema: `/openapi.json` (also committed as `docs/openapi.json`).
+"""
+
+app = FastAPI(
+    title="Coda 2 control plane",
+    version="0.1.0",
+    description=_OPENAPI_DESCRIPTION,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    openapi_tags=OPENAPI_TAGS,
+    contact={"name": "Coda 2", "url": "https://github.com/mariodelgado/coda-2"},
+    license_info={"name": "MIT"},
+)
 
 # CORS for the Next.js UI (dev on :3000, prod builds may be same-origin or behind proxy)
 # allow_headers=["*"] covers Access-Control-Request-Private-Network in preflight.
@@ -73,6 +122,7 @@ async def add_private_network_header(request, call_next):  # type: ignore[no-unt
         response.headers["Access-Control-Allow-Private-Network"] = "true"
     return response
 
+
 # Backend selection via env (CONDUCTOR_QPU_BACKEND=stub|sim)
 # This is the single seam a real hardware driver plugs into.
 _backend = create_backend()
@@ -81,31 +131,43 @@ _job_store = InMemoryJobStore()
 _orchestrator = Orchestrator(adapter=_backend, calibration=_calibration, job_store=_job_store)
 _metrics = MetricsAggregator()
 
-
-class GoalRequest(BaseModel):
-    goal: str = Field(..., description="Natural language goal, e.g. 'Bring qubit 0 to ready'")
-
-
-class GoalResponse(BaseModel):
-    goal: str
-    user_message: str | None = None  # echo of the submitted goal for chat UIs
-    agent_message: str | None = None  # plain-English narration for the operator
-    results: list[dict[str, Any]]
-    traces: list[dict[str, Any]] = []
-    metrics: dict[str, Any]
+_JOB_ERRORS = {
+    400: {"model": ErrorResponse, "description": "Invalid job_id (not a UUID)."},
+    404: {"model": ErrorResponse, "description": "Job not found."},
+}
 
 
-class CalibrateRequest(BaseModel):
-    qubit_id: int = 0
-    target_fidelity: float | None = None
+def _str_keys(d: dict[Any, Any]) -> dict[str, Any]:
+    return {str(k): v for k, v in d.items()}
 
 
-class BellRequest(BaseModel):
-    shots: int = 1024
-    qubits: list[int] = Field(default_factory=lambda: [0, 1])
+def _job_record(job: QPUJob) -> dict[str, Any]:
+    return {
+        "job_id": str(job.id),
+        "status": job.status.value,
+        "job_type": job.job_type.value,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        "result": job.result.data if job.result else None,
+        "metrics": job.result.metrics if job.result else None,
+        "error": job.error,
+    }
 
 
-@app.get("/health")
+def _readiness_predicate() -> dict[str, Any]:
+    return {
+        "name": model_types.READINESS_PREDICATE_NAME,
+        "readout_fidelity_threshold": model_types.READINESS_READOUT_FIDELITY_THRESHOLD,
+        "description": "Device is_ready iff every qubit has readout_fidelity >= threshold.",
+    }
+
+
+@app.get(
+    "/health",
+    tags=["health"],
+    summary="Liveness and LLM planner status",
+    response_model=HealthResponse,
+)
 def health() -> dict[str, Any]:
     nvidia_key = os.getenv("NVIDIA_NIM_API_KEY") or os.getenv("NVIDIA_API_KEY")
     groq_key = os.getenv("GROQ_API_KEY")
@@ -153,7 +215,12 @@ def health() -> dict[str, Any]:
     }
 
 
-@app.get("/device/state")
+@app.get(
+    "/device/state",
+    tags=["device"],
+    summary="Live device snapshot and readiness",
+    response_model=DeviceStateResponse,
+)
 def device_state() -> dict[str, Any]:
     state = _backend.get_device_state()
     # Surface the exact readiness predicate so UI can show numbers, not vibes.
@@ -166,20 +233,71 @@ def device_state() -> dict[str, Any]:
         "is_ready": state.is_ready,
         "readiness_score": round(state.readiness_score(), 4),
         "qubits": state.qubits,
-        "temperatures_mk": state.temperatures_mk,
-        "coherence_us": {q: [round(a, 1), round(b, 1)] for q, (a, b) in state.coherence_us.items()},
-        "readout_fidelity": {q: round(v, 4) for q, v in state.readout_fidelity.items()},
+        "temperatures_mk": _str_keys(state.temperatures_mk),
+        "coherence_us": _str_keys(
+            {q: [round(a, 1), round(b, 1)] for q, (a, b) in state.coherence_us.items()}
+        ),
+        "readout_fidelity": _str_keys({q: round(v, 4) for q, v in state.readout_fidelity.items()}),
         "notes": state.notes,
         "timestamp": state.timestamp.isoformat(),
         "readiness_predicate": predicate,
     }
 
 
-@app.post("/goals")
+@app.get(
+    "/readiness_predicate",
+    tags=["readiness"],
+    summary="Exact READY predicate",
+    response_model=ReadinessPredicate,
+)
+def readiness_predicate() -> dict[str, Any]:
+    """Exact predicate used to declare a device 'ready'. Numbers, not vibes."""
+    return _readiness_predicate()
+
+
+@app.get(
+    "/tools",
+    tags=["tools"],
+    summary="Enumerable tool catalog with cost/risk metadata",
+    response_model=ToolsCatalogResponse,
+)
+def list_tools() -> dict[str, Any]:
+    """The action space the planner is allowed to use — inspectable before you trust a run."""
+    return {
+        "tools": [t.model_dump() for t in TOOLS_CATALOG],
+        "notes": (
+            "POST /goals compiles a natural-language goal to these tools. "
+            "Each executed step is recorded on traces with shots and mutates_calibration. "
+            "This is the same contract the instrument dock uses."
+        ),
+    }
+
+
+@app.post(
+    "/goals",
+    tags=["goals"],
+    summary="Compile an NL goal to typed tools and execute",
+    response_model=GoalResponse,
+    responses={
+        409: {
+            "model": ErrorResponse,
+            "description": "Plan would mutate calibration but mutates_calibration=false.",
+        }
+    },
+)
 def post_goal(req: GoalRequest) -> GoalResponse:
     # Run the goal first, then capture a *fresh* device snapshot so the narrator
     # sees the post-calibration readiness (is_ready + score) for affirmative messaging.
-    full = _orchestrator.run_goal_full(req.goal, device_snapshot=None)
+    if req.mutates_calibration is False:
+        planned = _orchestrator.preview_plan(req.goal)
+        if any(step.tool == "calibrate_qubit" for step in planned):
+            raise api_error(
+                409,
+                ErrorCode.CALIBRATION_MUTATION_FORBIDDEN,
+                "Compiled plan includes calibrate_qubit; refuse because mutates_calibration=false.",
+            )
+
+    full = _orchestrator.run_goal_full(req.goal, device_snapshot=None, shots=req.shots)
     try:
         dev = _backend.get_device_state()
         device_snapshot = {
@@ -197,7 +315,12 @@ def post_goal(req: GoalRequest) -> GoalResponse:
         try:
             from conductor_qpu.orchestrator.narrator import narrate as renarrate
 
-            fresh_msg = renarrate(req.goal, full.get("traces", []), full.get("results", []), device_snapshot=device_snapshot)
+            fresh_msg = renarrate(
+                req.goal,
+                full.get("traces", []),
+                full.get("results", []),
+                device_snapshot=device_snapshot,
+            )
             if fresh_msg:
                 full["agent_message"] = fresh_msg
         except Exception:  # noqa: BLE001
@@ -225,29 +348,31 @@ def post_goal(req: GoalRequest) -> GoalResponse:
     )
 
 
-@app.get("/jobs/{job_id}")
+@app.get(
+    "/jobs/{job_id}",
+    tags=["jobs"],
+    summary="Poll a job by UUID",
+    response_model=JobRecord,
+    responses=_JOB_ERRORS,
+)
 def get_job(job_id: str) -> dict[str, Any]:
     try:
         jid = UUID(job_id)
     except ValueError as e:
-        raise HTTPException(400, "invalid job_id") from e
+        raise api_error(400, ErrorCode.INVALID_JOB_ID, "invalid job_id") from e
     try:
         job = _backend.poll_job(jid)
     except KeyError as e:
-        raise HTTPException(404, "job not found") from e
-    return {
-        "job_id": str(job.id),
-        "status": job.status.value,
-        "job_type": job.job_type.value,
-        "created_at": job.created_at.isoformat() if job.created_at else None,
-        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
-        "result": job.result.data if job.result else None,
-        "metrics": job.result.metrics if job.result else None,
-        "error": job.error,
-    }
+        raise api_error(404, ErrorCode.JOB_NOT_FOUND, "job not found") from e
+    return _job_record(job)
 
 
-@app.post("/calibrate")
+@app.post(
+    "/calibrate",
+    tags=["tools"],
+    summary="Direct calibration (mutates calibration)",
+    response_model=CalibrateResponse,
+)
 def post_calibrate(req: CalibrateRequest) -> dict[str, Any]:
     res = _calibration.calibrate(qubit_id=req.qubit_id, target_fidelity=req.target_fidelity)
     _metrics.record_fidelity(res.fidelity)
@@ -263,10 +388,16 @@ def post_calibrate(req: CalibrateRequest) -> dict[str, Any]:
             "readout_error": res.params.readout_error,
         },
         "history": res.history,
+        "mutates_calibration": True,
     }
 
 
-@app.post("/circuit/bell")
+@app.post(
+    "/circuit/bell",
+    tags=["tools"],
+    summary="Direct Bell pair (shot-costed, does not mutate calibration)",
+    response_model=BellResponse,
+)
 def post_bell(req: BellRequest) -> dict[str, Any]:
     job = QPUJob(
         job_type=JobType.CIRCUIT,
@@ -282,11 +413,24 @@ def post_bell(req: BellRequest) -> dict[str, Any]:
             "job_id": str(jid),
             "counts": polled.result.data.get("counts", {}),
             "metrics": polled.result.metrics,
+            "shots": req.shots,
+            "mutates_calibration": False,
         }
-    return {"job_id": str(jid), "error": polled.error or "no result"}
+    return {
+        "job_id": str(jid),
+        "error": polled.error or "no result",
+        "error_code": ErrorCode.BELL_NO_RESULT,
+        "shots": req.shots,
+        "mutates_calibration": False,
+    }
 
 
-@app.get("/metrics")
+@app.get(
+    "/metrics",
+    tags=["observability"],
+    summary="Control-plane and calibration metrics",
+    response_model=MetricsResponse,
+)
 def get_metrics() -> dict[str, Any]:
     orch = _orchestrator.get_metrics()
     agg = _metrics.snapshot()
@@ -297,34 +441,37 @@ def get_metrics() -> dict[str, Any]:
     }
 
 
-@app.get("/jobs")
-def list_jobs(limit: int = 50) -> dict[str, Any]:
+@app.get(
+    "/jobs",
+    tags=["jobs"],
+    summary="List recent jobs (in-memory, not durable)",
+    response_model=JobListResponse,
+)
+def list_jobs(limit: int = Query(default=50, ge=1, le=500)) -> dict[str, Any]:
     """List recent jobs. In-memory; documented as non-durable."""
     jobs = _backend.list_recent_jobs(limit=limit)
-    out = []
-    for j in jobs:
-        out.append(
-            {
-                "job_id": str(j.id),
-                "status": j.status.value,
-                "job_type": j.job_type.value,
-                "created_at": j.created_at.isoformat() if j.created_at else None,
-                "completed_at": j.completed_at.isoformat() if j.completed_at else None,
-                "result": j.result.data if j.result else None,
-                "metrics": j.result.metrics if j.result else None,
-                "error": j.error,
-            }
-        )
+    out = [_job_record(j) for j in jobs]
     return {"jobs": out, "count": len(out)}
 
 
-@app.get("/traces")
+@app.get(
+    "/traces",
+    tags=["observability"],
+    summary="Most recent tool traces (audit trail)",
+    response_model=TracesResponse,
+)
 def get_traces() -> dict[str, Any]:
     """Return the most recent orchestrator tool traces (real control-plane decisions)."""
     return {"traces": _orchestrator.get_last_traces()}
 
 
-@app.get("/device/detuning/{qubit_id}")
+@app.get(
+    "/device/detuning/{qubit_id}",
+    tags=["device"],
+    summary="Applied vs hidden-true detuning for a qubit",
+    response_model=DetuningResponse,
+    responses={404: {"model": ErrorResponse, "description": "Unknown qubit_id."}},
+)
 def get_detuning(qubit_id: int) -> dict[str, Any]:
     """Expose how far applied calibration is from the hidden 'true' hardware state.
     This is the 'problem' the calibration loop is solving. Surfaces drift.
@@ -343,16 +490,21 @@ def get_detuning(qubit_id: int) -> dict[str, Any]:
             },
         }
     except ValueError as e:
-        raise HTTPException(404, str(e)) from e
+        raise api_error(404, ErrorCode.QUBIT_NOT_FOUND, str(e)) from e
 
 
-@app.get("/sse/jobs/{job_id}")
+@app.get(
+    "/sse/jobs/{job_id}",
+    tags=["jobs"],
+    summary="SSE job status stream",
+    responses=_JOB_ERRORS,
+)
 async def sse_job(job_id: str) -> StreamingResponse:
     """Minimal SSE: polls the job every 200ms and emits status updates."""
     try:
         jid = UUID(job_id)
     except ValueError as e:
-        raise HTTPException(400, "invalid job_id") from e
+        raise api_error(400, ErrorCode.INVALID_JOB_ID, "invalid job_id") from e
 
     async def event_gen():
         last_status = None
@@ -360,7 +512,7 @@ async def sse_job(job_id: str) -> StreamingResponse:
             try:
                 job = _backend.poll_job(jid)
             except KeyError:
-                yield f"event: error\ndata: {json.dumps({'error': 'not found'})}\n\n"
+                yield f"event: error\ndata: {json.dumps({'error': 'not found', 'code': 'JOB_NOT_FOUND'})}\n\n"
                 return
             payload = {
                 "job_id": str(job.id),
@@ -382,19 +534,12 @@ async def sse_job(job_id: str) -> StreamingResponse:
 # ---------------- Demo / Guardrail endpoints (founder demo) ----------------
 
 
-@app.get("/readiness_predicate")
-def readiness_predicate() -> dict[str, Any]:
-    """Exact predicate used to declare a device 'ready'.
-    Founders can point at the numbers.
-    """
-    return {
-        "name": model_types.READINESS_PREDICATE_NAME,
-        "readout_fidelity_threshold": model_types.READINESS_READOUT_FIDELITY_THRESHOLD,
-        "description": "Device is_ready iff every qubit has readout_fidelity >= threshold.",
-    }
-
-
-@app.post("/demo/fail_next_cal")
+@app.post(
+    "/demo/fail_next_cal",
+    tags=["demo"],
+    summary="Force the next calibration below READY (demo only)",
+    response_model=DemoFailCalResponse,
+)
 def demo_fail_next_cal() -> dict[str, Any]:
     """Force the next calibration on the sim backend to be unable to reach threshold.
     Creates a reproducible 'failure despite trying' path for the founder demo.
@@ -409,7 +554,12 @@ def demo_fail_next_cal() -> dict[str, Any]:
     }
 
 
-@app.post("/demo/start_long_job")
+@app.post(
+    "/demo/start_long_job",
+    tags=["demo"],
+    summary="Start a long-running diagnostic job (demo only)",
+    response_model=DemoLongJobResponse,
+)
 def demo_start_long_job() -> dict[str, Any]:
     """Start a long-running diagnostic job that stays RUNNING until cancelled.
     Used to demo cancel guardrail in timeline + jobs list.
