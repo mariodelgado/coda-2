@@ -442,7 +442,14 @@ export default function QuantumChatInstrument() {
     { label: "Bell pair", goal: "Run a Bell pair and report fidelity", kind: "bell" as const },
     { label: "Improve Bell", goal: "Run a precise Bell pair and report fidelity", kind: "bell" as const },
     { label: "Diagnose Q0", goal: "Check qubit 0 health and readout status", kind: "diagnose" as const },
+    { label: "What does READY mean?", goal: "What does READY mean?", kind: "literacy" as const },
+    { label: "Why do counts vary?", goal: "Why do counts vary?", kind: "literacy" as const },
   ], [])
+
+  const literacyAsks = useMemo(
+    () => suggested.filter((s) => s.kind === "literacy"),
+    [suggested],
+  )
 
   // Live readouts for top bar (instrument)
   const q0Fid = device?.readout_fidelity?.["0"] ?? device?.readout_fidelity?.[0 as any] ?? null
@@ -840,13 +847,31 @@ export default function QuantumChatInstrument() {
             {/* Scrollable conversation transcript (top of dock, grows, scrolls) */}
             <div ref={transcriptRef} className="chat-transcript">
               {turns.length === 0 && (
-                <div className="chat-empty">Golden path: Calibrate Q0 → check READY → Bell pair. Chips below follow that order.</div>
+                <div className="chat-empty">
+                  <p>Golden path: Calibrate Q0 → check READY → Bell pair. Chips below follow that order.</p>
+                  <p className="chat-empty-asks-label">Or ask why the numbers move:</p>
+                  <div className="chat-empty-asks">
+                    {literacyAsks.map((s) => (
+                      <button
+                        key={s.label}
+                        type="button"
+                        onClick={() => runSuggested(s.goal)}
+                        disabled={!connected || submitting}
+                        className="preset-chip preset-chip-ask"
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
               {turns.map((t) => {
                 const turnMath = t.status !== "running" ? mathFromResults(t.results) : {}
                 const meta = formatBubbleMeta(turnMath)
                 const traces = t.traces || []
                 const shown = traces.slice(-3)
+                const isMeasureTurn =
+                  !!t.bellCounts || traces.some((tr) => tr.tool === "run_bell_pair")
                 const traceStart = traces.length - shown.length
                 return (
                   <div key={t.id} className="chat-turn">
@@ -863,6 +888,11 @@ export default function QuantumChatInstrument() {
                       {meta && (
                         <span className="bubble-meta instrument-mono">
                           {meta}
+                        </span>
+                      )}
+                      {isMeasureTurn && t.status !== "running" && (
+                        <span className="bubble-note">
+                          One run is a sample from a distribution. Counts will move.
                         </span>
                       )}
                     </div>
@@ -895,12 +925,15 @@ export default function QuantumChatInstrument() {
                   "preset-chip",
                   next ? "preset-chip-next" : "",
                   gated ? "preset-chip-gated" : "",
+                  s.kind === "literacy" ? "preset-chip-ask" : "",
                 ].filter(Boolean).join(" ")
                 const title = gated
                   ? "Device not READY — calibrate Q0 first (or click to calibrate then Bell)"
-                  : next
-                    ? "Next step on the golden path"
-                    : undefined
+                  : s.kind === "literacy"
+                    ? "Live numbers plus a short observation note"
+                    : next
+                      ? "Next step on the golden path"
+                      : undefined
                 return (
                   <button
                     key={i}

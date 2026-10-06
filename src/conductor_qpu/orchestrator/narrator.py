@@ -15,6 +15,7 @@ import os
 from typing import Any
 
 from conductor_qpu.orchestrator.orchestrator import ToolResult, ToolTrace
+from conductor_qpu.orchestrator.planner import is_literacy_goal
 
 # Re-export OpenAI (if available) so tests can patch `conductor_qpu.orchestrator.narrator.OpenAI`.
 # We intentionally do not require the package at import time.
@@ -214,6 +215,47 @@ def _bell_quality(bell: dict[str, Any]) -> tuple[float, int, float | None]:
     return quality, shots_n, stderr
 
 
+def _live_numbers(device_snapshot: dict[str, Any] | None) -> list[str]:
+    """Short live readouts for literacy answers (fidelity, readiness, READY)."""
+    if not device_snapshot or not isinstance(device_snapshot, dict):
+        return []
+    parts: list[str] = []
+    q0 = None
+    try:
+        rf = device_snapshot.get("readout_fidelity") or {}
+        q0 = rf.get("0") if "0" in rf else rf.get(0)
+    except Exception:  # noqa: BLE001
+        q0 = None
+    if q0 is not None:
+        try:
+            parts.append(f"Q0 readout fidelity is {float(q0):.3f}.")
+        except (TypeError, ValueError):
+            pass
+    score = device_snapshot.get("readiness_score")
+    if isinstance(score, (int, float)):
+        parts.append(f"Readiness score is {float(score):.3f}.")
+    ready = device_snapshot.get("is_ready")
+    if ready is True:
+        parts.append("Device reports READY.")
+    elif ready is False:
+        parts.append("Device reports not READY.")
+    return parts
+
+
+def _observation_note() -> str:
+    """STE observation line: collapse, samples, continuous drift/recal."""
+    return (
+        "Measurement collapses the prepared state into a classical outcome. "
+        "Counts are samples, not a single true number. "
+        "The device drifts; recalibration is ongoing."
+    )
+
+
+def _sample_footer() -> str:
+    """Post-measure note: one run is a draw from a distribution."""
+    return "This run is one sample from a distribution; another shot set will move the bins."
+
+
 def _template_narrate(
     goal: str,
     traces: list[dict[str, Any]],
@@ -225,6 +267,31 @@ def _template_narrate(
     traces_str = _short_traces(traces)
     init_f, final_f, cal_params = _extract_fidelity(results)
     bell = _extract_bell(results)
+
+    # Literacy / observation questions — before the "ready" calibrate keyword.
+    if is_literacy_goal(goal):
+        live = _live_numbers(device_snapshot)
+        live_txt = " ".join(live)
+        counts_q = any(k in g for k in ("count", "vary", "sample", "shot", "uncertaint"))
+        ready_q = "ready" in g and not counts_q
+        if ready_q:
+            body = (
+                "READY means Q0 meets the 0.82 readout-fidelity floor and is usable for a circuit. "
+                "It is a threshold at a time, not a permanent property."
+            )
+        elif counts_q:
+            body = (
+                "Each shot is one draw from a probability distribution. "
+                "The bins will not match the next run exactly."
+            )
+        else:
+            body = (
+                "The numbers on this instrument are estimates from samples, "
+                "taken from a device that continues to drift."
+            )
+        if live_txt:
+            return f"{live_txt} {body} {_observation_note()}"
+        return f"{body} {_observation_note()}"
 
     # Calibration path
     if any(k in g for k in ["calibrat", "bring", "ready", "tune"]):
@@ -375,11 +442,16 @@ def _template_narrate(
             shots_txt = f" over {shots} shots" if shots else ""
             return (
                 f"{prefix}Bell pair measured {dict((k, int(v)) for k, v in c.items())}. "
-                f"Estimated fidelity {quality:.2f}{unc}{shots_txt}. {note}"
+                f"Estimated fidelity {quality:.2f}{unc}{shots_txt}. {note} {_sample_footer()}"
             )
         if prefix:
-            return prefix + (traces_str or "No Bell counts yet.")
-        return "Bell circuit executed. Results captured in traces. " + (traces_str or "")
+            return prefix + (traces_str or "No Bell counts yet.") + " " + _sample_footer()
+        return (
+            "Bell circuit executed. Results captured in traces. "
+            + (traces_str or "")
+            + " "
+            + _sample_footer()
+        )
 
     # Device state / health
     if any(k in g for k in ["state", "health", "status", "ready?", "temperature"]):
@@ -451,6 +523,9 @@ def _call_llm_narrate(
         "Use the actual numbers from context. No hype, no marketing language. No JSON. No lists. "
         "For Bell/circuit results, quality is estimated_fidelity or (p00+p11) — never |p00-p11|. "
         "A balanced ~0.45/0.45 Bell is high fidelity, not weak. Include shots and stderr when present. "
+        "After a Bell or measure, add that this run is one sample from a distribution. "
+        "If the goal asks what READY means or why counts vary, use live device numbers and "
+        "state: measure collapses the prepared state; counts are samples; drift/recal is continuous. "
         "CRITICAL RULE — readiness is authoritative: the 'device' object in context contains the post-execution device state. "
         "If device.is_ready is true (boolean), the qubit IS ready and usable for circuits — affirm this in plain English (e.g., 'ready', 'usable for circuits', 'meets the readiness predicate'). "
         "If device.is_ready is false, clearly state another pass is needed; do not claim ready. "
@@ -548,7 +623,9 @@ def narrate(
         # For calibrate-style goals, if device.is_ready is explicitly true, the narration
         # must contain affirmative READY/usable language. If the LLM denied it, fall back.
         g = (goal or "").lower()
-        is_cal_goal = any(k in g for k in ["calibrat", "bring", "ready", "tune"])
+        is_cal_goal = (not is_literacy_goal(goal)) and any(
+            k in g for k in ["calibrat", "bring", "ready", "tune"]
+        )
         snap_ready = None
         if device_snapshot and isinstance(device_snapshot, dict):
             try:
