@@ -17,9 +17,7 @@ from conductor_qpu.orchestrator.planner import plan, plan_from_goal
 # deterministic default (get_device_state + calibrate_qubit) would apply.
 _FREEFORM_GOAL = "Please look up experiment deadbeef-dead-beef-dead-beefdeadbeef"
 _LLM_JOB_ID = "deadbeef-dead-beef-dead-beefdeadbeef"
-_LLM_PLAN_JSON = (
-    '[{"tool": "get_job_status", "args": {"job_id": "' + _LLM_JOB_ID + '"}}]'
-)
+_LLM_PLAN_JSON = '[{"tool": "get_job_status", "args": {"job_id": "' + _LLM_JOB_ID + '"}}]'
 
 
 def _clear_llm_env(monkeypatch: pytest.MonkeyPatch) -> None:
