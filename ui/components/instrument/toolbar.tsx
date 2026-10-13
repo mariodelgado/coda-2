@@ -1,6 +1,7 @@
 "use client"
 
 import { Command as CommandIcon } from "lucide-react"
+import { ThemeToggle } from "@/components/instrument/theme-toggle"
 
 export function InstrumentToolbar({
   connected,
@@ -47,12 +48,13 @@ export function InstrumentToolbar({
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <button onClick={onOpenCommand} className="rounded border hairline px-1.5 py-px hover:bg-white/5" title="⌘K">
+        <ThemeToggle />
+        <button onClick={onOpenCommand} className="toolbar-icon-btn" title="⌘K">
           <CommandIcon className="h-3 w-3" />
         </button>
         <button
           onClick={onRefresh}
-          className="rounded border hairline px-1.5 py-px hover:bg-white/5"
+          className="toolbar-icon-btn"
           title="Refresh"
         >
           refresh

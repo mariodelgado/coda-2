@@ -46,6 +46,7 @@ A goal typed into the dock is compiled to a typed control-plane tool. Tools are 
 
 | | |
 |---|---|
+| **Light + dark** | Theme tokens, toolbar toggle, `prefers-color-scheme`. Fridge-pole qubit color (cryo \|0⟩ / ember \|1⟩) — not IBM blue/purple |
 | **Three-pane stage** | Param-drift landscape · 3D device · isometric cryostat — iPadOS-style splitters |
 | **Bottom-third dock** | Transcript, six golden-path chips + two observation asks, high-contrast composer — stage stays sharp above the fold |
 | **Workflow chips** | Calibrate Q0 → Q0 readiness · Device status → Bell pair → Improve Bell · Diagnose Q0 · What does READY mean? · Why do counts vary? |

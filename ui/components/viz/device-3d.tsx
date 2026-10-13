@@ -16,7 +16,8 @@
  * - readout/gate error proxy derived from detuning or applied (no fake statics)
  *
  * Camera/lights intentionally conservative; 50/50 split preserved by parent.
- * Pure R3F, iOS palette only (no purple).
+ * Qubit spheres/chips use fridge poles (cryo |0⟩ / ember |1⟩). True/applied
+ * markers stay the instrument pair (system blue / orange). No IBM purple.
  */
 
 import * as React from "react"
@@ -24,6 +25,10 @@ import { Canvas, useFrame } from "@react-three/fiber"
 import { Html } from "@react-three/drei"
 import * as THREE from "three"
 import { cn } from "@/lib/utils"
+import { useInstrumentTheme } from "@/hooks/use-instrument-theme"
+import { p1FromBellCounts, qubitHex } from "@/lib/qubit-color"
+import { BellHistogram } from "@/components/viz/bell-histogram"
+import { QubitChip } from "@/components/viz/qubit-swatch"
 
 export interface Device3DProps {
   device: {
@@ -40,6 +45,8 @@ export interface Device3DProps {
     phase?: number
     readout_error?: number
   } | null
+  bellCounts?: Record<string, number> | null
+  phase?: number
   className?: string
 }
 
@@ -51,6 +58,9 @@ function QubitChiplet({
   fidelity,
   detuneF,
   detuneA,
+  p1,
+  phase,
+  theme,
   // t1/t2 accepted for future HUD extensions; not rendered in geometry today
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   t1: _t1,
@@ -61,15 +71,16 @@ function QubitChiplet({
   fidelity: number
   detuneF: number
   detuneA: number
+  p1: number
+  phase: number
+  theme: "dark" | "light"
   t1: number
   t2: number
 }) {
   const groupRef = React.useRef<THREE.Group>(null)
 
-  const good = fidelity >= 0.88
-  const mid = fidelity >= 0.75
-  // iOS palette only (no purple)
-  const qColor = good ? "#007AFF" : mid ? "#FF9500" : "#8E8E93"
+  // Fridge-pole language: sphere encodes measured P(|1⟩), not fidelity.
+  const qColor = qubitHex(p1, phase, theme)
 
   const x = index === 0 ? -0.95 : 0.95
 
@@ -164,7 +175,7 @@ function QubitChiplet({
         position={[0, 0.68, 0]}
         style={{
           fontSize: "9px",
-          color: "#a1a1aa",
+          color: "var(--secondary-label)",
           fontFamily: "var(--font-mono-inst)",
           pointerEvents: "none",
           whiteSpace: "nowrap",
@@ -176,13 +187,13 @@ function QubitChiplet({
   )
 }
 
-function BusCoupler() {
+function BusCoupler({ tint }: { tint?: string }) {
   return (
     <group>
-      {/* Primary bus line (center coupler) */}
+      {/* Primary bus line (center coupler) — tinted when the pair is entangled */}
       <mesh position={[0, 0.18, 0]}>
         <boxGeometry args={[1.72, 0.032, 0.09]} />
-        <meshStandardMaterial color="#1f2937" metalness={0.55} roughness={0.5} />
+        <meshStandardMaterial color={tint || "#1f2937"} metalness={0.55} roughness={0.5} emissive={tint || "#000000"} emissiveIntensity={tint ? 0.35 : 0} />
       </mesh>
       {/* Bus top cap */}
       <mesh position={[0, 0.22, 0]}>
@@ -279,6 +290,11 @@ function LiveReadoutStrip({
   err0,
   err1,
   ready,
+  p1q0,
+  p1q1,
+  phase,
+  theme,
+  entangled,
 }: {
   q0: number
   q1: number
@@ -290,44 +306,43 @@ function LiveReadoutStrip({
   err0: number
   err1: number
   ready: boolean
+  p1q0: number
+  p1q1: number
+  phase: number
+  theme: "dark" | "light"
+  entangled: boolean
 }) {
   return (
-    <div className="pointer-events-none absolute top-2 right-2 z-20 w-[168px] rounded border border-white/10 bg-black/78 px-2 py-1.5 text-[9px] font-mono text-zinc-300">
+    <div className="pointer-events-none absolute top-2 right-2 z-20 w-[176px] rounded surface-hud px-2 py-1.5 text-[9px] font-mono">
       <div className="flex items-center justify-between mb-1 px-0.5">
-        <span className="text-[10px] tracking-[0.3px] text-zinc-400">readout</span>
-        <span className={cn("text-[10px]", ready ? "text-[#34C759]" : "text-[#FF9500]")}>
+        <span className="text-[10px] tracking-[0.3px] text-[var(--secondary-label)]">readout</span>
+        <span className={cn("text-[10px]", ready ? "text-success" : "text-applied")}>
           {ready ? "READY" : "DRIFT"}
         </span>
       </div>
 
-      {/* Q0 row */}
-      <div className="flex items-baseline justify-between mb-0.5 tabular-nums">
-        <span className="text-[#007AFF]">Q0</span>
-        <span className="text-white">{(q0 * 100).toFixed(1)}%</span>
-        <span className="text-zinc-500">T1 {t1_0.toFixed(0)}µs</span>
-        <span className="text-zinc-500">T2 {t2_0.toFixed(0)}µs</span>
+      <div className="flex items-center gap-1 mb-0.5">
+        <QubitChip index={0} p1={p1q0} phase={phase} theme={theme} extra={`${(q0 * 100).toFixed(1)}%`} entangled={entangled} />
       </div>
-      <div className="flex items-center justify-between mb-1 pl-[18px] text-[8px] text-zinc-500">
+      <div className="flex items-center justify-between mb-1 pl-[2px] text-[8px] text-[var(--tertiary-label)] tabular-nums">
+        <span>T1 {t1_0.toFixed(0)}µs</span>
+        <span>T2 {t2_0.toFixed(0)}µs</span>
         <span>err {err0.toFixed(3)}</span>
-        <span className="text-zinc-600">·</span>
         <span>{t0.toFixed(1)} mK</span>
       </div>
 
-      {/* Q1 row */}
-      <div className="flex items-baseline justify-between mb-0.5 tabular-nums">
-        <span className="text-[#007AFF]">Q1</span>
-        <span className="text-white">{(q1 * 100).toFixed(1)}%</span>
-        <span className="text-zinc-500">T1 {t1_1.toFixed(0)}µs</span>
-        <span className="text-zinc-500">T2 {t2_1.toFixed(0)}µs</span>
+      <div className="flex items-center gap-1 mb-0.5">
+        <QubitChip index={1} p1={p1q1} phase={phase} theme={theme} extra={`${(q1 * 100).toFixed(1)}%`} entangled={entangled} />
       </div>
-      <div className="flex items-center justify-between mb-0.5 pl-[18px] text-[8px] text-zinc-500">
+      <div className="flex items-center justify-between mb-0.5 pl-[2px] text-[8px] text-[var(--tertiary-label)] tabular-nums">
+        <span>T1 {t1_1.toFixed(0)}µs</span>
+        <span>T2 {t2_1.toFixed(0)}µs</span>
         <span>err {err1.toFixed(3)}</span>
       </div>
 
-      {/* Small legend */}
-      <div className="mt-1 pt-1 border-t border-white/10 text-[8px] text-zinc-500 flex gap-2">
-        <span><span style={{ color: "#FF9500" }}>●</span> applied</span>
-        <span><span style={{ color: "#007AFF" }}>●</span> true</span>
+      <div className="mt-1 pt-1 border-t text-[8px] text-[var(--tertiary-label)] flex gap-2" style={{ borderColor: "var(--hairline)" }}>
+        <span><span style={{ color: "var(--applied)" }}>●</span> applied</span>
+        <span><span style={{ color: "var(--true)" }}>●</span> true</span>
       </div>
     </div>
   )
@@ -336,12 +351,19 @@ function LiveReadoutStrip({
 // ---------------------------------------------------------------------------
 // Main component
 
-export function Device3D({ device, detuning, applied, className }: Device3DProps) {
+export function Device3D({ device, detuning, applied, bellCounts = null, phase = 0, className }: Device3DProps) {
+  const theme = useInstrumentTheme()
+  const stage = theme === "light" ? "#E8E2D6" : "#000000"
   // Pull live fidelity from device (falls back to a soft floor for first paint)
   const q0 = Number(device?.readout_fidelity?.[0] ?? device?.readout_fidelity?.["0"] ?? 0.71)
   const q1 = Number(device?.readout_fidelity?.[1] ?? device?.readout_fidelity?.["1"] ?? 0.70)
   const ready = Boolean(device?.is_ready)
   const t0 = Number(device?.temperatures_mk?.[0] ?? device?.temperatures_mk?.["0"] ?? 18.4)
+  const entangled = !!bellCounts && Object.keys(bellCounts).length > 0
+  const p1q0 = entangled ? p1FromBellCounts(bellCounts, 0) : 0
+  const p1q1 = entangled ? p1FromBellCounts(bellCounts, 1) : 0
+  const busTint = entangled ? qubitHex((p1q0 + p1q1) / 2, phase, theme) : undefined
+  const appliedPhase = Number.isFinite(phase) ? phase : Number(applied?.phase ?? 0)
 
   // Coherence (T1, T2) from device if present; derive plausible fallbacks from fidelity
   const coh0 = device?.coherence_us?.[0] ?? device?.coherence_us?.["0"] ?? null
@@ -371,10 +393,10 @@ export function Device3D({ device, detuning, applied, className }: Device3DProps
     : baseErr(q1, df1, da1)
 
   return (
-    <div className={cn("relative h-full w-full overflow-hidden bg-[#000000]", className)}>
+    <div className={cn("relative h-full w-full overflow-hidden", className)} style={{ background: stage }}>
       <Canvas
         camera={{ position: [0, 1.88, 4.2], fov: 43, near: 0.2, far: 60 }}
-        style={{ background: "#000000" }}
+        style={{ background: stage }}
         dpr={[1, 1.6]}
       >
         <React.Suspense fallback={null}>
@@ -386,9 +408,9 @@ export function Device3D({ device, detuning, applied, className }: Device3DProps
           {/* Richer package + cryo cues */}
           <CryoColdPlate />
           <PackageGroundPlane />
-          <BusCoupler />
-          <QubitChiplet index={0} fidelity={q0} detuneF={df0} detuneA={da0} t1={t1_0} t2={t2_0} />
-          <QubitChiplet index={1} fidelity={q1} detuneF={df1} detuneA={da1} t1={t1_1} t2={t2_1} />
+          <BusCoupler tint={busTint} />
+          <QubitChiplet index={0} fidelity={q0} detuneF={df0} detuneA={da0} p1={p1q0} phase={appliedPhase} theme={theme} t1={t1_0} t2={t2_0} />
+          <QubitChiplet index={1} fidelity={q1} detuneF={df1} detuneA={da1} p1={p1q1} phase={appliedPhase} theme={theme} t1={t1_1} t2={t2_1} />
 
           {/* Very subtle grid for stage depth (kept light) */}
           <gridHelper args={[4.2, 9, "#111113", "#0a0a0b"]} position={[0, -0.42, 0]} />
@@ -407,7 +429,17 @@ export function Device3D({ device, detuning, applied, className }: Device3DProps
         err0={err0}
         err1={err1}
         ready={ready}
+        p1q0={p1q0}
+        p1q1={p1q1}
+        phase={appliedPhase}
+        theme={theme}
+        entangled={entangled}
       />
+      {entangled && bellCounts && (
+        <div className="pointer-events-none absolute top-2 left-2 z-20 w-[200px]">
+          <BellHistogram counts={bellCounts} phase={appliedPhase} />
+        </div>
+      )}
     </div>
   )
 }

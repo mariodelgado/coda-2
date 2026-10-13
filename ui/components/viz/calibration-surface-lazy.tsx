@@ -8,7 +8,7 @@ const Inner = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full min-h-[240px] w-full items-center justify-center rounded-lg border border-dashed border-white/10 bg-zinc-950 text-xs text-zinc-500">
+      <div className="flex h-full min-h-[240px] w-full items-center justify-center rounded-lg border border-dashed border-[var(--hairline)] bg-[var(--stage)] text-xs text-[var(--tertiary-label)]">
         Loading GPU surface…
       </div>
     ),

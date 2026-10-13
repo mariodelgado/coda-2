@@ -17,6 +17,7 @@ import { Canvas, useFrame } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
 import * as THREE from "three"
 import { cn } from "@/lib/utils"
+import { useInstrumentTheme } from "@/hooks/use-instrument-theme"
 
 export interface CalibrationSurfaceProps {
   detuning: Record<string, number> | null
@@ -160,11 +161,13 @@ function Scene({
   latestFidelity,
   wireframe,
   surfaceGain,
+  theme,
 }: {
   detuning: Record<string, number> | null
   latestFidelity: number
   wireframe: boolean
   surfaceGain: number
+  theme: "dark" | "light"
 }) {
   // Framing lift + zoom-out for layout polish: camera farther back + higher subject bias
   // so the peak/grid/HUD fit the pane without crowding the dock or overflowing splitters.
@@ -173,7 +176,7 @@ function Scene({
 
   return (
     <>
-      <color attach="background" args={["#000000"]} />
+      <color attach="background" args={[theme === "light" ? "#E8E2D6" : "#000000"]} />
       <ambientLight intensity={0.6} />
       <directionalLight position={[4.5, 7.5, 3.5]} intensity={1.55} />
       <directionalLight position={[-5, 2.5, -6]} intensity={0.55} color="#a5b4fc" />
@@ -187,7 +190,7 @@ function Scene({
         <Markers detuning={detuning} />
         {/* Grid sits on the same local plane as the surface (tiny depth offset for draw order).
             Raised contrast vs pure black stage / fidelity surface; iOS-muted neutral grays (no neon/purple). */}
-        <gridHelper args={[3, 12, "#3a3a3e", "#2b2b2f"]} position={[0, 0, -0.003]} />
+        <gridHelper args={[3, 12, theme === "light" ? "#b9b2a4" : "#3a3a3e", theme === "light" ? "#cfc7b8" : "#2b2b2f"]} position={[0, 0, -0.003]} />
       </group>
       <OrbitControls
         enablePan={false}
@@ -256,6 +259,7 @@ export function CalibrationSurface({
   // No Leva debug panel in production/demo. Fixed sane defaults for the drift surface.
   const wireframe = false
   const surfaceGain = 1.6
+  const theme = useInstrumentTheme()
   const latestFidelity = React.useMemo(() => {
     if (fidelityHistory.length) return fidelityHistory[fidelityHistory.length - 1].fidelity
     if (readoutFidelity) {
@@ -285,29 +289,29 @@ export function CalibrationSurface({
         gl={glFactory as unknown as React.ComponentProps<typeof Canvas>["gl"]}
       >
         <React.Suspense fallback={null}>
-          <Scene detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} />
+          <Scene detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} theme={theme} />
         </React.Suspense>
       </Canvas>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2 text-[10px]">
-        <div className="rounded bg-black/78 px-2 py-1 font-mono text-zinc-300 border border-white/10">
-          <span style={{color: '#007AFF'}}>●</span> true &nbsp;
-          <span style={{color: '#FF9500'}}>●</span> applied &nbsp;
+        <div className="rounded surface-hud px-2 py-1 font-mono text-[var(--secondary-label)]">
+          <span className="text-true">●</span> true &nbsp;
+          <span className="text-applied">●</span> applied &nbsp;
           drift={driftMag.toFixed(4)}
           {applied?.frequency != null && (
-            <span className="text-zinc-500">
+            <span className="text-[var(--tertiary-label)]">
               {" "}· f={applied.frequency.toFixed(3)} a={Number(applied.amplitude ?? 0).toFixed(3)}
             </span>
           )}
         </div>
         <div
           className={cn(
-            "rounded px-2 py-1 font-mono border border-white/10",
+            "rounded px-2 py-1 font-mono surface-hud",
             mode === "webgpu"
-              ? "bg-[#0a0a0f] text-[#007AFF]"
+              ? "text-true"
               : mode === "checking"
-                ? "bg-[#0a0a0f] text-zinc-400"
-                : "bg-[#0a0a0f] text-[#FF9500]",
+                ? "text-[var(--tertiary-label)]"
+                : "text-applied",
           )}
         >
           {mode === "webgpu" && "WebGPU"}
@@ -318,7 +322,7 @@ export function CalibrationSurface({
       </div>
 
       {mode === "webgl" && typeof navigator !== "undefined" && !("gpu" in navigator) && (
-        <div className="pointer-events-none absolute bottom-2 left-2 right-2 rounded border border-amber-900/40 bg-amber-950/50 px-2 py-1 text-[10px] text-amber-200/90">
+        <div className="pointer-events-none absolute bottom-2 left-2 right-2 rounded border border-[var(--applied)] bg-[var(--hud)] px-2 py-1 text-[10px] text-applied">
           navigator.gpu missing — rendering via WebGL. Chrome/Edge with WebGPU enabled gets the WebGPU path.
         </div>
       )}

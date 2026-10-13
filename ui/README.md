@@ -11,7 +11,8 @@ Opinionated picks from [emilkowalski/skills](https://github.com/emilkowalski/ski
 | Command palette (⌘K, **no open animation**) | `cmdk` |
 | Toasts (cal success/fail/cancel/backend down) | `sonner` |
 | Motion (transform/opacity, strong ease-out) | `motion` |
-| Theme | `next-themes` (forced dark) |
+| Theme | `next-themes` (`coda-theme` in localStorage, `prefers-color-scheme` until overridden) |
+| Qubit color | Fridge poles — cryo \|0⟩ / ember \|1⟩ (`lib/qubit-color.ts`). Not IBM blue/purple. |
 | Shared UI state | `zustand` |
 | Viz debug panel | `leva` |
 | Primitives | shadcn/ui + Radix |

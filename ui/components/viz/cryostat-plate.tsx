@@ -2,6 +2,9 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import { useInstrumentTheme } from "@/hooks/use-instrument-theme"
+import { p1FromBellCounts } from "@/lib/qubit-color"
+import { QubitChip } from "@/components/viz/qubit-swatch"
 
 export interface CryostatPlateProps {
   className?: string
@@ -15,6 +18,8 @@ export interface CryostatPlateProps {
   hasActiveJob?: boolean
   activeJobStatus?: string | null
   lastTrace?: { tool: string; summary?: string } | null
+  bellCounts?: Record<string, number> | null
+  phase?: number
 }
 
 type Region = "top" | "upper" | "still" | "base" | "mixing" | "coil" | "cables" | "package"
@@ -45,7 +50,7 @@ function StageChip({ label, active, className }: { label: string; active?: boole
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-white/10 bg-black/70 px-2 py-px font-mono text-[10px] text-zinc-200",
+        "inline-flex items-center gap-1 rounded-full surface-chip px-2 py-px font-mono text-[10px]",
         className
       )}
     >
@@ -76,7 +81,10 @@ export function CryostatPlate({
   hasActiveJob,
   activeJobStatus,
   lastTrace,
+  bellCounts = null,
+  phase = 0,
 }: CryostatPlateProps) {
+  const theme = useInstrumentTheme()
   const [hovered, setHovered] = React.useState<Region | null>(null)
   const [tipPos, setTipPos] = React.useState<{ x: number; y: number }>({ x: 0, y: 0 })
   const containerRef = React.useRef<HTMLDivElement | null>(null)
@@ -89,6 +97,9 @@ export function CryostatPlate({
   const stageLabel = stageMachine?.label || (device?.is_ready ? "READY" : "DRIFT")
   const stageKey = (stageMachine?.key || "").toUpperCase()
   const isActive = hasActiveJob || stageKey === "CALIBRATING" || stageKey === "RUNNING"
+  const entangled = !!bellCounts && Object.keys(bellCounts).length > 0
+  const p1q0 = entangled ? p1FromBellCounts(bellCounts, 0) : 0
+  const p1q1 = entangled ? p1FromBellCounts(bellCounts, 1) : 0
 
   const onPointer = (e: React.PointerEvent) => {
     const el = containerRef.current
@@ -104,7 +115,7 @@ export function CryostatPlate({
 
   return (
     <div
-      className={cn("relative h-full w-full overflow-hidden bg-[#000000] flex items-start justify-center", className)}
+      className={cn("relative h-full w-full overflow-hidden flex items-start justify-center bg-[var(--stage)]", className)}
       onPointerLeave={clear}
     >
       {/* Plate scaled to fill more of the right pane height (larger, less upward shift).
@@ -153,17 +164,32 @@ export function CryostatPlate({
           <div className="absolute bottom-1 left-1 right-1 z-20 flex flex-wrap gap-1">
             <StageChip label={stageLabel} active={isActive} />
             {!Number.isNaN(q0) && (
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] text-zinc-200">
-                Q0 <span className="ml-1 text-white tabular-nums">{(q0 * 100).toFixed(0)}%</span>
-              </div>
+              <QubitChip
+                index={0}
+                p1={p1q0}
+                phase={phase}
+                theme={theme}
+                extra={`${(q0 * 100).toFixed(0)}%`}
+                entangled={entangled}
+              />
+            )}
+            {!Number.isNaN(q1) && (
+              <QubitChip
+                index={1}
+                p1={p1q1}
+                phase={phase}
+                theme={theme}
+                extra={`${(q1 * 100).toFixed(0)}%`}
+                entangled={entangled}
+              />
             )}
             {!Number.isNaN(t0) && (
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] text-zinc-200 tabular-nums">
+              <div className="inline-flex items-center rounded-full surface-chip px-1 py-px font-mono text-[9px] tabular-nums">
                 {t0.toFixed(1)} mK
               </div>
             )}
             {df !== 0 && (
-              <div className="inline-flex items-center rounded-full border border-white/10 bg-black/70 px-1 py-px font-mono text-[9px] text-zinc-200 tabular-nums">
+              <div className="inline-flex items-center rounded-full surface-chip px-1 py-px font-mono text-[9px] tabular-nums">
                 Δf {df.toFixed(3)}
               </div>
             )}
@@ -172,12 +198,12 @@ export function CryostatPlate({
           {/* Rich tooltip on hover (solid, no blur — stage must stay crisp) */}
           {hovered && (
             <div
-              className="absolute z-[80] pointer-events-none rounded-md border border-white/10 bg-[rgba(18,18,22,0.96)] px-2.5 py-1.5 text-[10px] leading-tight shadow-2xl"
+              className="absolute z-[80] pointer-events-none rounded-md surface-hud px-2.5 py-1.5 text-[10px] leading-tight shadow-2xl"
               style={{ left: tipPos.x, top: tipPos.y, minWidth: 188, maxWidth: 230 }}
             >
-              <div className="font-medium tracking-[0.4px] text-zinc-100">{REGION_LABEL[hovered]}</div>
-              <div className="text-[9px] text-zinc-500">Dilution refrigerator • live</div>
-              <div className="my-1 h-px bg-white/10" />
+              <div className="font-medium tracking-[0.4px] text-[var(--label)]">{REGION_LABEL[hovered]}</div>
+              <div className="text-[9px] text-[var(--tertiary-label)]">Dilution refrigerator • live</div>
+              <div className="my-1 h-px bg-[var(--hairline)]" />
               <div className="space-y-0.5 tabular-nums">
                 <div>
                   Stage: <span className={cn("font-medium", isActive ? "text-[#007AFF]" : "text-[#34C759]")}>{stageLabel}</span>
@@ -185,15 +211,15 @@ export function CryostatPlate({
                 </div>
                 {!Number.isNaN(q0) && (
                   <div>
-                    Q0 <span className="text-white">{(q0 * 100).toFixed(1)}%</span>
-                    {!Number.isNaN(q1) && <> · Q1 <span className="text-white">{(q1 * 100).toFixed(1)}%</span></>}
+                    Q0 <span className="text-q0">{(q0 * 100).toFixed(1)}%</span>
+                    {!Number.isNaN(q1) && <> · Q1 <span className="text-q1">{(q1 * 100).toFixed(1)}%</span></>}
                   </div>
                 )}
-                {!Number.isNaN(t0) && <div>Temp <span className="text-white">{t0.toFixed(1)}</span> mK</div>}
-                {df !== 0 && <div>Δf <span className="text-white">{df.toFixed(3)}</span></div>}
+                {!Number.isNaN(t0) && <div>Temp <span className="text-[var(--label)]">{t0.toFixed(1)}</span> mK</div>}
+                {df !== 0 && <div>Δf <span className="text-[var(--label)]">{df.toFixed(3)}</span></div>}
                 {hasActiveJob && <div className="text-[#007AFF]">Job · {activeJobStatus || "running"}</div>}
                 {lastTrace && (
-                  <div className="text-zinc-400 text-[9px] pt-0.5 truncate">
+                  <div className="text-[var(--tertiary-label)] text-[9px] pt-0.5 truncate">
                     {lastTrace.tool}{lastTrace.summary ? ` — ${lastTrace.summary}` : ""}
                   </div>
                 )}

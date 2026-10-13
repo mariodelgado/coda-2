@@ -1,20 +1,65 @@
 @import "tailwindcss";
 
-:root {
+/*
+  Theme tokens — dark is :root (first paint + next-themes default before hydrate).
+  .light / [data-theme=light] override for the paper/ceramic stage.
+  Solid tints only. Never backdrop-filter (Safari stage-frost leak).
+*/
+
+:root,
+.dark {
+  color-scheme: dark;
   --background: #000000;
   --foreground: #FFFFFF;
 
-  /* iOS system dark palette (SF-feel) */
+  /* iOS system dark palette (instrument status — not the qubit language) */
   --true: #007AFF;          /* system blue — true/target */
   --applied: #FF9500;       /* system orange — applied */
   --success: #34C759;       /* system green */
   --fail: #FF3B30;          /* system red */
   --label: #FFFFFF;
-  --secondary-label: rgba(235, 235, 245, 0.60);  /* #EBEBF5 @ 60% */
-  --tertiary-label: #8E8E93;
-  --hairline: rgba(84, 84, 88, 0.65);  /* iOS dark separator */
+  --secondary-label: #C8C8D0; /* 8.2:1 on black — AA */
+  --tertiary-label: #A1A1AA;  /* 6.2:1 on black — AA */
+  --hairline: rgba(84, 84, 88, 0.65);
   --fill: rgba(120, 120, 128, 0.18);
   --panel: #1C1C1E;
+  --toolbar-bg: #121214;
+  --stage: #000000;
+  --hud: #0a0a0ccc;
+  --chip: #0a0a0cc7;
+  --composer-bg: #2c2c2e;
+  --composer-fg: #f5f5f7;
+  --composer-placeholder: rgba(235, 235, 245, 0.62);
+  --bubble-user: rgba(0, 122, 255, 0.15);
+  --bubble-agent: rgba(255, 255, 255, 0.055);
+  --bubble-agent-fg: #e4e4e7;
+  --dock-0: rgba(18, 18, 22, 0.88);
+  --dock-1: rgba(18, 18, 22, 0.72);
+  --dock-2: rgba(18, 18, 22, 0.42);
+  --dock-3: rgba(18, 18, 22, 0.16);
+  --frost-0: rgba(6, 6, 8, 0.94);
+  --frost-1: rgba(10, 10, 14, 0.82);
+  --frost-2: rgba(14, 14, 18, 0.62);
+  --frost-3: rgba(18, 18, 22, 0.38);
+  --frost-4: rgba(22, 22, 28, 0.18);
+  --frost-5: rgba(28, 28, 34, 0.06);
+  --void-tint: rgba(0, 122, 255, 0.035);
+  --hover-fill: rgba(255, 255, 255, 0.05);
+  --bezel: rgba(255, 255, 255, 0.08);
+  --splitter-hover: rgba(255, 255, 255, 0.015);
+  --splitter-drag: rgba(255, 255, 255, 0.03);
+  --handle: rgba(120, 120, 128, 0.55);
+  --handle-border: rgba(255, 255, 255, 0.12);
+  --chip-fg: #a1a1aa;
+  --chip-fg-hover: #e4e4e7;
+  --shadow: rgba(0, 0, 0, 0.65);
+
+  /* Fridge poles — qubit language (not IBM blue/purple) */
+  --q0: #1FB8A0;            /* |0⟩ cryo / mixing-chamber argon */
+  --q1: #E07030;            /* |1⟩ ember / copper thermal leak */
+  --q-mid: #809468;         /* RGB midpoint: olive/bronze superposition */
+  --q0-fg: #1FB8A0;
+  --q1-fg: #E07030;
 
   /* Typography */
   --font-sans: var(--font-geist-sans);
@@ -24,9 +69,57 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.dark {
-  --background: #000000;
-  --foreground: #FFFFFF;
+.light,
+[data-theme="light"] {
+  color-scheme: light;
+  --background: #F2EDE4;    /* warm ceramic / still-plate paper */
+  --foreground: #1A1613;
+  --true: #0055D4;
+  --applied: #B45309;
+  --success: #1B7A3A;
+  --fail: #C42820;
+  --label: #1A1613;
+  --secondary-label: #5C534C; /* ≥4.5:1 on paper */
+  --tertiary-label: #6B635C;
+  --hairline: rgba(26, 22, 19, 0.16);
+  --fill: rgba(26, 22, 19, 0.06);
+  --panel: #E6E0D4;
+  --toolbar-bg: #EAE4D8;
+  --stage: #E8E2D6;
+  --hud: #f4efe6f2;
+  --chip: #efe8dcf2;
+  --composer-bg: #ffffff;
+  --composer-fg: #1A1613;
+  --composer-placeholder: rgba(26, 22, 19, 0.45);
+  --bubble-user: rgba(0, 85, 212, 0.10);
+  --bubble-agent: rgba(26, 22, 19, 0.06);
+  --bubble-agent-fg: #1A1613;
+  --dock-0: rgba(242, 237, 228, 0.96);
+  --dock-1: rgba(242, 237, 228, 0.82);
+  --dock-2: rgba(242, 237, 228, 0.52);
+  --dock-3: rgba(242, 237, 228, 0.18);
+  --frost-0: rgba(232, 226, 214, 0.96);
+  --frost-1: rgba(232, 226, 214, 0.84);
+  --frost-2: rgba(232, 226, 214, 0.62);
+  --frost-3: rgba(232, 226, 214, 0.38);
+  --frost-4: rgba(232, 226, 214, 0.18);
+  --frost-5: rgba(232, 226, 214, 0.06);
+  --void-tint: rgba(11, 107, 92, 0.06);
+  --hover-fill: rgba(26, 22, 19, 0.05);
+  --bezel: rgba(26, 22, 19, 0.10);
+  --splitter-hover: rgba(26, 22, 19, 0.03);
+  --splitter-drag: rgba(26, 22, 19, 0.05);
+  --handle: rgba(92, 83, 76, 0.45);
+  --handle-border: rgba(26, 22, 19, 0.16);
+  --chip-fg: #5C534C;
+  --chip-fg-hover: #1A1613;
+  --shadow: rgba(26, 22, 19, 0.18);
+
+  --q0: #0B6B5C;
+  --q1: #B04412;
+  --q-mid: #5E5A37;
+  --q0-fg: #0B6B5C;
+  --q1-fg: #9A3D10;
 }
 
 * {
@@ -35,16 +128,18 @@
 
 html, body {
   height: 100%;
+  background: var(--background);
+  color: var(--foreground);
 }
 
 body {
-  background: #000000;
-  color: #FFFFFF;
+  background: var(--background);
+  color: var(--foreground);
   font-family: var(--font-sans);
-  /* Continuous gradient black void — blends hero + agent zone with no hard seam */
+  /* Solid-tint void — no backdrop-filter. Theme tokens drive both poles. */
   background-image:
-    radial-gradient(ellipse at 50% 20%, rgba(0, 122, 255, 0.035) 0%, transparent 60%),
-    linear-gradient(180deg, #000000 0%, #030303 32%, #050505 100%);
+    radial-gradient(ellipse at 50% 20%, var(--void-tint) 0%, transparent 60%),
+    linear-gradient(180deg, var(--background) 0%, var(--background) 100%);
 }
 
 /* Instrument mono for all data */
@@ -64,7 +159,7 @@ body {
   display: flex;
   align-items: center;
   padding: 0 14px;
-  background: rgba(18, 18, 20, 0.96);
+  background: var(--toolbar-bg);
   border-bottom: 1px solid var(--hairline);
   z-index: 70;
   flex-shrink: 0;
@@ -94,11 +189,11 @@ body {
   height: 100%;
   background: transparent;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid var(--bezel);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.06),
-    0 12px 32px rgba(0,0,0,0.65),
-    0 2px 8px rgba(0,0,0,0.45);
+    inset 0 1px 0 color-mix(in srgb, var(--foreground) 6%, transparent),
+    0 12px 32px var(--shadow),
+    0 2px 8px var(--shadow);
   overflow: visible;
 }
 
@@ -119,14 +214,14 @@ body {
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: #000000;
+  background: var(--stage);
 }
 
 .stage {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: #000000;
+  background: var(--stage);
 }
 
 /* Peer split layout: resizable three-pane with iPadOS Split View–style dividers.
@@ -138,7 +233,7 @@ body {
   /* Dynamic columns injected via inline style from React state (leftFr, midFr, rightFr). */
   /* Fallback at rest for first paint before hydration (roughly equal thirds) */
   grid-template-columns: 1fr 14px 1fr 14px 1fr;
-  background: #000000; /* stage; splitter tracks draw their own hairlines */
+  background: var(--stage); /* stage; splitter tracks draw their own hairlines */
   /* No gap; splitter tracks own the separation. */
 }
 
@@ -146,7 +241,7 @@ body {
 .stage-pane {
   position: relative;
   overflow: hidden;
-  background: #000000;
+  background: var(--stage);
   min-height: 0;
 }
 
@@ -176,10 +271,10 @@ body {
   transition: background-color 120ms var(--ease-out);
 }
 .stage-splitter:hover {
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--splitter-hover);
 }
 .stage-splitter.dragging {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--splitter-drag);
 }
 
 /* Thin vertical rule (iPadOS hairline). */
@@ -204,8 +299,8 @@ body {
   height: 42px;
   border-radius: 999px;
   /* Muted but visible on dark stage; uses hairline + slight fill for depth. */
-  background: rgba(120, 120, 128, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: var(--handle);
+  border: 1px solid var(--handle-border);
   opacity: 0;
   transform: translateZ(0);
   transition: opacity 120ms var(--ease-out), background-color 120ms var(--ease-out), border-color 120ms var(--ease-out);
@@ -217,8 +312,8 @@ body {
   opacity: 1;
 }
 .stage-splitter.dragging .stage-splitter-handle {
-  background: rgba(120, 120, 128, 0.75);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--handle);
+  border-color: var(--label);
 }
 
 /* Keyboard focus ring for a11y (arrows nudge split). */
@@ -266,12 +361,12 @@ body {
   /* Multi-stop solid gradient = progressive dim from opaque bottom → clear top. */
   background: linear-gradient(
     to top,
-    rgba(6, 6, 8, 0.94) 0%,
-    rgba(10, 10, 14, 0.82) 14%,
-    rgba(14, 14, 18, 0.62) 32%,
-    rgba(18, 18, 22, 0.38) 52%,
-    rgba(22, 22, 28, 0.18) 72%,
-    rgba(28, 28, 34, 0.06) 88%,
+    var(--frost-0) 0%,
+    var(--frost-1) 14%,
+    var(--frost-2) 32%,
+    var(--frost-3) 52%,
+    var(--frost-4) 72%,
+    var(--frost-5) 88%,
     transparent 100%
   );
 }
@@ -318,10 +413,10 @@ body {
   -webkit-backdrop-filter: none !important;
   background: linear-gradient(
     to top,
-    rgba(18, 18, 22, 0.88) 0%,
-    rgba(18, 18, 22, 0.72) 22%,
-    rgba(18, 18, 22, 0.42) 48%,
-    rgba(18, 18, 22, 0.16) 72%,
+    var(--dock-0) 0%,
+    var(--dock-1) 22%,
+    var(--dock-2) 48%,
+    var(--dock-3) 72%,
     transparent 100%
   );
 }
@@ -355,10 +450,10 @@ body {
   background: transparent;
 }
 .clip-row:nth-child(odd) {
-  background: rgba(255,255,255,0.012);
+  background: var(--hover-fill);
 }
 .clip-row:hover {
-  background: rgba(255,255,255,0.028);
+  background: var(--fill);
 }
 .clip-row.selected {
   /* very light selection tint so the graduated blur underneath remains visible */
@@ -378,7 +473,7 @@ body {
   border-radius: 999px;
   border: 1px solid var(--hairline);
   background: transparent;
-  color: #a1a1aa;
+  color: var(--chip-fg);
   transition: transform 160ms var(--ease-out), border-color 160ms var(--ease-out), color 160ms var(--ease-out), opacity 160ms var(--ease-out), background-color 160ms var(--ease-out);
 }
 .preset-chip:active {
@@ -386,14 +481,14 @@ body {
 }
 @media (hover: hover) and (pointer: fine) {
   .preset-chip:hover {
-    border-color: rgba(255,255,255,0.18);
-    color: #e4e4e7;
+    border-color: var(--handle-border);
+    color: var(--chip-fg-hover);
   }
 }
 .preset-chip-next {
-  border-color: rgba(10, 132, 255, 0.45);
-  color: #e4e4e7;
-  background: rgba(10, 132, 255, 0.08);
+  border-color: color-mix(in srgb, var(--q1) 45%, var(--hairline));
+  color: var(--label);
+  background: color-mix(in srgb, var(--q1) 10%, transparent);
 }
 .preset-chip-gated {
   opacity: 0.42;
@@ -404,14 +499,14 @@ body {
   }
 }
 .preset-chip-ask {
-  color: #71717a;
+  color: var(--tertiary-label);
   border-style: dashed;
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: var(--hairline);
 }
 @media (hover: hover) and (pointer: fine) {
   .preset-chip-ask:hover {
-    color: #d4d4d8;
-    border-color: rgba(255, 255, 255, 0.22);
+    color: var(--label);
+    border-color: var(--handle-border);
   }
 }
 
@@ -423,8 +518,8 @@ body {
 .composer {
   width: 100%;
   max-width: 42rem;
-  background: rgb(44, 44, 46);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--composer-bg);
+  border: 1px solid var(--hairline);
   border-radius: 999px;
   padding: 6px 10px 6px 18px;
   display: flex;
@@ -434,23 +529,23 @@ body {
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 .composer:focus-within {
-  border-color: #0a84ff;
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.35);
+  border-color: var(--true);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--true) 35%, transparent);
 }
 .composer input {
   flex: 1;
   background: transparent;
   outline: none;
   font-size: 14px;
-  color: #f5f5f7;
-  caret-color: #0a84ff;
+  color: var(--composer-fg);
+  caret-color: var(--true);
 }
 .composer input::placeholder {
-  color: rgba(235, 235, 245, 0.62);
+  color: var(--composer-placeholder);
   opacity: 1;
 }
 .composer input:disabled {
-  color: rgba(235, 235, 245, 0.6);
+  color: var(--tertiary-label);
   cursor: not-allowed;
 }
 .composer input:focus-visible {
@@ -463,14 +558,15 @@ body {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: #000000;
+  background: var(--stage);
 }
 
 /* Small fidelity HUD on hero — solid, no blur (sharp stage requirement) */
 .hud {
   font-size: 10px;
-  background: rgba(0,0,0,0.78);
+  background: var(--hud);
   border: 1px solid var(--hairline);
+  color: var(--label);
 }
 
 /* Hairline utility */
@@ -495,21 +591,21 @@ body {
 /* Details rail panel — solid (no backdrop-filter; sharp stage requirement) */
 .details {
   font-size: 11px;
-  background: rgba(18, 18, 22, 0.92);
-  border: 1px solid rgba(84, 84, 88, 0.45);
+  background: var(--panel);
+  border: 1px solid var(--hairline);
 }
 
 /* Quiet focus */
 input:focus-visible,
 button:focus-visible {
-  outline: 1px solid rgba(103,246,255,0.35);
+  outline: 1px solid color-mix(in srgb, var(--q0) 45%, transparent);
   outline-offset: -1px;
 }
 
 /* Sonner */
 [data-sonner-toaster] {
-  --normal-bg: #0a0a0f;
-  --normal-text: #e4e4e7;
+  --normal-bg: var(--panel);
+  --normal-text: var(--foreground);
   --normal-border: var(--hairline);
 }
 
@@ -564,7 +660,7 @@ button:focus-visible {
 
 /* Empty state — above tint, readable on dark dock */
 .chat-empty {
-  color: #a1a1aa;
+  color: var(--secondary-label);
   font-size: 12px;
   padding: 8px 4px;
   position: relative;
@@ -575,7 +671,7 @@ button:focus-visible {
 }
 .chat-empty-asks-label {
   margin-top: 8px !important;
-  color: #71717a;
+  color: var(--tertiary-label);
   font-size: 11px;
 }
 .chat-empty-asks {
@@ -604,15 +700,15 @@ button:focus-visible {
 
 .bubble.user {
   align-self: flex-end;
-  background: rgba(0, 122, 255, 0.15);
-  color: #fff;
+  background: var(--bubble-user);
+  color: var(--label);
   border-bottom-right-radius: 4px;
 }
 
 .bubble.agent {
   align-self: flex-start;
-  background: rgba(255, 255, 255, 0.055);
-  color: #e4e4e7;
+  background: var(--bubble-agent);
+  color: var(--bubble-agent-fg);
   border-bottom-left-radius: 4px;
 }
 
@@ -629,7 +725,7 @@ button:focus-visible {
   margin-top: 5px;
   font-size: 11px;
   line-height: 1.3;
-  color: #a1a1aa;
+  color: var(--secondary-label);
   padding: 0 2px;
 }
 
@@ -645,8 +741,8 @@ button:focus-visible {
   padding: 0 5px;
   border-radius: 999px;
   border: 1px solid var(--hairline);
-  color: #71717a;
-  background: rgba(255,255,255,0.02);
+  color: var(--tertiary-label);
+  background: var(--fill);
   font-feature-settings: "tnum" 1, "zero" 1;
   white-space: nowrap;
 }
@@ -675,3 +771,200 @@ button:focus-visible {
 
 /* Remove the old ledger clip list styles when using chat layout (they can coexist but are not primary) */
 .chat-dock .clip-list { display: none; }
+
+/* =====================================================
+   Theme chrome + fridge-pole language
+   ===================================================== */
+
+.toolbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--hairline);
+  padding: 2px 6px;
+  color: var(--label);
+  background: transparent;
+  transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out);
+}
+.toolbar-icon-btn:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .toolbar-icon-btn:hover {
+    background: var(--hover-fill);
+  }
+}
+
+.surface-hud {
+  background: var(--hud);
+  border: 1px solid var(--hairline);
+  color: var(--label);
+}
+.surface-chip {
+  background: var(--chip);
+  border: 1px solid var(--hairline);
+  color: var(--label);
+}
+
+.qubit-swatch {
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--swatch);
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 12%, transparent);
+}
+.qubit-swatch-linked {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--q1) 40%, transparent);
+}
+.qubit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--hairline);
+  background: var(--chip);
+  padding: 1px 7px 1px 5px;
+  font-family: var(--font-mono-inst);
+  font-size: 9px;
+  color: var(--label);
+}
+.qubit-chip-linked {
+  border-color: color-mix(in srgb, var(--q-fill, var(--q0)) 45%, var(--hairline));
+}
+.qubit-chip-id {
+  color: var(--q-fill, var(--q0-fg));
+  letter-spacing: 0.3px;
+}
+.qubit-chip-extra {
+  color: var(--secondary-label);
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+.qubit-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 9px;
+  color: var(--secondary-label);
+  font-family: var(--font-mono-inst);
+  letter-spacing: 0.2px;
+}
+.qubit-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.qubit-legend-item i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.dock-path {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 4px 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.state-needle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  flex-shrink: 0;
+}
+.state-needle-svg {
+  display: block;
+}
+.state-needle-arm {
+  transition: transform 220ms var(--ease-out);
+}
+.state-needle-caption {
+  font-size: 8px;
+  color: var(--tertiary-label);
+  letter-spacing: 0.3px;
+  margin-top: -2px;
+  padding-left: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .state-needle-arm {
+    transition: none;
+  }
+}
+
+.bell-histogram {
+  margin-top: 6px;
+  padding: 6px 7px 5px;
+  border-radius: 10px;
+  border: 1px solid var(--hairline);
+  background: var(--fill);
+}
+.bell-histogram-pair {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+.bell-histogram-link {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--q0), var(--q1));
+  opacity: 0.9;
+}
+.bell-histogram-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 56px;
+}
+.bell-bar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+}
+.bell-bar-track {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 3px 3px 0 0;
+  background: color-mix(in srgb, var(--foreground) 4%, transparent);
+}
+.bell-bar-fill {
+  width: 100%;
+  border-radius: 3px 3px 0 0;
+  min-height: 0;
+  transition: height 180ms var(--ease-out);
+}
+.bell-bar-label,
+.bell-bar-n {
+  font-size: 8px;
+  color: var(--tertiary-label);
+  line-height: 1.2;
+}
+.bell-histogram-meta {
+  margin-top: 3px;
+  font-size: 8px;
+  color: var(--tertiary-label);
+}
+
+.chat-trace-pill-bell {
+  border-color: color-mix(in srgb, var(--q1) 40%, var(--hairline));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--q0) 22%, transparent), color-mix(in srgb, var(--q1) 22%, transparent));
+  color: var(--label);
+}
+
+.text-q0 { color: var(--q0-fg); }
+.text-q1 { color: var(--q1-fg); }
