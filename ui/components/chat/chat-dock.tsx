@@ -90,13 +90,14 @@ export function ChatDock({
   const hasBell = turns.some(
     (t) => t.status === "succeeded" && t.traces.some((tr) => tr.tool === "run_bell_pair"),
   )
-  const nextChipLabel = !hasCalibrated
-    ? "Calibrate Q0"
-    : !hasCheckedStatus
-      ? "Q0 readiness"
-      : !hasBell
-        ? "Bell pair"
-        : "Improve Bell"
+  const nextChipLabel =
+    !q0Ready && !hasCalibrated
+      ? "Calibrate Q0"
+      : !q0Ready
+        ? "Q0 readiness"
+        : !hasBell
+          ? "Bell pair"
+          : "Improve Bell"
   const needleNext = nextGoldenStation({
     hasCalibrated,
     isReady: q0Ready || isReady,

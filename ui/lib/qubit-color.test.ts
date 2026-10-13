@@ -84,6 +84,7 @@ describe("golden-path needle", () => {
     assert.equal(nextGoldenStation({ hasCalibrated: true, isReady: true, hasBell: true }), "bell")
     assert.ok(needleAngle("calibrate") < needleAngle("ready"))
     assert.ok(needleAngle("ready") < needleAngle("bell"))
+    assert.equal(nextGoldenStation({ hasCalibrated: false, isReady: true, hasBell: false }), "bell")
   })
 })
 

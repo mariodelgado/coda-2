@@ -865,10 +865,12 @@ button:focus-visible {
 .dock-path {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 2px 4px 4px;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 2px 4px 2px;
   position: relative;
   z-index: 1;
+  flex: 0 0 auto;
 }
 
 .state-needle {
@@ -888,7 +890,7 @@ button:focus-visible {
   font-size: 8px;
   color: var(--tertiary-label);
   letter-spacing: 0.3px;
-  margin-top: -2px;
+  margin-top: -4px;
   padding-left: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
