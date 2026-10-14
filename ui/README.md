@@ -12,7 +12,7 @@ Opinionated picks from [emilkowalski/skills](https://github.com/emilkowalski/ski
 | Toasts (cal success/fail/cancel/backend down) | `sonner` |
 | Motion (transform/opacity, strong ease-out) | `motion` |
 | Theme | `next-themes` (`coda-theme` in localStorage, `prefers-color-scheme` until overridden) |
-| Qubit color | Fridge poles — cryo \|0⟩ / ember \|1⟩ (`lib/qubit-color.ts`). Not IBM blue/purple. |
+| Qubit color | Spectral poles — indigo \|0⟩ → cyan → ice \|1⟩, OKLCH (`lib/qubit-color.ts`). Not IBM blue/purple/magenta. |
 | Shared UI state | `zustand` |
 | Viz debug panel | `leva` |
 | Primitives | shadcn/ui + Radix |

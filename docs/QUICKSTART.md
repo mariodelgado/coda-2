@@ -27,7 +27,7 @@ env -u NEXT_PUBLIC_API_BASE npx next start -H 0.0.0.0 -p 3000
 
 Open http://localhost:3000.
 
-Theme: the toolbar sun/moon toggle writes `coda-theme` in `localStorage` and follows `prefers-color-scheme` until you override it. Qubit color is the fridge-pole language (cryo \|0⟩ / ember \|1⟩) — see [QUANTUM_LITERACY.md](QUANTUM_LITERACY.md).
+Theme: the toolbar sun/moon toggle writes `coda-theme` in `localStorage` and follows `prefers-color-scheme` until you override it. Light chrome is a cool near-white instrument (solid fills, hairline borders, no `backdrop-filter`). Qubit color is the spectral language (indigo \|0⟩ → cyan → ice \|1⟩, OKLCH) — see [QUANTUM_LITERACY.md](QUANTUM_LITERACY.md).
 
 **Programmatic access** (same contract as the dock; traces are the audit trail): [API.md](API.md) · [openapi.json](openapi.json) · http://127.0.0.1:8000/docs
 

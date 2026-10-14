@@ -16,8 +16,8 @@
  * - readout/gate error proxy derived from detuning or applied (no fake statics)
  *
  * Camera/lights intentionally conservative; 50/50 split preserved by parent.
- * Qubit spheres/chips use fridge poles (cryo |0⟩ / ember |1⟩). True/applied
- * markers stay the instrument pair (system blue / orange). No IBM purple.
+ * Qubit spheres/chips use the spectral language (indigo |0⟩ / ice |1⟩).
+ * True/applied markers stay the instrument pair. Chrome stays neutral.
  */
 
 import * as React from "react"
@@ -26,7 +26,7 @@ import { Html } from "@react-three/drei"
 import * as THREE from "three"
 import { cn } from "@/lib/utils"
 import { useInstrumentTheme } from "@/hooks/use-instrument-theme"
-import { p1FromBellCounts, qubitHex } from "@/lib/qubit-color"
+import { p1FromBellCounts, qubitHex, stageBackground } from "@/lib/qubit-color"
 import { BellHistogram } from "@/components/viz/bell-histogram"
 import { QubitChip } from "@/components/viz/qubit-swatch"
 
@@ -79,8 +79,9 @@ function QubitChiplet({
 }) {
   const groupRef = React.useRef<THREE.Group>(null)
 
-  // Fridge-pole language: sphere encodes measured P(|1⟩), not fidelity.
+  // Spectral language: sphere encodes measured P(|1⟩), not fidelity.
   const qColor = qubitHex(p1, phase, theme)
+  const glow = theme === "dark" ? 0.92 : 0.28
 
   const x = index === 0 ? -0.95 : 0.95
 
@@ -143,7 +144,7 @@ function QubitChiplet({
       {/* Qubit marker (Bloch-ish sphere) colored by live fidelity */}
       <mesh position={[0, 0.28, 0]}>
         <sphereGeometry args={[0.155]} />
-        <meshStandardMaterial color={qColor} emissive={qColor} emissiveIntensity={0.65} />
+        <meshStandardMaterial color={qColor} emissive={qColor} emissiveIntensity={glow} />
       </mesh>
 
       {/* Thin resonator ring (readout mode hint) */}
@@ -353,7 +354,9 @@ function LiveReadoutStrip({
 
 export function Device3D({ device, detuning, applied, bellCounts = null, phase = 0, className }: Device3DProps) {
   const theme = useInstrumentTheme()
-  const stage = theme === "light" ? "#E8E2D6" : "#000000"
+  const stage = stageBackground(theme)
+  const gridMajor = theme === "light" ? "#c5ccd6" : "#111113"
+  const gridMinor = theme === "light" ? "#dce1e8" : "#0a0a0b"
   // Pull live fidelity from device (falls back to a soft floor for first paint)
   const q0 = Number(device?.readout_fidelity?.[0] ?? device?.readout_fidelity?.["0"] ?? 0.71)
   const q1 = Number(device?.readout_fidelity?.[1] ?? device?.readout_fidelity?.["1"] ?? 0.70)
@@ -413,7 +416,7 @@ export function Device3D({ device, detuning, applied, bellCounts = null, phase =
           <QubitChiplet index={1} fidelity={q1} detuneF={df1} detuneA={da1} p1={p1q1} phase={appliedPhase} theme={theme} t1={t1_1} t2={t2_1} />
 
           {/* Very subtle grid for stage depth (kept light) */}
-          <gridHelper args={[4.2, 9, "#111113", "#0a0a0b"]} position={[0, -0.42, 0]} />
+          <gridHelper args={[4.2, 9, gridMajor, gridMinor]} position={[0, -0.42, 0]} />
         </React.Suspense>
       </Canvas>
 

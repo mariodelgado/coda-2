@@ -2,8 +2,9 @@
 
 /*
   Theme tokens — dark is :root (first paint + next-themes default before hydrate).
-  .light / [data-theme=light] override for the paper/ceramic stage.
+  .light / [data-theme=light] override for the cool near-white instrument.
   Solid tints only. Never backdrop-filter (Safari stage-frost leak).
+  Qubit color lives on --q0/--q-mid/--q1 only — chrome stays neutral.
 */
 
 :root,
@@ -43,7 +44,7 @@
   --frost-3: rgba(18, 18, 22, 0.38);
   --frost-4: rgba(22, 22, 28, 0.18);
   --frost-5: rgba(28, 28, 34, 0.06);
-  --void-tint: rgba(0, 122, 255, 0.035);
+  --void-tint: rgba(255, 255, 255, 0.03);
   --hover-fill: rgba(255, 255, 255, 0.05);
   --bezel: rgba(255, 255, 255, 0.08);
   --splitter-hover: rgba(255, 255, 255, 0.015);
@@ -54,12 +55,13 @@
   --chip-fg-hover: #e4e4e7;
   --shadow: rgba(0, 0, 0, 0.65);
 
-  /* Fridge poles — qubit language (not IBM blue/purple) */
-  --q0: #1FB8A0;            /* |0⟩ cryo / mixing-chamber argon */
-  --q1: #E07030;            /* |1⟩ ember / copper thermal leak */
-  --q-mid: #809468;         /* RGB midpoint: olive/bronze superposition */
-  --q0-fg: #1FB8A0;
-  --q1-fg: #E07030;
+  /* Spectral poles — qubit language only (not chrome). IBM magenta avoided. */
+  --q0: #0081e7;            /* |0⟩ electric indigo / ultramarine */
+  --q1: #3ce8ce;            /* |1⟩ ice mint */
+  --q-mid: #00b8d8;         /* OKLCH midpoint: luminous cyan */
+  --q0-fg: #0081e7;
+  --q1-fg: #3ce8ce;
+  --q-glow: 0 0 12px color-mix(in oklch, var(--swatch, var(--q0)) 55%, transparent);
 
   /* Typography */
   --font-sans: var(--font-geist-sans);
@@ -72,54 +74,55 @@
 .light,
 [data-theme="light"] {
   color-scheme: light;
-  --background: #F2EDE4;    /* warm ceramic / still-plate paper */
-  --foreground: #1A1613;
+  --background: #F4F6F8;    /* cool near-white instrument */
+  --foreground: #0E1218;
   --true: #0055D4;
   --applied: #B45309;
   --success: #1B7A3A;
   --fail: #C42820;
-  --label: #1A1613;
-  --secondary-label: #5C534C; /* ≥4.5:1 on paper */
-  --tertiary-label: #6B635C;
-  --hairline: rgba(26, 22, 19, 0.16);
-  --fill: rgba(26, 22, 19, 0.06);
-  --panel: #E6E0D4;
-  --toolbar-bg: #EAE4D8;
-  --stage: #E8E2D6;
-  --hud: #f4efe6f2;
-  --chip: #efe8dcf2;
+  --label: #0E1218;
+  --secondary-label: #3A4150; /* ≥4.5:1 on near-white */
+  --tertiary-label: #5A6270;
+  --hairline: rgba(14, 18, 24, 0.12);
+  --fill: rgba(14, 18, 24, 0.05);
+  --panel: #FFFFFF;
+  --toolbar-bg: #FFFFFF;
+  --stage: #EEF1F5;
+  --hud: #fffffff5;
+  --chip: #ffffff;
   --composer-bg: #ffffff;
-  --composer-fg: #1A1613;
-  --composer-placeholder: rgba(26, 22, 19, 0.45);
-  --bubble-user: rgba(0, 85, 212, 0.10);
-  --bubble-agent: rgba(26, 22, 19, 0.06);
-  --bubble-agent-fg: #1A1613;
-  --dock-0: rgba(242, 237, 228, 0.96);
-  --dock-1: rgba(242, 237, 228, 0.82);
-  --dock-2: rgba(242, 237, 228, 0.52);
-  --dock-3: rgba(242, 237, 228, 0.18);
-  --frost-0: rgba(232, 226, 214, 0.96);
-  --frost-1: rgba(232, 226, 214, 0.84);
-  --frost-2: rgba(232, 226, 214, 0.62);
-  --frost-3: rgba(232, 226, 214, 0.38);
-  --frost-4: rgba(232, 226, 214, 0.18);
-  --frost-5: rgba(232, 226, 214, 0.06);
-  --void-tint: rgba(11, 107, 92, 0.06);
-  --hover-fill: rgba(26, 22, 19, 0.05);
-  --bezel: rgba(26, 22, 19, 0.10);
-  --splitter-hover: rgba(26, 22, 19, 0.03);
-  --splitter-drag: rgba(26, 22, 19, 0.05);
-  --handle: rgba(92, 83, 76, 0.45);
-  --handle-border: rgba(26, 22, 19, 0.16);
-  --chip-fg: #5C534C;
-  --chip-fg-hover: #1A1613;
-  --shadow: rgba(26, 22, 19, 0.18);
+  --composer-fg: #0E1218;
+  --composer-placeholder: rgba(14, 18, 24, 0.42);
+  --bubble-user: rgba(14, 18, 24, 0.06);
+  --bubble-agent: rgba(14, 18, 24, 0.04);
+  --bubble-agent-fg: #0E1218;
+  --dock-0: rgba(244, 246, 248, 0.97);
+  --dock-1: rgba(244, 246, 248, 0.86);
+  --dock-2: rgba(244, 246, 248, 0.55);
+  --dock-3: rgba(244, 246, 248, 0.18);
+  --frost-0: rgba(238, 241, 245, 0.97);
+  --frost-1: rgba(238, 241, 245, 0.86);
+  --frost-2: rgba(238, 241, 245, 0.62);
+  --frost-3: rgba(238, 241, 245, 0.38);
+  --frost-4: rgba(238, 241, 245, 0.18);
+  --frost-5: rgba(238, 241, 245, 0.06);
+  --void-tint: rgba(14, 18, 24, 0.03);
+  --hover-fill: rgba(14, 18, 24, 0.04);
+  --bezel: rgba(14, 18, 24, 0.10);
+  --splitter-hover: rgba(14, 18, 24, 0.03);
+  --splitter-drag: rgba(14, 18, 24, 0.05);
+  --handle: rgba(58, 65, 80, 0.40);
+  --handle-border: rgba(14, 18, 24, 0.12);
+  --chip-fg: #3A4150;
+  --chip-fg-hover: #0E1218;
+  --shadow: rgba(14, 18, 24, 0.10);
 
-  --q0: #0B6B5C;
-  --q1: #B04412;
-  --q-mid: #5E5A37;
-  --q0-fg: #0B6B5C;
-  --q1-fg: #9A3D10;
+  --q0: #004d91;
+  --q1: #008d85;
+  --q-mid: #006f88;
+  --q0-fg: #004d91;
+  --q1-fg: #005a52;
+  --q-glow: inset 0 0 0 1px color-mix(in oklch, var(--swatch, var(--q0)) 40%, transparent);
 }
 
 * {
@@ -486,9 +489,9 @@ body {
   }
 }
 .preset-chip-next {
-  border-color: color-mix(in srgb, var(--q1) 45%, var(--hairline));
+  border-color: var(--hairline);
   color: var(--label);
-  background: color-mix(in srgb, var(--q1) 10%, transparent);
+  background: var(--fill);
 }
 .preset-chip-gated {
   opacity: 0.42;
@@ -598,7 +601,7 @@ body {
 /* Quiet focus */
 input:focus-visible,
 button:focus-visible {
-  outline: 1px solid color-mix(in srgb, var(--q0) 45%, transparent);
+  outline: 1px solid color-mix(in srgb, var(--true) 45%, transparent);
   outline-offset: -1px;
 }
 
@@ -773,7 +776,7 @@ button:focus-visible {
 .chat-dock .clip-list { display: none; }
 
 /* =====================================================
-   Theme chrome + fridge-pole language
+   Theme chrome + spectral qubit language (color only on state)
    ===================================================== */
 
 .toolbar-icon-btn {
@@ -812,10 +815,10 @@ button:focus-visible {
   border-radius: 999px;
   background: var(--swatch);
   flex-shrink: 0;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--foreground) 12%, transparent);
+  box-shadow: var(--q-glow);
 }
 .qubit-swatch-linked {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--q1) 40%, transparent);
+  box-shadow: var(--q-glow);
 }
 .qubit-chip {
   display: inline-flex;
@@ -860,6 +863,7 @@ button:focus-visible {
   width: 8px;
   height: 8px;
   border-radius: 999px;
+  box-shadow: var(--q-glow);
 }
 
 .dock-path {
@@ -919,8 +923,8 @@ button:focus-visible {
   flex: 1;
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--q0), var(--q1));
-  opacity: 0.9;
+  background: linear-gradient(90deg in oklch, var(--q0) 0%, var(--q-mid) 50%, var(--q1) 100%);
+  opacity: 0.95;
 }
 .bell-histogram-bars {
   display: flex;
@@ -949,6 +953,7 @@ button:focus-visible {
   border-radius: 3px 3px 0 0;
   min-height: 0;
   transition: height 180ms var(--ease-out);
+  box-shadow: var(--q-glow);
 }
 .bell-bar-label,
 .bell-bar-n {
@@ -963,8 +968,8 @@ button:focus-visible {
 }
 
 .chat-trace-pill-bell {
-  border-color: color-mix(in srgb, var(--q1) 40%, var(--hairline));
-  background: linear-gradient(90deg, color-mix(in srgb, var(--q0) 22%, transparent), color-mix(in srgb, var(--q1) 22%, transparent));
+  border-color: var(--hairline);
+  background: linear-gradient(90deg in oklch, color-mix(in oklch, var(--q0) 28%, transparent), color-mix(in oklch, var(--q-mid) 22%, transparent), color-mix(in oklch, var(--q1) 28%, transparent));
   color: var(--label);
 }
 

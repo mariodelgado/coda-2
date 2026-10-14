@@ -18,6 +18,7 @@ import { OrbitControls } from "@react-three/drei"
 import * as THREE from "three"
 import { cn } from "@/lib/utils"
 import { useInstrumentTheme } from "@/hooks/use-instrument-theme"
+import { stageBackground } from "@/lib/qubit-color"
 
 export interface CalibrationSurfaceProps {
   detuning: Record<string, number> | null
@@ -176,7 +177,7 @@ function Scene({
 
   return (
     <>
-      <color attach="background" args={[theme === "light" ? "#E8E2D6" : "#000000"]} />
+      <color attach="background" args={[stageBackground(theme)]} />
       <ambientLight intensity={0.6} />
       <directionalLight position={[4.5, 7.5, 3.5]} intensity={1.55} />
       <directionalLight position={[-5, 2.5, -6]} intensity={0.55} color="#a5b4fc" />
@@ -190,7 +191,7 @@ function Scene({
         <Markers detuning={detuning} />
         {/* Grid sits on the same local plane as the surface (tiny depth offset for draw order).
             Raised contrast vs pure black stage / fidelity surface; iOS-muted neutral grays (no neon/purple). */}
-        <gridHelper args={[3, 12, theme === "light" ? "#b9b2a4" : "#3a3a3e", theme === "light" ? "#cfc7b8" : "#2b2b2f"]} position={[0, 0, -0.003]} />
+        <gridHelper args={[3, 12, theme === "light" ? "#c5ccd6" : "#3a3a3e", theme === "light" ? "#dce1e8" : "#2b2b2f"]} position={[0, 0, -0.003]} />
       </group>
       <OrbitControls
         enablePan={false}

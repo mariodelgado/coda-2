@@ -12,9 +12,9 @@ const STATIONS: { id: GoldenStation; label: string }[] = [
 const INDEX: Record<GoldenStation, number> = { calibrate: 0, ready: 1, bell: 2 }
 
 /**
- * Directional fridge-pole needle. Inspired by Quantum Compass's idea of a
- * gradient that points — not IBM's blue/purple brand. Cryo at the start,
- * ember at the tip: the next golden-path step (Calibrate → READY → Bell).
+ * Directional spectral needle. Inspired by Quantum Compass's idea of a
+ * gradient that points — indigo at the start, ice at the tip. Next
+ * golden-path step: Calibrate → READY → Bell.
  */
 export function StateNeedle({
   next,

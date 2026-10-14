@@ -1,41 +1,35 @@
 /**
- * Coda 2 qubit color language — "fridge poles".
+ * Coda 2 qubit color language — spectral poles.
  *
- * Two thermodynamic poles, not IBM Quantum's blue/purple brand gradient:
- *   |0⟩ Cryo  — mixing-chamber argon (teal). Ground state. ~10–20 mK.
- *   |1⟩ Ember — copper thermal leak (warm copper). Excited state.
+ * Luminous cool gradient in the spirit of IBM Quantum Compass, not their
+ * brand path (blue → purple → magenta). Ours:
+ *   |0⟩ Indigo  — deep electric ultramarine (OKLCH H ≈ 252°)
+ *   mid  Cyan   — vivid spectral midpoint (H ≈ 216°)
+ *   |1⟩ Ice     — pale ice-mint / cyan (H ≈ 180°)
  *
- * Interpolation is RGB so the midpoint is olive/bronze. The short HSL arc
- * between teal and copper runs through blue→purple — that is IBM Compass
- * territory and is intentionally avoided.
- *
- * Phase (radians) is a small hue rotation (±16°) around the interpolated
- * color so identity stays fridge-poles. Entangled pairs share one linked
- * gradient rather than two independent swatches.
+ * Interpolation is OKLCH so chroma stays high. RGB mixing of these poles
+ * goes grey-teal; we never do that. Hue travels the short decreasing arc
+ * (indigo → cyan → mint). Phase is a small OKLCH hue rotation (±8°).
+ * Entangled pairs share one linked spectral gradient.
  */
 
 export type RGB = { r: number; g: number; b: number }
+export type OKLCH = { l: number; c: number; h: number }
 export type ThemeMode = "dark" | "light"
 
-/** Dark-stage fills — vivid on black. */
-export const CRYO_DARK: RGB = { r: 31, g: 184, b: 160 } // #1FB8A0
-export const EMBER_DARK: RGB = { r: 224, g: 112, b: 48 } // #E07030
+/** Dark fills — luminous on black. */
+export const INDIGO_DARK_OKLCH: OKLCH = { l: 0.6, c: 0.18, h: 252 }
+export const ICE_DARK_OKLCH: OKLCH = { l: 0.84, c: 0.14, h: 180 }
 
-/** Light-stage fills — darker so AA text-on-page still holds. */
-export const CRYO_LIGHT: RGB = { r: 11, g: 107, b: 92 } // #0B6B5C
-export const EMBER_LIGHT: RGB = { r: 176, g: 68, b: 18 } // #B04412
+/** Light fills — saturated jewels on near-white, not pastel. */
+export const INDIGO_LIGHT_OKLCH: OKLCH = { l: 0.42, c: 0.18, h: 252 }
+export const ICE_LIGHT_OKLCH: OKLCH = { l: 0.58, c: 0.16, h: 188 }
 
-/** IBM Quantum Compass hue band we must not land in (blue → purple). */
-export const IBM_HUE_MIN = 220
-export const IBM_HUE_MAX = 300
+/** IBM Compass magenta/purple-pink band we must not enter. */
+export const IBM_MAGENTA_MIN = 280
+export const IBM_MAGENTA_MAX = 340
 
-const PHASE_HUE_SPAN = 16
-
-export function poles(theme: ThemeMode = "dark"): { cryo: RGB; ember: RGB } {
-  return theme === "light"
-    ? { cryo: CRYO_LIGHT, ember: EMBER_LIGHT }
-    : { cryo: CRYO_DARK, ember: EMBER_DARK }
-}
+const PHASE_HUE_SPAN = 8
 
 export function clamp01(v: number): number {
   if (!Number.isFinite(v)) return 0
@@ -46,13 +40,93 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
-export function mixRgb(a: RGB, b: RGB, t: number): RGB {
+/** Shortest-arc hue mix, result in [0, 360). */
+export function mixHue(h0: number, h1: number, t: number): number {
+  const d = ((h1 - h0 + 540) % 360) - 180
+  return (h0 + d * t + 360) % 360
+}
+
+export function mixOklch(a: OKLCH, b: OKLCH, t: number): OKLCH {
   const u = clamp01(t)
   return {
-    r: lerp(a.r, b.r, u),
-    g: lerp(a.g, b.g, u),
-    b: lerp(a.b, b.b, u),
+    l: lerp(a.l, b.l, u),
+    c: lerp(a.c, b.c, u),
+    h: mixHue(a.h, b.h, u),
   }
+}
+
+export function polesOklch(theme: ThemeMode = "dark"): { indigo: OKLCH; ice: OKLCH } {
+  return theme === "light"
+    ? { indigo: INDIGO_LIGHT_OKLCH, ice: ICE_LIGHT_OKLCH }
+    : { indigo: INDIGO_DARK_OKLCH, ice: ICE_DARK_OKLCH }
+}
+
+function srgbEncode(x: number): number {
+  const y = x <= 0.0031308 ? 12.92 * x : 1.055 * x ** (1 / 2.4) - 0.055
+  return Math.round(Math.min(1, Math.max(0, y)) * 255)
+}
+
+function srgbDecode(u8: number): number {
+  const x = u8 / 255
+  return x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
+}
+
+function oklchToLinear(L: number, C: number, h: number): [number, number, number] {
+  const hr = (h * Math.PI) / 180
+  const a = C * Math.cos(hr)
+  const b = C * Math.sin(hr)
+  const l_ = L + 0.3963377774 * a + 0.2158037573 * b
+  const m_ = L - 0.1055613458 * a - 0.0638541728 * b
+  const s_ = L - 0.0894841775 * a - 1.291485548 * b
+  const l = l_ ** 3
+  const m = m_ ** 3
+  const s = s_ ** 3
+  return [
+    +4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ]
+}
+
+function inGamut(lin: [number, number, number]): boolean {
+  return lin.every((x) => x >= -0.002 && x <= 1.002)
+}
+
+/** OKLCH → sRGB with chroma reduction until in-gamut. */
+export function oklchToRgb(ok: OKLCH): RGB {
+  let lo = 0
+  let hi = Math.max(0, ok.c)
+  let best = oklchToLinear(ok.l, 0, ok.h)
+  for (let i = 0; i < 20; i++) {
+    const mid = (lo + hi) / 2
+    const lin = oklchToLinear(ok.l, mid, ok.h)
+    if (inGamut(lin)) {
+      lo = mid
+      best = lin
+    } else {
+      hi = mid
+    }
+  }
+  return { r: srgbEncode(best[0]), g: srgbEncode(best[1]), b: srgbEncode(best[2]) }
+}
+
+export function rgbToOklch({ r, g, b }: RGB): OKLCH {
+  const R = srgbDecode(r)
+  const G = srgbDecode(g)
+  const B = srgbDecode(b)
+  const l = 0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B
+  const m = 0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B
+  const s = 0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B
+  const l_ = Math.cbrt(l)
+  const m_ = Math.cbrt(m)
+  const s_ = Math.cbrt(s)
+  const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_
+  const a = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_
+  const bb = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_
+  const C = Math.hypot(a, bb)
+  let h = (Math.atan2(bb, a) * 180) / Math.PI
+  if (h < 0) h += 360
+  return { l: L, c: C, h }
 }
 
 export function rgbToHex({ r, g, b }: RGB): string {
@@ -70,78 +144,29 @@ export function hexToRgb(hex: string): RGB {
   return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 }
 }
 
+export function oklchToHex(ok: OKLCH): string {
+  return rgbToHex(oklchToRgb(ok))
+}
+
+export const INDIGO_DARK = oklchToRgb(INDIGO_DARK_OKLCH)
+export const ICE_DARK = oklchToRgb(ICE_DARK_OKLCH)
+export const INDIGO_LIGHT = oklchToRgb(INDIGO_LIGHT_OKLCH)
+export const ICE_LIGHT = oklchToRgb(ICE_LIGHT_OKLCH)
+
+export function poles(theme: ThemeMode = "dark"): { indigo: RGB; ice: RGB } {
+  return theme === "light"
+    ? { indigo: INDIGO_LIGHT, ice: ICE_LIGHT }
+    : { indigo: INDIGO_DARK, ice: ICE_DARK }
+}
+
+export function mixRgb(a: RGB, b: RGB, t: number): RGB {
+  const u = clamp01(t)
+  return { r: lerp(a.r, b.r, u), g: lerp(a.g, b.g, u), b: lerp(a.b, b.b, u) }
+}
+
 /** Hue in degrees [0, 360). */
-export function rgbHue({ r, g, b }: RGB): number {
-  const R = r / 255
-  const G = g / 255
-  const B = b / 255
-  const max = Math.max(R, G, B)
-  const min = Math.min(R, G, B)
-  const d = max - min
-  if (d < 1e-6) return 0
-  let h = 0
-  if (max === R) h = ((G - B) / d) % 6
-  else if (max === G) h = (B - R) / d + 2
-  else h = (R - G) / d + 4
-  h *= 60
-  if (h < 0) h += 360
-  return h
-}
-
-export function rgbToHsl({ r, g, b }: RGB): { h: number; s: number; l: number } {
-  const R = r / 255
-  const G = g / 255
-  const B = b / 255
-  const max = Math.max(R, G, B)
-  const min = Math.min(R, G, B)
-  const l = (max + min) / 2
-  const d = max - min
-  if (d < 1e-6) return { h: 0, s: 0, l }
-  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
-  return { h: rgbHue({ r, g, b }), s, l }
-}
-
-export function hslToRgb(h: number, s: number, l: number): RGB {
-  const hh = ((h % 360) + 360) % 360
-  const C = (1 - Math.abs(2 * l - 1)) * s
-  const X = C * (1 - Math.abs(((hh / 60) % 2) - 1))
-  const m = l - C / 2
-  let rp = 0
-  let gp = 0
-  let bp = 0
-  if (hh < 60) {
-    rp = C
-    gp = X
-  } else if (hh < 120) {
-    rp = X
-    gp = C
-  } else if (hh < 180) {
-    gp = C
-    bp = X
-  } else if (hh < 240) {
-    gp = X
-    bp = C
-  } else if (hh < 300) {
-    rp = X
-    bp = C
-  } else {
-    rp = C
-    bp = X
-  }
-  return {
-    r: (rp + m) * 255,
-    g: (gp + m) * 255,
-    b: (bp + m) * 255,
-  }
-}
-
-/**
- * Shift hue by a small signed amount. Keeps the fridge-pole identity —
- * never used to walk the IBM blue/purple arc.
- */
-export function shiftHue(rgb: RGB, deg: number): RGB {
-  const { h, s, l } = rgbToHsl(rgb)
-  return hslToRgb(h + deg, s, l)
+export function rgbHue(rgb: RGB): number {
+  return rgbToOklch(rgb).h
 }
 
 export function relativeLuminance({ r, g, b }: RGB): number {
@@ -160,15 +185,19 @@ export function contrastRatio(a: RGB, b: RGB): number {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-/** Ink that meets WCAG AA (4.5:1) against a fill, preferring dark on bright fills. */
 export function inkOn(fill: RGB): RGB {
-  const dark: RGB = { r: 18, g: 16, b: 14 }
-  const light: RGB = { r: 255, g: 252, b: 247 }
+  const dark: RGB = { r: 14, g: 18, b: 24 }
+  const light: RGB = { r: 247, g: 249, b: 252 }
   return contrastRatio(fill, dark) >= 4.5 ? dark : light
 }
 
+export function isIbmMagenta(h: number): boolean {
+  return h >= IBM_MAGENTA_MIN && h <= IBM_MAGENTA_MAX
+}
+
+/** @deprecated use isIbmMagenta — indigo lives near 250°, which is not IBM's magenta path. */
 export function isIbmHue(h: number): boolean {
-  return h >= IBM_HUE_MIN && h <= IBM_HUE_MAX
+  return isIbmMagenta(h)
 }
 
 /**
@@ -180,11 +209,11 @@ export function qubitColor(
   phaseRad = 0,
   theme: ThemeMode = "dark",
 ): RGB {
-  const { cryo, ember } = poles(theme)
-  const mixed = mixRgb(cryo, ember, clamp01(p1))
+  const { indigo, ice } = polesOklch(theme)
+  const mixed = mixOklch(indigo, ice, clamp01(p1))
   const wrap = Number.isFinite(phaseRad) ? phaseRad : 0
-  const hueShift = Math.sin(wrap) * PHASE_HUE_SPAN
-  return shiftHue(mixed, hueShift)
+  mixed.h = (mixed.h + Math.sin(wrap) * PHASE_HUE_SPAN + 360) % 360
+  return oklchToRgb(mixed)
 }
 
 export function qubitHex(
@@ -195,6 +224,24 @@ export function qubitHex(
   return rgbToHex(qubitColor(p1, phaseRad, theme))
 }
 
+export function qubitOklch(
+  p1: number,
+  phaseRad = 0,
+  theme: ThemeMode = "dark",
+): OKLCH {
+  return rgbToOklch(qubitColor(p1, phaseRad, theme))
+}
+
+/** Three-stop spectral CSS gradient (OKLCH mid so it stays cyan, not grey). */
+export function spectralCss(from: RGB, to: RGB, angle = "90deg"): string {
+  const a = rgbToOklch(from)
+  const b = rgbToOklch(to)
+  const mid = oklchToHex(mixOklch(a, b, 0.5))
+  const f = rgbToHex(from)
+  const t = rgbToHex(to)
+  return `linear-gradient(${angle} in oklch, ${f} 0%, ${mid} 50%, ${t} 100%)`
+}
+
 /** Linked gradient for an entangled pair — one stroke, two poles. */
 export function pairGradient(
   p1a: number,
@@ -202,12 +249,12 @@ export function pairGradient(
   phaseRad = 0,
   theme: ThemeMode = "dark",
 ): { from: string; to: string; css: string } {
-  const from = qubitHex(p1a, phaseRad, theme)
-  const to = qubitHex(p1b, phaseRad + Math.PI * 0.15, theme)
+  const fromRgb = qubitColor(p1a, phaseRad, theme)
+  const toRgb = qubitColor(p1b, phaseRad + Math.PI * 0.15, theme)
   return {
-    from,
-    to,
-    css: `linear-gradient(90deg, ${from} 0%, ${to} 100%)`,
+    from: rgbToHex(fromRgb),
+    to: rgbToHex(toRgb),
+    css: spectralCss(fromRgb, toRgb, "90deg"),
   }
 }
 
@@ -236,19 +283,14 @@ export function outcomeColor(
   bitstring: "00" | "01" | "10" | "11" | string,
   theme: ThemeMode = "dark",
 ): { fill: string; css: string } {
-  const { cryo, ember } = poles(theme)
-  const a = bitstring[0] === "1" ? ember : cryo
-  const b = bitstring[1] === "1" ? ember : cryo
+  const { indigo, ice } = poles(theme)
+  const a = bitstring[0] === "1" ? ice : indigo
+  const b = bitstring[1] === "1" ? ice : indigo
   if (bitstring === "00" || bitstring === "11") {
     const fill = rgbToHex(a)
     return { fill, css: fill }
   }
-  const from = rgbToHex(a)
-  const to = rgbToHex(b)
-  return {
-    fill: rgbToHex(mixRgb(a, b, 0.5)),
-    css: `linear-gradient(180deg, ${from} 0%, ${to} 100%)`,
-  }
+  return { fill: rgbToHex(oklchToRgb(mixOklch(rgbToOklch(a), rgbToOklch(b), 0.5))), css: spectralCss(a, b, "180deg") }
 }
 
 export type GoldenStation = "calibrate" | "ready" | "bell"
@@ -290,4 +332,8 @@ export function qubitVisual(
     entangled,
     hex: qubitHex(p1, phaseRad, theme),
   }
+}
+
+export function stageBackground(theme: ThemeMode): string {
+  return theme === "light" ? "#EEF1F5" : "#000000"
 }
