@@ -27,6 +27,27 @@ import * as THREE from "three"
 import { cn } from "@/lib/utils"
 import { useInstrumentTheme } from "@/hooks/use-instrument-theme"
 import { p1FromBellCounts, qubitHex, stageBackground } from "@/lib/qubit-color"
+
+/** Package metals — dark slab on void, cool aluminum on light paper. */
+function chassis(theme: "dark" | "light") {
+  return theme === "light"
+    ? {
+        plate: "#d5dbe4",
+        package: "#c4ccd8",
+        metal: "#9aa5b4",
+        metalHi: "#7b8796",
+        slit: "#4a5564",
+        rim: "#5c6776",
+      }
+    : {
+        plate: "#0a0b0e",
+        package: "#0c0d10",
+        metal: "#1f2937",
+        metalHi: "#334155",
+        slit: "#0a0b0e",
+        rim: "#334155",
+      }
+}
 import { BellHistogram } from "@/components/viz/bell-histogram"
 import { QubitChip } from "@/components/viz/qubit-swatch"
 
@@ -82,6 +103,9 @@ function QubitChiplet({
   // Spectral language: sphere encodes measured P(|1⟩), not fidelity.
   const qColor = qubitHex(p1, phase, theme)
   const glow = theme === "dark" ? 0.92 : 0.28
+  const ch = chassis(theme)
+  const appliedHex = qubitHex(1, 0, theme)
+  const trueHex = qubitHex(0, 0, theme)
 
   const x = index === 0 ? -0.95 : 0.95
 
@@ -103,42 +127,42 @@ function QubitChiplet({
       {/* PCB/package ground plane pad under this qubit (darker matte) */}
       <mesh position={[0, -0.06, 0]}>
         <boxGeometry args={[1.08, 0.06, 0.64]} />
-        <meshStandardMaterial color="#0f1115" metalness={0.35} roughness={0.85} />
+        <meshStandardMaterial color={ch.package} metalness={0.35} roughness={0.85} />
       </mesh>
 
       {/* Thin routing trace stub (control line hint) */}
       <mesh position={[index === 0 ? -0.66 : 0.66, -0.02, 0]}>
         <boxGeometry args={[0.22, 0.015, 0.035]} />
-        <meshStandardMaterial color="#1f2937" metalness={0.6} roughness={0.5} />
+        <meshStandardMaterial color={ch.metal} metalness={0.6} roughness={0.5} />
       </mesh>
 
       {/* Main transmon island / resonator pad (metallic chiplet) */}
       <mesh position={[0, 0.02, 0]}>
         <boxGeometry args={[0.78, 0.14, 0.46]} />
-        <meshStandardMaterial color="#1f2937" metalness={0.7} roughness={0.4} />
+        <meshStandardMaterial color={ch.metal} metalness={0.7} roughness={0.4} />
       </mesh>
 
       {/* Subtle top cap / ground plane relief */}
       <mesh position={[0, 0.11, 0]}>
         <boxGeometry args={[0.72, 0.02, 0.40]} />
-        <meshStandardMaterial color="#334155" metalness={0.45} roughness={0.55} />
+        <meshStandardMaterial color={ch.metalHi} metalness={0.45} roughness={0.55} />
       </mesh>
 
       {/* Josephson junction gap cue (very thin dark slit) */}
       <mesh position={[0, 0.095, 0]}>
         <boxGeometry args={[0.08, 0.03, 0.18]} />
-        <meshStandardMaterial color="#0a0b0e" metalness={0.1} roughness={0.9} />
+        <meshStandardMaterial color={ch.slit} metalness={0.1} roughness={0.9} />
       </mesh>
 
       {/* Readout resonator stub (perpendicular microstrip hint) */}
       <mesh position={[0, 0.085, index === 0 ? -0.32 : 0.32]}>
         <boxGeometry args={[0.16, 0.018, 0.14]} />
-        <meshStandardMaterial color="#1f2937" metalness={0.55} roughness={0.5} />
+        <meshStandardMaterial color={ch.metal} metalness={0.55} roughness={0.5} />
       </mesh>
       {/* Resonator finger / termination hint */}
       <mesh position={[0, 0.095, index === 0 ? -0.41 : 0.41]}>
         <boxGeometry args={[0.06, 0.01, 0.06]} />
-        <meshStandardMaterial color="#334155" metalness={0.4} roughness={0.6} />
+        <meshStandardMaterial color={ch.metalHi} metalness={0.4} roughness={0.6} />
       </mesh>
 
       {/* Qubit marker (Bloch-ish sphere) colored by live fidelity */}
@@ -153,16 +177,16 @@ function QubitChiplet({
         <meshBasicMaterial color={qColor} transparent opacity={0.26} />
       </mesh>
 
-      {/* Applied calibration position (amber/orange) */}
+      {/* Applied calibration position — ice pole */}
       <mesh position={[0.0, 0.165, 0.0]}>
         <sphereGeometry args={[0.042]} />
-        <meshStandardMaterial color="#FF9500" emissive="#FF9500" emissiveIntensity={0.85} />
+        <meshStandardMaterial color={appliedHex} emissive={appliedHex} emissiveIntensity={0.85} />
       </mesh>
 
-      {/* True hardware position (blue), offset by live detuning */}
+      {/* True hardware position — indigo pole, offset by live detuning */}
       <mesh position={[trueDx, 0.165, trueDz]}>
         <sphereGeometry args={[0.036]} />
-        <meshStandardMaterial color="#007AFF" emissive="#007AFF" emissiveIntensity={0.8} />
+        <meshStandardMaterial color={trueHex} emissive={trueHex} emissiveIntensity={0.8} />
       </mesh>
 
       {/* Small delta line between applied and true */}
@@ -188,32 +212,33 @@ function QubitChiplet({
   )
 }
 
-function BusCoupler({ tint }: { tint?: string }) {
+function BusCoupler({ tint, theme }: { tint?: string; theme: "dark" | "light" }) {
+  const ch = chassis(theme)
   return (
     <group>
       {/* Primary bus line (center coupler) — tinted when the pair is entangled */}
       <mesh position={[0, 0.18, 0]}>
         <boxGeometry args={[1.72, 0.032, 0.09]} />
-        <meshStandardMaterial color={tint || "#1f2937"} metalness={0.55} roughness={0.5} emissive={tint || "#000000"} emissiveIntensity={tint ? 0.35 : 0} />
+        <meshStandardMaterial color={tint || ch.metal} metalness={0.55} roughness={0.5} emissive={tint || "#000000"} emissiveIntensity={tint ? 0.35 : 0} />
       </mesh>
       {/* Bus top cap */}
       <mesh position={[0, 0.22, 0]}>
         <boxGeometry args={[1.48, 0.012, 0.06]} />
-        <meshStandardMaterial color="#334155" metalness={0.4} roughness={0.6} />
+        <meshStandardMaterial color={ch.metalHi} metalness={0.4} roughness={0.6} />
       </mesh>
 
       {/* Interdigitated finger cues (left side) */}
       {[-0.42, -0.18, 0.06].map((z, i) => (
         <mesh key={`lf-${i}`} position={[-0.38, 0.205, z]}>
           <boxGeometry args={[0.18, 0.01, 0.03]} />
-          <meshStandardMaterial color="#1f2937" metalness={0.5} roughness={0.55} />
+          <meshStandardMaterial color={ch.metal} metalness={0.5} roughness={0.55} />
         </mesh>
       ))}
       {/* Interdigitated finger cues (right side) */}
       {[0.42, 0.18, -0.06].map((z, i) => (
         <mesh key={`rf-${i}`} position={[0.38, 0.205, z]}>
           <boxGeometry args={[0.18, 0.01, 0.03]} />
-          <meshStandardMaterial color="#1f2937" metalness={0.5} roughness={0.55} />
+          <meshStandardMaterial color={ch.metal} metalness={0.5} roughness={0.55} />
         </mesh>
       ))}
 
@@ -221,57 +246,59 @@ function BusCoupler({ tint }: { tint?: string }) {
       {[-0.6, 0, 0.6].map((x, i) => (
         <mesh key={`via-${i}`} position={[x, 0.195, 0]}>
           <cylinderGeometry args={[0.018, 0.018, 0.035, 12]} />
-          <meshStandardMaterial color="#0f1115" metalness={0.7} roughness={0.4} />
+          <meshStandardMaterial color={ch.package} metalness={0.7} roughness={0.4} />
         </mesh>
       ))}
     </group>
   )
 }
 
-function PackageGroundPlane() {
+function PackageGroundPlane({ theme }: { theme: "dark" | "light" }) {
+  const ch = chassis(theme)
   return (
     <group>
       {/* Main package / interposer ground plane (matte PCB-like) */}
       <mesh position={[0, -0.24, 0]} rotation={[0, 0, 0]}>
         <cylinderGeometry args={[2.18, 2.24, 0.08, 60, 1, false]} />
-        <meshStandardMaterial color="#0c0d10" metalness={0.25} roughness={0.9} />
+        <meshStandardMaterial color={ch.package} metalness={0.25} roughness={0.9} />
       </mesh>
 
       {/* Inner polished ring (package seal) */}
       <mesh position={[0, -0.18, 0]}>
         <cylinderGeometry args={[1.88, 1.92, 0.03, 60]} />
-        <meshStandardMaterial color="#1f2937" metalness={0.55} roughness={0.5} />
+        <meshStandardMaterial color={ch.metal} metalness={0.55} roughness={0.5} />
       </mesh>
 
       {/* Subtle rim highlight / lid edge */}
       <mesh position={[0, -0.14, 0]}>
         <ringGeometry args={[2.02, 2.14, 52]} />
-        <meshBasicMaterial color="#334155" transparent opacity={0.32} side={2} />
+        <meshBasicMaterial color={ch.rim} transparent opacity={theme === "light" ? 0.55 : 0.32} side={2} />
       </mesh>
 
       {/* Sparse via field hints on the ground plane (purely visual density) */}
       {[-1.1, -0.55, 0.55, 1.1].map((x, i) => (
         <mesh key={`gvia-${i}`} position={[x, -0.20, 0.6 - i * 0.35]}>
           <cylinderGeometry args={[0.022, 0.022, 0.04, 10]} />
-          <meshStandardMaterial color="#0a0b0e" metalness={0.3} roughness={0.85} />
+          <meshStandardMaterial color={ch.slit} metalness={0.3} roughness={0.85} />
         </mesh>
       ))}
     </group>
   )
 }
 
-function CryoColdPlate() {
+function CryoColdPlate({ theme }: { theme: "dark" | "light" }) {
+  const ch = chassis(theme)
   return (
     <group>
       {/* Deep cold plate (below package) */}
       <mesh position={[0, -0.38, 0]} rotation={[0, 0, 0]}>
         <cylinderGeometry args={[2.32, 2.38, 0.12, 64, 1, false]} />
-        <meshStandardMaterial color="#0a0b0e" metalness={0.8} roughness={0.45} />
+        <meshStandardMaterial color={ch.plate} metalness={0.8} roughness={0.45} />
       </mesh>
       {/* Subtle inner polish band */}
       <mesh position={[0, -0.30, 0]}>
         <cylinderGeometry args={[2.10, 2.14, 0.02, 64]} />
-        <meshStandardMaterial color="#111316" metalness={0.65} roughness={0.4} />
+        <meshStandardMaterial color={ch.metal} metalness={0.65} roughness={0.4} />
       </mesh>
     </group>
   )
@@ -342,8 +369,8 @@ function LiveReadoutStrip({
       </div>
 
       <div className="mt-1 pt-1 border-t text-[8px] text-[var(--tertiary-label)] flex gap-2" style={{ borderColor: "var(--hairline)" }}>
-        <span><span style={{ color: "var(--applied)" }}>●</span> applied</span>
-        <span><span style={{ color: "var(--true)" }}>●</span> true</span>
+        <span><span style={{ color: "var(--q1)" }}>●</span> applied</span>
+        <span><span style={{ color: "var(--q0)" }}>●</span> true</span>
       </div>
     </div>
   )
@@ -355,8 +382,8 @@ function LiveReadoutStrip({
 export function Device3D({ device, detuning, applied, bellCounts = null, phase = 0, className }: Device3DProps) {
   const theme = useInstrumentTheme()
   const stage = stageBackground(theme)
-  const gridMajor = theme === "light" ? "#c5ccd6" : "#111113"
-  const gridMinor = theme === "light" ? "#dce1e8" : "#0a0a0b"
+  const gridMajor = theme === "light" ? "#8b95a5" : "#111113"
+  const gridMinor = theme === "light" ? "#c5ccd6" : "#0a0a0b"
   // Pull live fidelity from device (falls back to a soft floor for first paint)
   const q0 = Number(device?.readout_fidelity?.[0] ?? device?.readout_fidelity?.["0"] ?? 0.71)
   const q1 = Number(device?.readout_fidelity?.[1] ?? device?.readout_fidelity?.["1"] ?? 0.70)
@@ -400,18 +427,22 @@ export function Device3D({ device, detuning, applied, bellCounts = null, phase =
       <Canvas
         camera={{ position: [0, 1.88, 4.2], fov: 43, near: 0.2, far: 60 }}
         style={{ background: stage }}
+        key={theme}
+        gl={{ alpha: false, antialias: true }}
+        onCreated={({ gl }) => gl.setClearColor(stage, 1)}
         dpr={[1, 1.6]}
       >
         <React.Suspense fallback={null}>
-          <ambientLight intensity={0.72} />
-          <directionalLight position={[6.5, 9, -4]} intensity={1.2} />
-          <directionalLight position={[-7, 4, 5]} intensity={0.5} color="#a5b4fc" />
+          <color attach="background" args={[stage]} />
+          <ambientLight intensity={theme === "light" ? 1.05 : 0.72} />
+          <directionalLight position={[6.5, 9, -4]} intensity={theme === "light" ? 0.95 : 1.2} />
+          <directionalLight position={[-7, 4, 5]} intensity={0.5} color={theme === "light" ? "#e8eef4" : "#a5b4fc"} />
           <pointLight position={[0.2, 3.5, -2]} intensity={0.45} color="#ffffff" />
 
           {/* Richer package + cryo cues */}
-          <CryoColdPlate />
-          <PackageGroundPlane />
-          <BusCoupler tint={busTint} />
+          <CryoColdPlate theme={theme} />
+          <PackageGroundPlane theme={theme} />
+          <BusCoupler tint={busTint} theme={theme} />
           <QubitChiplet index={0} fidelity={q0} detuneF={df0} detuneA={da0} p1={p1q0} phase={appliedPhase} theme={theme} t1={t1_0} t2={t2_0} />
           <QubitChiplet index={1} fidelity={q1} detuneF={df1} detuneA={da1} p1={p1q1} phase={appliedPhase} theme={theme} t1={t1_1} t2={t2_1} />
 

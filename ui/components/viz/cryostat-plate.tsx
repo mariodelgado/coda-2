@@ -140,7 +140,10 @@ export function CryostatPlate({
           <img
             src="/plates/cryostat-isometric.svg"
             alt="Dilution fridge — isometric wireframe"
-            className="absolute inset-0 w-full h-full object-contain select-none pointer-events-none"
+            className={cn(
+              "absolute inset-0 w-full h-full object-contain select-none pointer-events-none",
+              theme === "light" && "cryostat-asset-light",
+            )}
             style={{ objectPosition: "50% 22%" }}
             draggable={false}
           />
@@ -153,9 +156,9 @@ export function CryostatPlate({
                 top: hovered === "top" ? "4%" : hovered === "upper" ? "12%" : hovered === "still" ? "30%" : hovered === "base" ? "44%" : hovered === "mixing" ? "56%" : hovered === "coil" ? "70%" : hovered === "cables" ? "78%" : "86%",
                 height: hovered === "top" || hovered === "package" ? "10%" : "14%",
                 width: 3,
-                background: "#c8d0d8",
+                background: theme === "light" ? "#3A4150" : "#c8d0d8",
                 opacity: 0.7,
-                boxShadow: "0 0 0 1px rgba(200,208,216,0.25)",
+                boxShadow: theme === "light" ? "none" : "0 0 0 1px rgba(200,208,216,0.25)",
               }}
             />
           )}

@@ -93,19 +93,19 @@
   --composer-bg: #ffffff;
   --composer-fg: #0E1218;
   --composer-placeholder: rgba(14, 18, 24, 0.42);
-  --bubble-user: rgba(14, 18, 24, 0.06);
-  --bubble-agent: rgba(14, 18, 24, 0.04);
+  --bubble-user: #FFFFFF;
+  --bubble-agent: #FFFFFF;
   --bubble-agent-fg: #0E1218;
-  --dock-0: rgba(244, 246, 248, 0.97);
-  --dock-1: rgba(244, 246, 248, 0.86);
-  --dock-2: rgba(244, 246, 248, 0.55);
-  --dock-3: rgba(244, 246, 248, 0.18);
-  --frost-0: rgba(238, 241, 245, 0.97);
-  --frost-1: rgba(238, 241, 245, 0.86);
-  --frost-2: rgba(238, 241, 245, 0.62);
-  --frost-3: rgba(238, 241, 245, 0.38);
-  --frost-4: rgba(238, 241, 245, 0.18);
-  --frost-5: rgba(238, 241, 245, 0.06);
+  --dock-0: #F4F6F8;
+  --dock-1: rgba(244, 246, 248, 0.98);
+  --dock-2: rgba(244, 246, 248, 0.94);
+  --dock-3: rgba(244, 246, 248, 0.78);
+  --frost-0: #EEF1F5;
+  --frost-1: rgba(238, 241, 245, 0.98);
+  --frost-2: rgba(238, 241, 245, 0.92);
+  --frost-3: rgba(238, 241, 245, 0.78);
+  --frost-4: rgba(238, 241, 245, 0.48);
+  --frost-5: rgba(238, 241, 245, 0.16);
   --void-tint: rgba(14, 18, 24, 0.03);
   --hover-fill: rgba(14, 18, 24, 0.04);
   --bezel: rgba(14, 18, 24, 0.10);
@@ -659,6 +659,9 @@ button:focus-visible {
   /* Lift above absolutely-positioned .dock-tint (same as .chat-composer / PR #26) */
   position: relative;
   z-index: 1;
+  /* Fade the top of the transcript into the stage so bubbles never crash into 3D. */
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 18px, #000 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18px, #000 100%);
 }
 
 /* Empty state — above tint, readable on dark dock */
@@ -713,6 +716,13 @@ button:focus-visible {
   background: var(--bubble-agent);
   color: var(--bubble-agent-fg);
   border-bottom-left-radius: 4px;
+}
+
+.light .bubble.user,
+.light .bubble.agent,
+[data-theme="light"] .bubble.user,
+[data-theme="light"] .bubble.agent {
+  border: 1px solid var(--hairline);
 }
 
 .bubble-meta {
@@ -808,6 +818,10 @@ button:focus-visible {
   background: var(--chip);
   border: 1px solid var(--hairline);
   color: var(--label);
+}
+
+.cryostat-asset-light {
+  filter: invert(1) hue-rotate(180deg);
 }
 
 .qubit-swatch {

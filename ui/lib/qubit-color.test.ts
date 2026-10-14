@@ -15,6 +15,7 @@ import {
   p1FromBellCounts,
   pairGradient,
   qubitColor,
+  landscapeColor,
   rgbHue,
   rgbToHex,
   rgbToOklch,
@@ -83,6 +84,18 @@ describe("spectral poles", () => {
     assert.ok(Math.abs(p1FromBellCounts(counts, 0) - 550 / 1000) < 1e-9)
     assert.ok(Math.abs(p1FromBellCounts(counts, 1) - 540 / 1000) < 1e-9)
     assert.equal(p1FromBellCounts(null, 0), 0)
+  })
+
+  it("fidelity landscape is a smooth indigo→cyan→ice ramp, not grey/orange bands", () => {
+    for (const theme of ["dark", "light"] as const) {
+      const low = rgbToOklch(landscapeColor(0.5, theme))
+      const mid = rgbToOklch(landscapeColor(0.75, theme))
+      const hi = rgbToOklch(landscapeColor(0.95, theme))
+      assert.ok(low.h > 230 && low.h < 270, `low should be indigo, H=${low.h}`)
+      assert.ok(mid.h > 200 && mid.h < 235, `mid should be cyan, H=${mid.h}`)
+      assert.ok(hi.h > 165 && hi.h < 200, `peak should be ice, H=${hi.h}`)
+      assert.equal(isIbmMagenta(low.h) || isIbmMagenta(mid.h) || isIbmMagenta(hi.h), false)
+    }
   })
 
   it("histogram outcomes: |00> indigo, |11> ice, mixed are spectral blends", () => {

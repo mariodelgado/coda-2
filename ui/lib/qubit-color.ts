@@ -337,3 +337,22 @@ export function qubitVisual(
 export function stageBackground(theme: ThemeMode): string {
   return theme === "light" ? "#EEF1F5" : "#000000"
 }
+
+/**
+ * Fidelity landscape → spectral ramp. Low F is indigo, the peak is ice,
+ * the midpoint is cyan. Interpolates in OKLCH (never the old grey/orange bands).
+ */
+export function landscapeColor(fidelity: number, theme: ThemeMode = "dark"): RGB {
+  const t = clamp01((fidelity - 0.48) / 0.47)
+  return qubitColor(t, 0, theme)
+}
+
+export function landscapeHex(fidelity: number, theme: ThemeMode = "dark"): string {
+  return rgbToHex(landscapeColor(fidelity, theme))
+}
+
+/** Parse `#rrggbb` to a THREE-friendly 0xrrggbb int. */
+export function hexToInt(hex: string): number {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim())
+  return m ? parseInt(m[1], 16) : 0
+}

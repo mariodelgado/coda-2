@@ -12,7 +12,6 @@ import {
   type Turn,
 } from "@/lib/turns"
 import { nextGoldenStation } from "@/lib/qubit-color"
-import { BellHistogram } from "@/components/viz/bell-histogram"
 import { QubitLegend } from "@/components/viz/qubit-legend"
 import { StateNeedle } from "@/components/viz/state-needle"
 
@@ -47,7 +46,7 @@ export function ChatDock({
   onStop,
   onOpenCommand,
   isReady = false,
-  appliedPhase = 0,
+  appliedPhase: _appliedPhase = 0,
 }: {
   turns: Turn[]
   suggested?: SuggestedChip[]
@@ -160,9 +159,7 @@ export function ChatDock({
                       One run is a sample from a distribution. Counts will move.
                     </span>
                   )}
-                  {t.bellCounts && t.status !== "running" && (
-                    <BellHistogram counts={t.bellCounts} phase={appliedPhase} />
-                  )}
+                  {/* Histogram lives on the device pane — keep the transcript as text. */}
                 </div>
                 {shown.length > 0 && (
                   <div className="chat-traces">
