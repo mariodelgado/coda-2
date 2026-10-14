@@ -40,26 +40,26 @@ export function CommandPalette({ actions, disabled }: CommandPaletteProps) {
     <div className="fixed inset-0 z-[100]">
       {/* Instant open — no fade (⌘K used hundreds of times/day) */}
       <div
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-[color-mix(in_srgb,var(--background)_40%,#000)]"
         onClick={() => setOpen(false)}
       />
       <div className="absolute left-1/2 top-[18%] w-full max-w-lg -translate-x-1/2 px-3">
         <Command
-          className="overflow-hidden rounded-lg border border-white/10 bg-zinc-950 shadow-2xl"
+          className="overflow-hidden rounded-lg border border-[var(--hairline)] bg-[var(--panel)] shadow-2xl text-[var(--foreground)]"
           label="Command palette"
         >
-          <div className="flex items-center border-b border-white/10 px-3">
+          <div className="flex items-center border-b border-[var(--hairline)] px-3">
             <Command.Input
               autoFocus
               placeholder="Run a goal or action…"
-              className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-zinc-500"
+              className="h-11 w-full bg-transparent text-sm outline-none placeholder:text-[var(--tertiary-label)]"
             />
-            <kbd className="ml-2 rounded border border-white/10 px-1.5 py-0.5 text-[10px] text-zinc-500">
+            <kbd className="ml-2 rounded border border-[var(--hairline)] px-1.5 py-0.5 text-[10px] text-[var(--tertiary-label)]">
               esc
             </kbd>
           </div>
           <Command.List className="max-h-72 overflow-y-auto p-1.5">
-            <Command.Empty className="px-3 py-6 text-center text-xs text-zinc-500">
+            <Command.Empty className="px-3 py-6 text-center text-xs text-[var(--tertiary-label)]">
               No matching actions.
             </Command.Empty>
             {["Goals", "Quick", "Demo"].map((group) => {
@@ -69,7 +69,7 @@ export function CommandPalette({ actions, disabled }: CommandPaletteProps) {
                 <Command.Group
                   key={group}
                   heading={group}
-                  className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-zinc-500"
+                  className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-widest [&_[cmdk-group-heading]]:text-[var(--tertiary-label)]"
                 >
                   {items.map((a) => (
                     <Command.Item
@@ -79,12 +79,12 @@ export function CommandPalette({ actions, disabled }: CommandPaletteProps) {
                         setOpen(false)
                         void a.run()
                       }}
-                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-zinc-200 aria-selected:bg-white/10"
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-[var(--label)] aria-selected:bg-[var(--fill)]"
                     >
-                      <span className="text-zinc-400">{a.icon}</span>
+                      <span className="text-[var(--tertiary-label)]">{a.icon}</span>
                       <span className="flex-1">{a.label}</span>
                       {a.hint && (
-                        <span className="font-mono text-[10px] text-zinc-500">{a.hint}</span>
+                        <span className="font-mono text-[10px] text-[var(--tertiary-label)]">{a.hint}</span>
                       )}
                     </Command.Item>
                   ))}

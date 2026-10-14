@@ -64,6 +64,15 @@ export default function QuantumChatInstrument() {
     ? activeTurn.fidelityHistory[activeTurn.fidelityHistory.length - 1].fidelity
     : (q0Fid != null ? q0Fid : null)
 
+  const latestBellCounts = useMemo(() => {
+    for (let i = turns.length - 1; i >= 0; i--) {
+      const c = turns[i].bellCounts
+      if (c && Object.keys(c).length) return c
+    }
+    return null
+  }, [turns])
+  const appliedPhase = asFinite(appliedParams?.phase) ?? 0
+
   const threshold = activeTurn?.calThreshold ?? 0.88
   const surfaceHistory = activeTurn?.fidelityHistory ?? []
 
@@ -125,7 +134,7 @@ export default function QuantumChatInstrument() {
   )
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#000000] text-white flex flex-col">
+    <div className="h-screen w-screen overflow-hidden bg-[var(--background)] text-[var(--foreground)] flex flex-col">
       <CommandPalette actions={commandActions} disabled={!connected} />
 
       <InstrumentToolbar
@@ -166,6 +175,8 @@ export default function QuantumChatInstrument() {
           stageMachine={stageMachine}
           hasActiveJob={hasActiveJob}
           activeJobStatus={activeJobStatus}
+          bellCounts={latestBellCounts}
+          appliedPhase={appliedPhase}
         />
 
         {/* Bottom-third progressive frost (solid stacked bands — Safari-safe).
@@ -185,6 +196,8 @@ export default function QuantumChatInstrument() {
           onSubmitGoal={submitGoal}
           onStop={stopActive}
           onOpenCommand={() => setCommandOpen(true)}
+          isReady={isReady}
+          appliedPhase={appliedPhase}
         />
       </div>
     </div>

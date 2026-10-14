@@ -17,6 +17,8 @@ import { Canvas, useFrame } from "@react-three/fiber"
 import { OrbitControls } from "@react-three/drei"
 import * as THREE from "three"
 import { cn } from "@/lib/utils"
+import { useInstrumentTheme } from "@/hooks/use-instrument-theme"
+import { hexToInt, landscapeHex, qubitHex, stageBackground } from "@/lib/qubit-color"
 
 export interface CalibrationSurfaceProps {
   detuning: Record<string, number> | null
@@ -46,11 +48,13 @@ function FidelitySurface({
   latestFidelity,
   wireframe,
   surfaceGain,
+  theme,
 }: {
   detuning: Record<string, number> | null
   latestFidelity: number
   wireframe: boolean
   surfaceGain: number
+  theme: "dark" | "light"
 }) {
   const meshRef = React.useRef<THREE.Mesh>(null)
 
@@ -78,10 +82,7 @@ function FidelitySurface({
       const dy = y - trueOffset.y
       const f = estimateFidelity(dx, dy, latestFidelity || 0.75)
       pos.setZ(i, (f - 0.5) * surfaceGain)
-      // iOS system palette (no purple): system blue for high/true, system orange for mid/applied, tertiary gray for low
-      if (f >= 0.88) color.setHex(0x007AFF)
-      else if (f >= 0.75) color.setHex(0xFF9500)
-      else color.setHex(0x8E8E93)
+      color.setHex(hexToInt(landscapeHex(f, theme)))
       colors[i * 3] = color.r
       colors[i * 3 + 1] = color.g
       colors[i * 3 + 2] = color.b
@@ -90,7 +91,7 @@ function FidelitySurface({
     g.setAttribute("color", new THREE.BufferAttribute(colors, 3))
     g.computeVertexNormals()
     return g
-  }, [trueOffset, latestFidelity, surfaceGain])
+  }, [trueOffset, latestFidelity, surfaceGain, theme])
 
   useFrame((_, dt) => {
     if (!meshRef.current) return
@@ -109,7 +110,7 @@ function FidelitySurface({
       {/* Projection ring on the exact shared local plane (Z small to sit above grid, no extra rotation). */}
       <mesh position={[trueOffset.x, trueOffset.y, 0.003]}>
         <ringGeometry args={[0.095, 0.135, 32]} />
-        <meshBasicMaterial color="#007AFF" transparent opacity={0.45} />
+        <meshBasicMaterial color={qubitHex(0, 0, theme)} transparent opacity={0.45} />
       </mesh>
     </>
   )
@@ -117,9 +118,13 @@ function FidelitySurface({
 
 function Markers({
   detuning,
+  theme,
 }: {
   detuning: Record<string, number> | null
+  theme: "dark" | "light"
 }) {
+  const appliedHex = qubitHex(1, 0, theme)
+  const trueHex = qubitHex(0, 0, theme)
   const trueX = THREE.MathUtils.clamp(Number(detuning?.frequency_error ?? 0) * 8, -0.95, 0.95)
   const trueY = THREE.MathUtils.clamp(Number(detuning?.amplitude_error ?? 0) * 8, -0.95, 0.95)
   const appliedRef = React.useRef<THREE.Mesh>(null)
@@ -139,16 +144,15 @@ function Markers({
 
   return (
     <group>
-      {/* Applied params sit at landscape origin (local XY on the shared plane) — system orange.
-          Small +Z keeps it above the grid/surface without a separate rotation. */}
+      {/* Applied params sit at landscape origin — ice pole (replaces the old orange). */}
       <mesh ref={appliedRef} position={[0, 0, 0.025]}>
         <sphereGeometry args={[0.055, 16, 16]} />
-        <meshStandardMaterial color="#FF9500" emissive="#FF9500" emissiveIntensity={0.65} />
+        <meshStandardMaterial color={appliedHex} emissive={appliedHex} emissiveIntensity={0.65} />
       </mesh>
-      {/* True target drifts with live detuning (local XY on the shared plane) — system blue. */}
+      {/* True target drifts with live detuning — indigo pole. */}
       <mesh ref={trueRef} position={[trueX, trueY, 0.03]}>
         <sphereGeometry args={[0.072, 16, 16]} />
-        <meshStandardMaterial color="#007AFF" emissive="#007AFF" emissiveIntensity={0.85} />
+        <meshStandardMaterial color={trueHex} emissive={trueHex} emissiveIntensity={0.85} />
       </mesh>
       {/* Projection ring lives in FidelitySurface on the exact same local plane (Z≈0). */}
     </group>
@@ -160,11 +164,13 @@ function Scene({
   latestFidelity,
   wireframe,
   surfaceGain,
+  theme,
 }: {
   detuning: Record<string, number> | null
   latestFidelity: number
   wireframe: boolean
   surfaceGain: number
+  theme: "dark" | "light"
 }) {
   // Framing lift + zoom-out for layout polish: camera farther back + higher subject bias
   // so the peak/grid/HUD fit the pane without crowding the dock or overflowing splitters.
@@ -173,21 +179,21 @@ function Scene({
 
   return (
     <>
-      <color attach="background" args={["#000000"]} />
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[4.5, 7.5, 3.5]} intensity={1.55} />
-      <directionalLight position={[-5, 2.5, -6]} intensity={0.55} color="#a5b4fc" />
+      <color attach="background" args={[stageBackground(theme)]} />
+      <ambientLight intensity={theme === "light" ? 0.95 : 0.6} />
+      <directionalLight position={[4.5, 7.5, 3.5]} intensity={theme === "light" ? 1.15 : 1.55} />
+      <directionalLight position={[-5, 2.5, -6]} intensity={0.55} color={theme === "light" ? "#e8eef4" : "#a5b4fc"} />
       <pointLight position={[0.5, 4.2, 1.5]} intensity={0.7} color="#ffffff" />
       {/* Shared tilted plane for surface + grid + ring projection.
           Rotation applied once here so gridHelper, FidelitySurface (Z=0 local),
           and ring share an identical plane (no skew, no vertical float).
           subjectLiftY + orbitTarget framing intentionally preserved. */}
       <group position={[0, subjectLiftY, 0]} rotation={[-Math.PI / 2.35, 0, 0]}>
-        <FidelitySurface detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} />
-        <Markers detuning={detuning} />
+        <FidelitySurface detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} theme={theme} />
+        <Markers detuning={detuning} theme={theme} />
         {/* Grid sits on the same local plane as the surface (tiny depth offset for draw order).
             Raised contrast vs pure black stage / fidelity surface; iOS-muted neutral grays (no neon/purple). */}
-        <gridHelper args={[3, 12, "#3a3a3e", "#2b2b2f"]} position={[0, 0, -0.003]} />
+        <gridHelper args={[3, 12, theme === "light" ? "#8b95a5" : "#3a3a3e", theme === "light" ? "#c5ccd6" : "#2b2b2f"]} position={[0, 0, -0.003]} />
       </group>
       <OrbitControls
         enablePan={false}
@@ -240,7 +246,7 @@ async function createGl(
     alpha: true,
     powerPreference: "high-performance",
   })
-  renderer.setClearColor(0x09090b, 1)
+  renderer.setClearColor(0x000000, 0)
   return renderer
 }
 
@@ -256,6 +262,7 @@ export function CalibrationSurface({
   // No Leva debug panel in production/demo. Fixed sane defaults for the drift surface.
   const wireframe = false
   const surfaceGain = 1.6
+  const theme = useInstrumentTheme()
   const latestFidelity = React.useMemo(() => {
     if (fidelityHistory.length) return fidelityHistory[fidelityHistory.length - 1].fidelity
     if (readoutFidelity) {
@@ -278,36 +285,38 @@ export function CalibrationSurface({
   }, [detuning])
 
   return (
-    <div className={cn("relative h-full w-full overflow-hidden", className)}>
+    <div className={cn("relative h-full w-full overflow-hidden", className)} style={{ background: stageBackground(theme) }}>
       <Canvas
+        key={theme}
         dpr={[1, 1.75]}
         camera={{ position: [0, 2.85, 5.6], fov: 46, near: 0.1, far: 60 }}
+        style={{ background: stageBackground(theme) }}
         gl={glFactory as unknown as React.ComponentProps<typeof Canvas>["gl"]}
       >
         <React.Suspense fallback={null}>
-          <Scene detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} />
+          <Scene detuning={detuning} latestFidelity={latestFidelity} wireframe={wireframe} surfaceGain={surfaceGain} theme={theme} />
         </React.Suspense>
       </Canvas>
 
       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-2 text-[10px]">
-        <div className="rounded bg-black/78 px-2 py-1 font-mono text-zinc-300 border border-white/10">
-          <span style={{color: '#007AFF'}}>●</span> true &nbsp;
-          <span style={{color: '#FF9500'}}>●</span> applied &nbsp;
+        <div className="rounded surface-hud px-2 py-1 font-mono text-[var(--secondary-label)]">
+          <span className="text-q0">●</span> true &nbsp;
+          <span className="text-q1">●</span> applied &nbsp;
           drift={driftMag.toFixed(4)}
           {applied?.frequency != null && (
-            <span className="text-zinc-500">
+            <span className="text-[var(--tertiary-label)]">
               {" "}· f={applied.frequency.toFixed(3)} a={Number(applied.amplitude ?? 0).toFixed(3)}
             </span>
           )}
         </div>
         <div
           className={cn(
-            "rounded px-2 py-1 font-mono border border-white/10",
+            "rounded px-2 py-1 font-mono surface-hud",
             mode === "webgpu"
-              ? "bg-[#0a0a0f] text-[#007AFF]"
+              ? "text-true"
               : mode === "checking"
-                ? "bg-[#0a0a0f] text-zinc-400"
-                : "bg-[#0a0a0f] text-[#FF9500]",
+                ? "text-[var(--tertiary-label)]"
+                : "text-applied",
           )}
         >
           {mode === "webgpu" && "WebGPU"}
@@ -318,7 +327,7 @@ export function CalibrationSurface({
       </div>
 
       {mode === "webgl" && typeof navigator !== "undefined" && !("gpu" in navigator) && (
-        <div className="pointer-events-none absolute bottom-2 left-2 right-2 rounded border border-amber-900/40 bg-amber-950/50 px-2 py-1 text-[10px] text-amber-200/90">
+        <div className="pointer-events-none absolute bottom-2 left-2 right-2 rounded border border-[var(--applied)] bg-[var(--hud)] px-2 py-1 text-[10px] text-applied">
           navigator.gpu missing — rendering via WebGL. Chrome/Edge with WebGPU enabled gets the WebGPU path.
         </div>
       )}

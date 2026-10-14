@@ -38,8 +38,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${geistSans.variable} ${geistMono.variable} ${ibmPlexMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="h-screen w-screen overflow-hidden bg-[#000000] font-sans text-white antialiased">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} forcedTheme="dark">
+      <body className="h-screen w-screen overflow-hidden bg-[var(--background)] font-sans text-[var(--foreground)] antialiased">
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          storageKey="coda-theme"
+          disableTransitionOnChange
+        >
           {children}
           <Toaster position="top-center" richColors closeButton />
         </ThemeProvider>

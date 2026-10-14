@@ -26,7 +26,7 @@ export interface StageStateChipProps {
 
 const basePill =
   "pointer-events-none select-none inline-flex items-center gap-1.5 rounded-full border px-2 py-px font-mono text-[10px] " +
-  "bg-black/78 border-white/10 text-zinc-200"
+  "surface-chip"
 
 /**
  * Compact frosted mono state machine chip for the bottom-right of the stage.
@@ -42,7 +42,7 @@ export function StageStateChip({ state, className }: StageStateChipProps) {
       <span className={cn("inline-block h-1.5 w-1.5 rounded-full", state.dotClass)} />
       <span className="tracking-[0.5px]">{state.label}</span>
       {state.hint ? (
-        <span className="ml-1 text-[9px] text-zinc-400 tabular-nums">{state.hint}</span>
+        <span className="ml-1 text-[9px] text-[var(--tertiary-label)] tabular-nums">{state.hint}</span>
       ) : null}
     </div>
   )

@@ -11,6 +11,9 @@ import {
   mathFromResults,
   type Turn,
 } from "@/lib/turns"
+import { nextGoldenStation } from "@/lib/qubit-color"
+import { QubitLegend } from "@/components/viz/qubit-legend"
+import { StateNeedle } from "@/components/viz/state-needle"
 
 export type SuggestedChip = {
   label: string
@@ -42,6 +45,8 @@ export function ChatDock({
   onSubmitGoal,
   onStop,
   onOpenCommand,
+  isReady = false,
+  appliedPhase: _appliedPhase = 0,
 }: {
   turns: Turn[]
   suggested?: SuggestedChip[]
@@ -55,6 +60,8 @@ export function ChatDock({
   onSubmitGoal: (raw: string) => void
   onStop: () => void
   onOpenCommand: () => void
+  isReady?: boolean
+  appliedPhase?: number
 }) {
   const transcriptRef = useRef<HTMLDivElement | null>(null)
   const scrollTranscript = useCallback(() => {
@@ -82,13 +89,19 @@ export function ChatDock({
   const hasBell = turns.some(
     (t) => t.status === "succeeded" && t.traces.some((tr) => tr.tool === "run_bell_pair"),
   )
-  const nextChipLabel = !hasCalibrated
-    ? "Calibrate Q0"
-    : !hasCheckedStatus
-      ? "Q0 readiness"
-      : !hasBell
-        ? "Bell pair"
-        : "Improve Bell"
+  const nextChipLabel =
+    !q0Ready && !hasCalibrated
+      ? "Calibrate Q0"
+      : !q0Ready
+        ? "Q0 readiness"
+        : !hasBell
+          ? "Bell pair"
+          : "Improve Bell"
+  const needleNext = nextGoldenStation({
+    hasCalibrated,
+    isReady: q0Ready || isReady,
+    hasBell,
+  })
 
   return (
     /* Bottom-third chat dock (~33vh). NO backdrop-filter.
@@ -146,6 +159,7 @@ export function ChatDock({
                       One run is a sample from a distribution. Counts will move.
                     </span>
                   )}
+                  {/* Histogram lives on the device pane — keep the transcript as text. */}
                 </div>
                 {shown.length > 0 && (
                   <div className="chat-traces">
@@ -154,7 +168,7 @@ export function ChatDock({
                       const pillMath = mathFromData((result as { data?: unknown } | undefined)?.data)
                       const fallback = !hasMath(pillMath) && tr.tool === "run_bell_pair" ? turnMath : pillMath
                       return (
-                        <span key={i} className="chat-trace-pill instrument-mono">
+                        <span key={i} className={`chat-trace-pill instrument-mono${tr.tool === "run_bell_pair" ? " chat-trace-pill-bell" : ""}`}>
                           {tr.tool}{formatPillMath(fallback)}
                         </span>
                       )
@@ -164,6 +178,11 @@ export function ChatDock({
               </div>
             )
           })}
+        </div>
+
+        <div className="dock-path">
+          <StateNeedle next={needleNext} arrived={hasBell} />
+          <QubitLegend />
         </div>
 
         <div className="chat-chips" role="list" aria-label="Golden path chips">
@@ -213,15 +232,15 @@ export function ChatDock({
               disabled={submitting || !connected}
             />
             {hasRunning ? (
-              <Button variant="outline" size="sm" className="h-7 border-white/10" onClick={() => { void onStop() }}>
+              <Button variant="outline" size="sm" className="h-7 border-[var(--hairline)]" onClick={() => { void onStop() }}>
                 <Square className="h-3 w-3 mr-1" /> stop
               </Button>
             ) : (
-              <button onClick={() => { void onSubmitGoal(goalInput) }} disabled={submitting || !goalInput.trim() || !connected} className="rounded-full p-1.5 hover:bg-white/5 disabled:opacity-40" aria-label="send">
+              <button onClick={() => { void onSubmitGoal(goalInput) }} disabled={submitting || !goalInput.trim() || !connected} className="rounded-full p-1.5 hover:bg-[var(--hover-fill)] disabled:opacity-40" aria-label="send">
                 <Send className="h-4 w-4" />
               </button>
             )}
-            <button onClick={onOpenCommand} className="ml-1 text-[10px] px-1.5 py-0.5 rounded border hairline text-zinc-500 hover:text-zinc-300" title="⌘K">⌘K</button>
+            <button onClick={onOpenCommand} className="ml-1 text-[10px] px-1.5 py-0.5 rounded border hairline text-[var(--tertiary-label)] hover:text-[var(--label)]" title="⌘K">⌘K</button>
           </div>
         </div>
       </div>
